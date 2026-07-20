@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { zonas, pisos } from "@/lib/pisos";
+import { zonas, pisos } from "../lib/pisos";
 
 export default function HomePage() {
   const disponibles = pisos.filter((p) => p.disponible).length;
@@ -9,9 +9,9 @@ export default function HomePage() {
       <section className="hero">
         <div className="wrap hero-grid">
           <div>
-            <div className="eyebrow">Murcia · UCAM · UMU · UPCT</div>
+            <div className="eyebrow">Murcia - UCAM - UMU - UPCT</div>
             <h1>
-              Tu habitación
+              Tu habitacion
               <br />
               cerca del <em>campus</em>,
               <br />
@@ -23,7 +23,7 @@ export default function HomePage() {
             </p>
             <div className="hero-actions">
               <Link href="#catalogo" className="btn-primary">
-                Buscar habitación →
+                Buscar habitacion
               </Link>
               <Link href="/contacto" className="btn-ghost">
                 Soy propietario
@@ -33,9 +33,9 @@ export default function HomePage() {
           <div className="hero-side">
             <div>
               <div className="tag">
-                <span className="live-dot"></span>&nbsp; Disponibilidad en vivo
+                <span className="live-dot"></span> Disponibilidad en vivo
               </div>
-              <div className="hero-side-title">Catálogo actualizado</div>
+              <div className="hero-side-title">Catalogo actualizado</div>
             </div>
             <div className="hero-stats">
               <div>
@@ -59,7 +59,7 @@ export default function HomePage() {
         <div className="wrap">
           <div className="section-head">
             <h2>Busca por tu universidad</h2>
-            <p>Cada zona tiene su propia página, con los pisos reales de ese barrio.</p>
+            <p>Cada zona tiene su propia pagina, con los pisos reales de ese barrio.</p>
           </div>
           <div className="zone-row">
             {zonas.map((zona) => {
@@ -67,7 +67,7 @@ export default function HomePage() {
               const desde = Math.min(...enZona.map((p) => p.precioMes));
               return (
                 <Link href={`/habitaciones/${zona.slug}`} className="zone-card" key={zona.slug}>
-                  <div className="zone-pin">◆ {zona.barrio}</div>
+                  <div className="zone-pin">{zona.barrio}</div>
                   <h3>{zona.universidad}</h3>
                   <p>{zona.intro}</p>
                   <div className="zone-meta">
@@ -84,15 +84,15 @@ export default function HomePage() {
       <section className="catalog" id="catalogo">
         <div className="wrap">
           <div className="section-head">
-            <h2>Últimas incorporaciones</h2>
-            <p>Fichas generadas automáticamente desde el catálogo.</p>
+            <h2>Ultimas incorporaciones</h2>
+            <p>Fichas generadas automaticamente desde el catalogo.</p>
           </div>
           <div className="card-grid">
             {pisos.map((piso) => (
               <Link href={`/habitaciones/${piso.zona}/${piso.slug}`} className="piso-card" key={piso.id}>
                 <div className="piso-img">
                   <span className={`piso-badge ${piso.disponible ? "" : "no-disponible"}`}>
-                    {piso.disponible ? "● Disponible" : "No disponible"}
+                    {piso.disponible ? "Disponible" : "No disponible"}
                   </span>
                 </div>
                 <div className="piso-body">
@@ -102,7 +102,7 @@ export default function HomePage() {
                     <div className="piso-price">
                       {piso.precioMes}€ <span>/mes</span>
                     </div>
-                    <div className="piso-arrow">→</div>
+                    <div className="piso-arrow">-&gt;</div>
                   </div>
                 </div>
               </Link>
