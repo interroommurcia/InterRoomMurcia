@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { zonas, zonaPorSlug, pisosPorZona } from "@/lib/pisos";
+import { zonas, zonaPorSlug, pisosPorZona } from "../../../lib/pisos";
 
 export function generateStaticParams() {
   return zonas.map((z) => ({ zona: z.slug }));
@@ -47,7 +47,7 @@ export default function ZonaPage({ params }: { params: { zona: string } }) {
               <Link href={`/habitaciones/${piso.zona}/${piso.slug}`} className="piso-card" key={piso.id}>
                 <div className="piso-img">
                   <span className={`piso-badge ${piso.disponible ? "" : "no-disponible"}`}>
-                    {piso.disponible ? "● Disponible" : "No disponible"}
+                    {piso.disponible ? "Disponible" : "No disponible"}
                   </span>
                 </div>
                 <div className="piso-body">
@@ -57,7 +57,7 @@ export default function ZonaPage({ params }: { params: { zona: string } }) {
                     <div className="piso-price">
                       {piso.precioMes}€ <span>/mes</span>
                     </div>
-                    <div className="piso-arrow">→</div>
+                    <div className="piso-arrow">-&gt;</div>
                   </div>
                 </div>
               </Link>
