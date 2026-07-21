@@ -2,12 +2,20 @@
  * GET /api/admin/posthog
  * Métricas de tráfico web desde PostHog via HogQL.
  * Requiere POSTHOG_PERSONAL_API_KEY y POSTHOG_PROJECT_ID en env.
+ *
+ * Comparte proyecto PostHog con GrupoSkyline.org (mismo dueño, plan sin
+ * proyectos ilimitados), así que cada query filtra por dominio para no
+ * mezclar el tráfico de ambos sitios.
  */
 import { NextResponse } from "next/server";
 
 const PH_API = "https://eu.posthog.com";
 const PH_KEY = process.env.POSTHOG_PERSONAL_API_KEY ?? "";
 const PH_PROJ = process.env.POSTHOG_PROJECT_ID ?? "";
+// Cubre tanto el dominio de Vercel (inter-room-murcia.vercel.app) como un
+// futuro dominio propio sin guiones (interroommurcia.com).
+const DOMAIN_FILTER =
+  "(properties.$current_url LIKE '%inter-room-murcia%' OR properties.$current_url LIKE '%interroommurcia%')";
 
 async function hogql(query: string) {
   const res = await fetch(`${PH_API}/api/projects/${PH_PROJ}/query/`, {
@@ -33,47 +41,47 @@ export async function GET() {
       await Promise.all([
         hogql(`
         SELECT count() AS pageviews, uniqExact(distinct_id) AS visitors, uniqExact(properties.$session_id) AS sessions
-        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 7 DAY
+        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 7 DAY AND ${DOMAIN_FILTER}
       `),
         hogql(`
         SELECT count() AS pageviews, uniqExact(distinct_id) AS visitors
-        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY
+        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY AND ${DOMAIN_FILTER}
       `),
         hogql(`
         SELECT replaceRegexpOne(properties.$current_url, 'https?://[^/]+', '') AS path, count() AS views, uniqExact(distinct_id) AS uniq
-        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY
+        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY AND ${DOMAIN_FILTER}
         GROUP BY path ORDER BY views DESC LIMIT 10
       `),
         hogql(`
         SELECT toDate(timestamp) AS day, count() AS pageviews, uniqExact(distinct_id) AS visitors
-        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY
+        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY AND ${DOMAIN_FILTER}
         GROUP BY day ORDER BY day ASC
       `),
         hogql(`
         SELECT countIf(total = 1) AS bounced, count() AS total_sessions
         FROM (
           SELECT properties.$session_id AS sid, count() AS total
-          FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 7 DAY
+          FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 7 DAY AND ${DOMAIN_FILTER}
           GROUP BY sid
         )
       `),
         hogql(`
         SELECT if(properties.$referring_domain IS NULL OR properties.$referring_domain = '', '(directo)', properties.$referring_domain) AS source,
           count() AS visits, uniqExact(distinct_id) AS visitors
-        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY
+        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY AND ${DOMAIN_FILTER}
         GROUP BY source ORDER BY visits DESC LIMIT 15
       `),
         hogql(`
         SELECT if(properties.$device_type IS NULL OR properties.$device_type = '', 'Unknown', properties.$device_type) AS device,
           count() AS visits, uniqExact(distinct_id) AS visitors
-        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY
+        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY AND ${DOMAIN_FILTER}
         GROUP BY device ORDER BY visits DESC
       `),
         hogql(`
         SELECT replaceRegexpOne(first_url, 'https?://[^/]+', '') AS entry_path, count() AS sessions
         FROM (
           SELECT properties.$session_id AS sid, argMin(properties.$current_url, timestamp) AS first_url
-          FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY
+          FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY AND ${DOMAIN_FILTER}
           GROUP BY sid
         )
         GROUP BY entry_path ORDER BY sessions DESC LIMIT 8
@@ -82,25 +90,25 @@ export async function GET() {
         SELECT if(properties.utm_source IS NULL OR properties.utm_source = '', '(sin UTM)', properties.utm_source) AS utm_source,
           if(properties.utm_medium IS NULL OR properties.utm_medium = '', '', properties.utm_medium) AS utm_medium,
           count() AS visits, uniqExact(distinct_id) AS visitors
-        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY
+        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY AND ${DOMAIN_FILTER}
         GROUP BY utm_source, utm_medium ORDER BY visits DESC LIMIT 12
       `),
         hogql(`
         SELECT if(properties.$geoip_country_name IS NULL OR properties.$geoip_country_name = '', 'Unknown', properties.$geoip_country_name) AS country,
           count() AS visits, uniqExact(distinct_id) AS visitors
-        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY
+        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY AND ${DOMAIN_FILTER}
         GROUP BY country ORDER BY visits DESC LIMIT 10
       `),
         hogql(`
         SELECT replaceRegexpOne(properties.$current_url, 'https?://[^/]+', '') AS path, uniqExact(distinct_id) AS active_users
-        FROM events WHERE timestamp >= now() - INTERVAL 5 MINUTE
+        FROM events WHERE timestamp >= now() - INTERVAL 5 MINUTE AND ${DOMAIN_FILTER}
         GROUP BY path ORDER BY active_users DESC LIMIT 10
       `),
         hogql(`
         SELECT coalesce(nullIf(trim(properties.$el_text), ''), '[sin texto]') AS element, count() AS clicks, uniqExact(distinct_id) AS unique_users
         FROM events WHERE event = '$autocapture' AND properties.$event_type = 'click'
           AND properties.$current_url NOT LIKE '%/admin%'
-          AND timestamp >= now() - INTERVAL 30 DAY
+          AND timestamp >= now() - INTERVAL 30 DAY AND ${DOMAIN_FILTER}
         GROUP BY element HAVING element != '[sin texto]' ORDER BY clicks DESC LIMIT 15
       `),
       ]);
