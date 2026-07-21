@@ -45,7 +45,10 @@ export default async function ZonaPage({ params }: { params: { zona: string } })
           <div className="card-grid">
             {pisosZona.map((piso) => (
               <Link href={`/habitaciones/${piso.zona}/${piso.slug}`} className="piso-card" key={piso.id}>
-                <div className="piso-img">
+                <div
+                  className="piso-img"
+                  style={piso.imageUrl ? { backgroundImage: `url(${piso.imageUrl})` } : undefined}
+                >
                   <span className={`piso-badge ${piso.disponible ? "" : "no-disponible"}`}>
                     {piso.disponible ? "Disponible" : "No disponible"}
                   </span>

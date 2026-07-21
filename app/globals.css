@@ -330,6 +330,8 @@ h1 em {
 .piso-img {
   height: 150px;
   background: linear-gradient(135deg, var(--orange), var(--orange-dark) 140%);
+  background-size: cover;
+  background-position: center;
   position: relative;
 }
 
@@ -692,6 +694,85 @@ footer {
 
 .admin {
   padding-top: 40px;
+}
+
+.admin-nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.admin-nav-item {
+  padding: 8px 16px;
+  border-radius: 100px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--ink);
+  opacity: 0.6;
+  background: var(--paper-dim);
+}
+
+.admin-nav-item.active {
+  opacity: 1;
+  background: var(--orange-light);
+  color: var(--orange-dark);
+}
+
+.pisos-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.piso-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--paper-dim);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.pisos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pisos-list-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid rgba(26, 26, 26, 0.08);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.pisos-list-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--orange), var(--orange-dark) 140%);
+  background-size: cover;
+  background-position: center;
+}
+
+.pisos-list-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.pisos-list-body h4 {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+.pisos-list-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .admin-table-wrap {

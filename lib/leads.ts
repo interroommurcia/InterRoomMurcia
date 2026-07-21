@@ -4,7 +4,11 @@ export type Lead = {
   id: number;
   nombre: string;
   telefono: string;
+  email: string | null;
   direccion: string;
+  tipo: string | null;
+  metros: number | null;
+  precio_deseado: number | null;
   mensaje: string | null;
   origen: string | null;
   created_at: string;
@@ -22,28 +26,36 @@ async function ensureTable() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
-  // Compatibilidad con tablas creadas antes de añadir la columna origen.
+  // Compatibilidad con tablas creadas antes de añadir estas columnas.
   await sql`ALTER TABLE leads_propietarios ADD COLUMN IF NOT EXISTS origen TEXT;`;
+  await sql`ALTER TABLE leads_propietarios ADD COLUMN IF NOT EXISTS email TEXT;`;
+  await sql`ALTER TABLE leads_propietarios ADD COLUMN IF NOT EXISTS tipo TEXT;`;
+  await sql`ALTER TABLE leads_propietarios ADD COLUMN IF NOT EXISTS metros INTEGER;`;
+  await sql`ALTER TABLE leads_propietarios ADD COLUMN IF NOT EXISTS precio_deseado INTEGER;`;
 }
 
 export async function crearLead(data: {
   nombre: string;
   telefono: string;
   direccion: string;
+  email?: string;
+  tipo?: string;
+  metros?: number;
+  precio_deseado?: number;
   mensaje?: string;
   origen?: string;
 }) {
   await ensureTable();
   await sql`
-    INSERT INTO leads_propietarios (nombre, telefono, direccion, mensaje, origen)
-    VALUES (${data.nombre}, ${data.telefono}, ${data.direccion}, ${data.mensaje || null}, ${data.origen || null});
+    INSERT INTO leads_propietarios (nombre, telefono, direccion, email, tipo, metros, precio_deseado, mensaje, origen)
+    VALUES (${data.nombre}, ${data.telefono}, ${data.direccion}, ${data.email || null}, ${data.tipo || null}, ${data.metros ?? null}, ${data.precio_deseado ?? null}, ${data.mensaje || null}, ${data.origen || null});
   `;
 }
 
 export async function listarLeads(): Promise<Lead[]> {
   await ensureTable();
   const { rows } = await sql<Lead>`
-    SELECT id, nombre, telefono, direccion, mensaje, origen, created_at
+    SELECT id, nombre, telefono, email, direccion, tipo, metros, precio_deseado, mensaje, origen, created_at
     FROM leads_propietarios
     ORDER BY created_at DESC;
   `;

@@ -19,6 +19,7 @@ export type Piso = {
   metros: number | null;
   descripcion: string;
   disponible: boolean;
+  imageUrl: string | null;
 };
 
 export const zonas: Zona[] = [
@@ -73,6 +74,7 @@ type PisoRow = {
   metros: number | null;
   descripcion: string;
   disponible: boolean;
+  image_url: string | null;
 };
 
 function mapPiso(row: PisoRow): Piso {
@@ -86,6 +88,7 @@ function mapPiso(row: PisoRow): Piso {
     metros: row.metros,
     descripcion: row.descripcion,
     disponible: row.disponible,
+    imageUrl: row.image_url,
   };
 }
 

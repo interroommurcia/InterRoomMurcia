@@ -17,6 +17,12 @@ create policy "Public read access on pisos"
   on public.pisos for select
   using (true);
 
+alter table public.pisos add column if not exists image_url text;
+
+insert into storage.buckets (id, name, public)
+values ('pisos', 'pisos', true)
+on conflict (id) do nothing;
+
 insert into public.pisos (slug, titulo, zona, barrio, precio_mes, metros, descripcion, disponible) values
   ('habitacion-luminosa-el-carmen', 'Habitación luminosa en El Carmen', 'umu', 'El Carmen, Murcia', 265, 12,
     'Habitación exterior con mucha luz natural, a 10 minutos andando de La Merced. Piso compartido con dos estudiantes más, cocina equipada y wifi de alta velocidad incluido.', true),

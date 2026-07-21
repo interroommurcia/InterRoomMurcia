@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { listarLeads } from "../../lib/leads";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,14 @@ export default async function AdminPage() {
   return (
     <section className="section admin">
       <div className="wrap">
+        <div className="admin-nav">
+          <Link href="/admin" className="admin-nav-item active">
+            Leads
+          </Link>
+          <Link href="/admin/pisos" className="admin-nav-item">
+            Catálogo
+          </Link>
+        </div>
         <div className="section-head">
           <h2>Leads de propietarios</h2>
           <p>{leads.length} solicitudes recibidas</p>
@@ -25,7 +34,11 @@ export default async function AdminPage() {
                 <th>Fecha</th>
                 <th>Nombre</th>
                 <th>Teléfono</th>
+                <th>Email</th>
                 <th>Dirección / zona</th>
+                <th>Tipo</th>
+                <th>m²</th>
+                <th>Precio deseado</th>
                 <th>Mensaje</th>
                 <th>Origen</th>
               </tr>
@@ -38,14 +51,18 @@ export default async function AdminPage() {
                   <td>
                     <a href={`tel:${lead.telefono}`}>{lead.telefono}</a>
                   </td>
+                  <td>{lead.email || "—"}</td>
                   <td>{lead.direccion}</td>
+                  <td>{lead.tipo || "—"}</td>
+                  <td>{lead.metros ?? "—"}</td>
+                  <td>{lead.precio_deseado ? `${lead.precio_deseado}€` : "—"}</td>
                   <td>{lead.mensaje || "—"}</td>
                   <td>{lead.origen || "—"}</td>
                 </tr>
               ))}
               {leads.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="admin-empty">
+                  <td colSpan={10} className="admin-empty">
                     Todavía no hay solicitudes.
                   </td>
                 </tr>

@@ -45,7 +45,16 @@ type Status = "idle" | "sending" | "sent" | "error";
 
 export default function LeadForm() {
   const [status, setStatus] = useState<Status>("idle");
-  const [form, setForm] = useState({ nombre: "", telefono: "", direccion: "", mensaje: "" });
+  const [form, setForm] = useState({
+    nombre: "",
+    telefono: "",
+    email: "",
+    direccion: "",
+    tipo: "",
+    metros: "",
+    precioDeseado: "",
+    mensaje: "",
+  });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -114,6 +123,48 @@ export default function LeadForm() {
           placeholder="Calle, barrio o zona en Murcia o Cartagena"
         />
       </label>
+      <div className="lead-form-row">
+        <label>
+          Email (opcional)
+          <input
+            type="email"
+            maxLength={120}
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            placeholder="tu@email.com"
+          />
+        </label>
+        <label>
+          Tipo de vivienda
+          <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
+            <option value="">Selecciona...</option>
+            <option value="Piso completo">Piso completo</option>
+            <option value="Habitacion">Habitacion</option>
+          </select>
+        </label>
+      </div>
+      <div className="lead-form-row">
+        <label>
+          Metros cuadrados (opcional)
+          <input
+            type="number"
+            min={0}
+            value={form.metros}
+            onChange={(e) => setForm({ ...form, metros: e.target.value })}
+            placeholder="70"
+          />
+        </label>
+        <label>
+          Precio que esperas cobrar/mes (opcional)
+          <input
+            type="number"
+            min={0}
+            value={form.precioDeseado}
+            onChange={(e) => setForm({ ...form, precioDeseado: e.target.value })}
+            placeholder="600"
+          />
+        </label>
+      </div>
       <label>
         Cuentanos algo mas (opcional)
         <textarea
