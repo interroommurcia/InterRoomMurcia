@@ -24,6 +24,8 @@ export type ArticuloResumen = {
   createdAt: string;
 };
 
+export type ArticuloTemplate = "clasico" | "minimalista" | "revista";
+
 export type Articulo = ArticuloResumen & {
   intro: string;
   sections: ArticuloSection[];
@@ -32,6 +34,7 @@ export type Articulo = ArticuloResumen & {
   heroImage: string | null;
   heroImageCredit: string | null;
   heroImageCreditUrl: string | null;
+  template: ArticuloTemplate;
 };
 
 type ArticuloRow = {
@@ -50,6 +53,7 @@ type ArticuloRow = {
   hero_image_credit: string | null;
   hero_image_credit_url: string | null;
   created_at: string;
+  template: ArticuloTemplate;
 };
 
 function mapArticulo(row: ArticuloRow): Articulo {
@@ -69,6 +73,7 @@ function mapArticulo(row: ArticuloRow): Articulo {
     heroImageCredit: row.hero_image_credit,
     heroImageCreditUrl: row.hero_image_credit_url,
     createdAt: row.created_at,
+    template: row.template,
   };
 }
 

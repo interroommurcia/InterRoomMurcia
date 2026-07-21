@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getArticuloPorSlug } from "../../../lib/articulos";
 import { ViewTracker, CtaLink } from "../ViewTracker";
 import { SectionVideo } from "../SectionVideo";
+import Reveal from "../../../components/Reveal";
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const art = await getArticuloPorSlug(params.slug);
@@ -62,8 +63,12 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
     year: "numeric",
   });
 
+  const animated = art.template !== "clasico";
+  const Block = ({ className, children }: { className?: string; children: React.ReactNode }) =>
+    animated ? <Reveal className={className}>{children}</Reveal> : <div className={className}>{children}</div>;
+
   return (
-    <section className="section article">
+    <section className={`section article article-${art.template}`}>
       <ViewTracker slug={art.slug} />
       <div className="wrap article-wrap">
         <div className="article-meta">
@@ -75,7 +80,7 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
         <p className="article-intro">{art.intro}</p>
 
         {art.heroImage && (
-          <div className="article-hero">
+          <Block className="article-hero">
             <img src={art.heroImage} alt={art.h1} loading="eager" />
             {art.heroImageCredit && (
               <p className="article-credit">
@@ -86,11 +91,11 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
                 · Unsplash
               </p>
             )}
-          </div>
+          </Block>
         )}
 
         {art.sections.map((section, i) => (
-          <div className="article-section" key={i}>
+          <Block className="article-section" key={i}>
             <h2>{section.h2}</h2>
             {section.image && <img className="article-section-img" src={section.image} alt={section.h2} loading="lazy" />}
             {section.video && <SectionVideo url={section.video} />}
@@ -98,16 +103,16 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
             {section.content.split("\n\n").map((para, j) => (
               <p key={j}>{para}</p>
             ))}
-          </div>
+          </Block>
         ))}
 
         {art.cta && (
-          <div className="article-cta">
+          <Block className="article-cta">
             <p>{art.cta}</p>
             <CtaLink slug={art.slug} href="/contacto" className="btn-primary">
               Contactar con InterRoom Murcia -&gt;
             </CtaLink>
-          </div>
+          </Block>
         )}
 
         {art.faq.length > 0 && (

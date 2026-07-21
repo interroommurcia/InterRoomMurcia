@@ -18,6 +18,7 @@ export type EditableArticle = {
   keyword: string | null;
   hero_image: string | null;
   mostrar_en_listado: boolean;
+  template: "clasico" | "minimalista" | "revista";
 };
 
 async function uploadFile(slug: string, file: File): Promise<string> {
@@ -138,6 +139,7 @@ export function ArticleEditor({
           keyword: art.keyword,
           hero_image: art.hero_image,
           mostrar_en_listado: art.mostrar_en_listado,
+          template: art.template,
         }),
       });
       if (!res.ok) {
@@ -178,6 +180,15 @@ export function ArticleEditor({
               onChange={(e) => setField("mostrar_en_listado", e.target.checked)}
             />
             Mostrar en el listado del blog (si lo desmarcas, sigue publicado e indexable, pero solo accesible por su URL directa)
+          </label>
+
+          <label>
+            Plantilla visual
+            <select value={art.template} onChange={(e) => setField("template", e.target.value as EditableArticle["template"])}>
+              <option value="clasico">Clásico</option>
+              <option value="minimalista">Minimalista (con scroll-reveal)</option>
+              <option value="revista">Revista (imágenes a ancho completo)</option>
+            </select>
           </label>
 
           <div className="editor-grid-2">

@@ -32,6 +32,7 @@ type SavedArticle = {
   views: number | null;
   cta_clicks: number | null;
   mostrar_en_listado: boolean;
+  template: "clasico" | "minimalista" | "revista";
 };
 
 async function generateArticleFromKeyword(keyword: string, tone: string, material: string | null): Promise<DraftArticle> {
@@ -69,7 +70,12 @@ async function generateArticleFromKeyword(keyword: string, tone: string, materia
   }
 }
 
-async function saveAndPublish(article: DraftArticle, keyword: string, mostrarEnListado: boolean): Promise<string> {
+async function saveAndPublish(
+  article: DraftArticle,
+  keyword: string,
+  mostrarEnListado: boolean,
+  template: "clasico" | "minimalista" | "revista"
+): Promise<string> {
   const res = await fetch("/api/admin/articulos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -86,6 +92,7 @@ async function saveAndPublish(article: DraftArticle, keyword: string, mostrarEnL
       hero_image_thumb: article.heroImageThumb ?? null,
       keyword,
       mostrar_en_listado: mostrarEnListado,
+      template,
     }),
   });
   const data = await res.json();
@@ -107,6 +114,7 @@ export default function ArticulosManager() {
   const [keyword, setKeyword] = useState("");
   const [tone, setTone] = useState<"cercano" | "profesional">("cercano");
   const [material, setMaterial] = useState("");
+  const [template, setTemplate] = useState<"clasico" | "minimalista" | "revista">("clasico");
   const [loading, setLoading] = useState(false);
   const [loadingImages, setLoadingImages] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -121,6 +129,7 @@ export default function ArticulosManager() {
   const [editingArticle, setEditingArticle] = useState<EditableArticle | null>(null);
   const [bulkKeywords, setBulkKeywords] = useState("");
   const [bulkTone, setBulkTone] = useState<"cercano" | "profesional">("cercano");
+  const [bulkTemplate, setBulkTemplate] = useState<"clasico" | "minimalista" | "revista">("clasico");
   const [bulkItems, setBulkItems] = useState<BulkItem[]>([]);
   const [bulkRunning, setBulkRunning] = useState(false);
 
@@ -139,7 +148,7 @@ export default function ArticulosManager() {
       setBulkItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, status: "generando" } : it)));
       try {
         const draft = await generateArticleFromKeyword(keywords[i], bulkTone, null);
-        await saveAndPublish(draft, keywords[i], false);
+        await saveAndPublish(draft, keywords[i], false, bulkTemplate);
         setBulkItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, status: "hecho" } : it)));
       } catch (e: unknown) {
         setBulkItems((prev) =>
@@ -169,6 +178,7 @@ export default function ArticulosManager() {
       keyword: data.keyword ?? null,
       hero_image: data.hero_image ?? null,
       mostrar_en_listado: data.mostrar_en_listado ?? true,
+      template: data.template ?? "clasico",
     });
   }
 
@@ -250,6 +260,7 @@ export default function ArticulosManager() {
         hero_image: article.heroImage ?? null,
         hero_image_thumb: article.heroImageThumb ?? null,
         keyword: keyword.trim(),
+        template,
       }),
     });
     const data = await res.json();
@@ -322,6 +333,14 @@ export default function ArticulosManager() {
               <select value={tone} onChange={(e) => setTone(e.target.value as "cercano" | "profesional")}>
                 <option value="cercano">Cercano</option>
                 <option value="profesional">Profesional</option>
+              </select>
+            </label>
+            <label>
+              Plantilla
+              <select value={template} onChange={(e) => setTemplate(e.target.value as typeof template)}>
+                <option value="clasico">Clásico</option>
+                <option value="minimalista">Minimalista</option>
+                <option value="revista">Revista</option>
               </select>
             </label>
           </div>
@@ -410,6 +429,14 @@ export default function ArticulosManager() {
               <select value={bulkTone} onChange={(e) => setBulkTone(e.target.value as "cercano" | "profesional")} disabled={bulkRunning}>
                 <option value="cercano">Cercano</option>
                 <option value="profesional">Profesional</option>
+              </select>
+            </label>
+            <label>
+              Plantilla
+              <select value={bulkTemplate} onChange={(e) => setBulkTemplate(e.target.value as typeof bulkTemplate)} disabled={bulkRunning}>
+                <option value="clasico">Clásico</option>
+                <option value="minimalista">Minimalista</option>
+                <option value="revista">Revista</option>
               </select>
             </label>
           </div>
@@ -562,6 +589,7 @@ function ArticleRow({
           {art.estado === "publicado" && !art.mostrar_en_listado && (
             <span className="editor-badge-hidden"> · oculto del listado</span>
           )}
+          {art.template !== "clasico" && <span> · {art.template}</span>}
         </div>
         {expanded && (
           <div className="articulos-stats-box">

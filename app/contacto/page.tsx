@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Reveal from "./Reveal";
+import Reveal from "../../components/Reveal";
 import LeadForm from "./LeadForm";
 
 export const metadata: Metadata = {

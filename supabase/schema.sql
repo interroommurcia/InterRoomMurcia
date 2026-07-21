@@ -82,6 +82,10 @@ create index if not exists articulos_views_slug_idx on public.articulos_views (s
 
 alter table public.articulos add column if not exists mostrar_en_listado boolean not null default true;
 
+alter table public.articulos add column if not exists template text not null default 'clasico';
+alter table public.articulos drop constraint if exists articulos_template_check;
+alter table public.articulos add constraint articulos_template_check check (template in ('clasico', 'minimalista', 'revista'));
+
 create or replace function public.increment_article_stat(p_slug text, p_column text)
 returns void
 language plpgsql
