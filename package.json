@@ -8,9 +8,11 @@
     "start": "next start"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.88.0",
     "@supabase/supabase-js": "^2.110.7",
     "@vercel/postgres": "^0.10.0",
     "next": "14.2.35",
+    "posthog-js": "^1.364.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

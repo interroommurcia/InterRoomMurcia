@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
+import { PostHogProvider } from "../components/PostHogProvider";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -22,29 +23,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body className={montserrat.variable}>
-        <header>
-          <nav>
-            <a href="/" className="logo">
-              Inter<span>Room</span> Murcia
-            </a>
-            <div className="navlinks">
-              <a href="/#zonas">Zonas</a>
-              <a href="/#catalogo">Catálogo</a>
-              <a href="/blog">Blog</a>
-              <a href="/contacto">Contacto</a>
+        <PostHogProvider>
+          <header>
+            <nav>
+              <a href="/" className="logo">
+                Inter<span>Room</span> Murcia
+              </a>
+              <div className="navlinks">
+                <a href="/#zonas">Zonas</a>
+                <a href="/#catalogo">Catálogo</a>
+                <a href="/blog">Blog</a>
+                <a href="/contacto">Contacto</a>
+              </div>
+              <a href="/#catalogo" className="nav-cta">
+                Ver habitaciones
+              </a>
+            </nav>
+          </header>
+          {children}
+          <footer>
+            <div className="wrap foot-grid">
+              <span>InterRoom Murcia — habitaciones para estudiantes</span>
+              <span>Murcia · Cartagena</span>
             </div>
-            <a href="/#catalogo" className="nav-cta">
-              Ver habitaciones
-            </a>
-          </nav>
-        </header>
-        {children}
-        <footer>
-          <div className="wrap foot-grid">
-            <span>InterRoom Murcia — habitaciones para estudiantes</span>
-            <span>Murcia · Cartagena</span>
-          </div>
-        </footer>
+          </footer>
+        </PostHogProvider>
       </body>
     </html>
   );

@@ -22,6 +22,12 @@ export default async function AdminPage() {
           <Link href="/admin/pisos" className="admin-nav-item">
             Catálogo
           </Link>
+          <Link href="/admin/articulos" className="admin-nav-item">
+            Artículos
+          </Link>
+          <Link href="/admin/analytics" className="admin-nav-item">
+            Analytics
+          </Link>
         </div>
         <div className="section-head">
           <h2>Leads de propietarios</h2>

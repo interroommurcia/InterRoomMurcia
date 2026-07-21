@@ -1,0 +1,125 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { getArticuloPorSlug } from "../../../lib/articulos";
+import { ViewTracker, CtaLink } from "../ViewTracker";
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const art = await getArticuloPorSlug(params.slug);
+  if (!art) return { title: "Artículo no encontrado" };
+
+  const schemaOrg = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        headline: art.h1,
+        description: art.metaDescription,
+        author: { "@type": "Organization", name: "InterRoom Murcia", url: "https://interroommurcia.com" },
+        publisher: {
+          "@type": "Organization",
+          name: "InterRoom Murcia",
+          logo: { "@type": "ImageObject", url: "https://interroommurcia.com/logo.png" },
+        },
+        url: `https://interroommurcia.com/blog/${art.slug}`,
+        datePublished: art.createdAt,
+        ...(art.heroImage ? { image: art.heroImage } : {}),
+      },
+      {
+        "@type": "FAQPage",
+        mainEntity: art.faq.map((f) => ({
+          "@type": "Question",
+          name: f.question,
+          acceptedAnswer: { "@type": "Answer", text: f.answer },
+        })),
+      },
+    ],
+  };
+
+  return {
+    title: art.metaTitle,
+    description: art.metaDescription,
+    alternates: { canonical: `https://interroommurcia.com/blog/${art.slug}` },
+    openGraph: {
+      title: art.metaTitle,
+      description: art.metaDescription,
+      type: "article",
+      url: `https://interroommurcia.com/blog/${art.slug}`,
+      publishedTime: art.createdAt,
+      ...(art.heroImage ? { images: [{ url: art.heroImage, width: 1200, height: 675, alt: art.h1 }] } : {}),
+    },
+    other: { "script:ld+json": JSON.stringify(schemaOrg) },
+  };
+}
+
+export default async function ArticuloPage({ params }: { params: { slug: string } }) {
+  const art = await getArticuloPorSlug(params.slug);
+  if (!art) return notFound();
+
+  const fecha = new Date(art.createdAt).toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  return (
+    <section className="section article">
+      <ViewTracker slug={art.slug} />
+      <div className="wrap article-wrap">
+        <div className="article-meta">
+          {art.keyword ?? "InterRoom Murcia"} &nbsp;·&nbsp; {fecha}
+        </div>
+
+        <h1>{art.h1}</h1>
+
+        <p className="article-intro">{art.intro}</p>
+
+        {art.heroImage && (
+          <div className="article-hero">
+            <img src={art.heroImage} alt={art.h1} loading="eager" />
+            {art.heroImageCredit && (
+              <p className="article-credit">
+                Foto:{" "}
+                <a href={art.heroImageCreditUrl ?? "#"} target="_blank" rel="noopener noreferrer">
+                  {art.heroImageCredit}
+                </a>{" "}
+                · Unsplash
+              </p>
+            )}
+          </div>
+        )}
+
+        {art.sections.map((section, i) => (
+          <div className="article-section" key={i}>
+            <h2>{section.h2}</h2>
+            {section.image && <img className="article-section-img" src={section.image} alt={section.h2} loading="lazy" />}
+            {section.highlight && <blockquote className="article-highlight">{section.highlight}</blockquote>}
+            {section.content.split("\n\n").map((para, j) => (
+              <p key={j}>{para}</p>
+            ))}
+          </div>
+        ))}
+
+        {art.cta && (
+          <div className="article-cta">
+            <p>{art.cta}</p>
+            <CtaLink slug={art.slug} href="/contacto" className="btn-primary">
+              Contactar con InterRoom Murcia -&gt;
+            </CtaLink>
+          </div>
+        )}
+
+        {art.faq.length > 0 && (
+          <div className="article-faq">
+            <h2>Preguntas frecuentes</h2>
+            {art.faq.map((item, i) => (
+              <div className="article-faq-item" key={i}>
+                <h3>{item.question}</h3>
+                <p>{item.answer}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
