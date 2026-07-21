@@ -10,7 +10,7 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
   },
 });
 
-export type ArticuloSection = { h2: string; content: string; highlight: string | null; image?: string };
+export type ArticuloSection = { h2: string; content: string; highlight: string | null; image?: string; video?: string };
 export type ArticuloFAQ = { question: string; answer: string };
 
 export type ArticuloResumen = {
@@ -77,6 +77,7 @@ export async function getArticulosPublicados(): Promise<ArticuloResumen[]> {
     .from("articulos")
     .select("id, slug, meta_title, meta_description, h1, keyword, hero_image_thumb, created_at")
     .eq("estado", "publicado")
+    .eq("mostrar_en_listado", true)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map((row) => ({
@@ -89,6 +90,15 @@ export async function getArticulosPublicados(): Promise<ArticuloResumen[]> {
     heroImageThumb: row.hero_image_thumb,
     createdAt: row.created_at,
   }));
+}
+
+export async function getSlugsPublicados(): Promise<{ slug: string; updatedAt: string }[]> {
+  const { data, error } = await supabase
+    .from("articulos")
+    .select("slug, created_at")
+    .eq("estado", "publicado");
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ slug: row.slug, updatedAt: row.created_at }));
 }
 
 export async function getArticuloPorSlug(slug: string): Promise<Articulo | null> {

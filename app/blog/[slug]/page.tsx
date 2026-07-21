@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getArticuloPorSlug } from "../../../lib/articulos";
 import { ViewTracker, CtaLink } from "../ViewTracker";
+import { SectionVideo } from "../SectionVideo";
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const art = await getArticuloPorSlug(params.slug);
@@ -92,6 +93,7 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
           <div className="article-section" key={i}>
             <h2>{section.h2}</h2>
             {section.image && <img className="article-section-img" src={section.image} alt={section.h2} loading="lazy" />}
+            {section.video && <SectionVideo url={section.video} />}
             {section.highlight && <blockquote className="article-highlight">{section.highlight}</blockquote>}
             {section.content.split("\n\n").map((para, j) => (
               <p key={j}>{para}</p>

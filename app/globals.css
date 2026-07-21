@@ -1013,6 +1013,234 @@ footer {
   }
 }
 
+.editor-badge-hidden {
+  color: var(--orange-dark);
+  font-weight: 600;
+}
+
+.editor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(26, 26, 26, 0.1);
+  flex-shrink: 0;
+}
+
+.editor-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.editor-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.editor-error {
+  font-size: 0.78rem;
+  color: #c0392b;
+}
+
+.editor-body {
+  flex: 1;
+  overflow-y: auto;
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 24px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.editor-body label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.editor-body input,
+.editor-body textarea {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.9rem;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(26, 26, 26, 0.15);
+  font-family: inherit;
+}
+
+.editor-checkbox {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px !important;
+  font-size: 0.8rem !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  background: var(--paper-dim);
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+
+.editor-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.editor-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.editor-video-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.editor-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.editor-thumb {
+  width: 56px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.editor-section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.editor-section-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.editor-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid rgba(26, 26, 26, 0.1);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--paper-dim);
+}
+
+.editor-block input,
+.editor-block textarea {
+  font-size: 0.85rem;
+  padding: 7px 9px;
+  border-radius: 7px;
+  border: 1px solid rgba(26, 26, 26, 0.12);
+  font-family: inherit;
+}
+
+.editor-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #666;
+}
+
+.editor-remove {
+  font-size: 0.72rem;
+  color: #c0392b;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .editor-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.articulos-bulk {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(26, 26, 26, 0.08);
+}
+
+.articulos-bulk-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--paper-dim);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.articulos-bulk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  padding: 4px 0;
+}
+
+.articulos-bulk-status {
+  width: 18px;
+  text-align: center;
+}
+
+.articulos-bulk-status.hecho {
+  color: #2f7d32;
+}
+
+.articulos-bulk-status.error {
+  color: #c0392b;
+}
+
+.articulos-bulk-keyword {
+  flex: 1;
+}
+
+.articulos-bulk-message {
+  font-size: 0.72rem;
+  color: #c0392b;
+}
+
 .admin-table-wrap {
   overflow-x: auto;
   border: 1px solid rgba(26, 26, 26, 0.1);
@@ -1219,6 +1447,26 @@ footer {
   border-radius: 10px;
   display: block;
   margin-bottom: 16px;
+}
+
+.article-video {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  background: #000;
+}
+
+.article-video iframe,
+.article-video video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
 }
 
 .article-section p {

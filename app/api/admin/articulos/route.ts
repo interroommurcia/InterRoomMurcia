@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from("articulos")
-    .select("id, slug, meta_title, h1, keyword, estado, created_at, hero_image_thumb, views, cta_clicks")
+    .select("id, slug, meta_title, h1, keyword, estado, created_at, hero_image_thumb, views, cta_clicks, mostrar_en_listado")
     .order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const {
     slug, meta_title, meta_description, h1, intro, sections, cta, faq,
     hero_image, hero_image_thumb, hero_image_credit, hero_image_credit_url,
-    hero_image_source, keyword,
+    hero_image_source, keyword, mostrar_en_listado,
   } = body;
 
   if (!slug || !h1) return NextResponse.json({ error: "slug y h1 requeridos" }, { status: 400 });
@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
         hero_image, hero_image_thumb, hero_image_credit,
         hero_image_credit_url, hero_image_source, keyword,
         estado: "borrador",
+        mostrar_en_listado: mostrar_en_listado ?? true,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "slug" }

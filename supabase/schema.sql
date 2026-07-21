@@ -80,6 +80,8 @@ alter table public.articulos_views enable row level security;
 
 create index if not exists articulos_views_slug_idx on public.articulos_views (slug);
 
+alter table public.articulos add column if not exists mostrar_en_listado boolean not null default true;
+
 create or replace function public.increment_article_stat(p_slug text, p_column text)
 returns void
 language plpgsql

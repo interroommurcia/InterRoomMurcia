@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ArticleEditor, type EditableArticle } from "./ArticleEditor";
 
 type Section = { h2: string; content: string; highlight: string | null; imagePrompt?: string; image?: string };
 type FAQ = { question: string; answer: string };
@@ -30,7 +31,77 @@ type SavedArticle = {
   hero_image_thumb: string | null;
   views: number | null;
   cta_clicks: number | null;
+  mostrar_en_listado: boolean;
 };
+
+async function generateArticleFromKeyword(keyword: string, tone: string, material: string | null): Promise<DraftArticle> {
+  const res = await fetch("/api/admin/articulos/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ keyword, tone, material }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ error: "Error generando artículo" }));
+    throw new Error(data.error || "Error generando artículo");
+  }
+
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let raw = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    raw += decoder.decode(value, { stream: true });
+  }
+  raw += decoder.decode();
+
+  const jsonMatch = raw.match(/```json\s*([\s\S]*?)\s*```/) || raw.match(/```\s*([\s\S]*?)\s*```/);
+  try {
+    return JSON.parse(jsonMatch ? jsonMatch[1] : raw);
+  } catch {
+    const objMatch = raw.match(/\{[\s\S]*\}/);
+    if (!objMatch) throw new Error("Respuesta inválida del modelo");
+    try {
+      return JSON.parse(objMatch[0]);
+    } catch {
+      throw new Error("Error parseando respuesta del modelo");
+    }
+  }
+}
+
+async function saveAndPublish(article: DraftArticle, keyword: string, mostrarEnListado: boolean): Promise<string> {
+  const res = await fetch("/api/admin/articulos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      slug: article.slug,
+      meta_title: article.metaTitle,
+      meta_description: article.metaDescription,
+      h1: article.h1,
+      intro: article.intro,
+      sections: article.sections,
+      cta: article.cta,
+      faq: article.faq,
+      hero_image: article.heroImage ?? null,
+      hero_image_thumb: article.heroImageThumb ?? null,
+      keyword,
+      mostrar_en_listado: mostrarEnListado,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Error guardando artículo");
+
+  const pub = await fetch("/api/admin/articulos", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: data.id, estado: "publicado" }),
+  });
+  if (!pub.ok) throw new Error("Guardado pero no se pudo publicar");
+
+  return data.id as string;
+}
+
+type BulkItem = { keyword: string; status: "pendiente" | "generando" | "hecho" | "error"; message?: string };
 
 export default function ArticulosManager() {
   const [keyword, setKeyword] = useState("");
@@ -47,6 +118,59 @@ export default function ArticulosManager() {
   const [loadingList, setLoadingList] = useState(true);
   const [expandedStats, setExpandedStats] = useState<string | null>(null);
   const [statsData, setStatsData] = useState<Record<string, { sources: { label: string; count: number }[]; total: number }>>({});
+  const [editingArticle, setEditingArticle] = useState<EditableArticle | null>(null);
+  const [bulkKeywords, setBulkKeywords] = useState("");
+  const [bulkTone, setBulkTone] = useState<"cercano" | "profesional">("cercano");
+  const [bulkItems, setBulkItems] = useState<BulkItem[]>([]);
+  const [bulkRunning, setBulkRunning] = useState(false);
+
+  async function runBulkGenerate() {
+    const keywords = bulkKeywords
+      .split("\n")
+      .map((k) => k.trim())
+      .filter(Boolean);
+    if (keywords.length === 0) return;
+
+    setBulkRunning(true);
+    const items: BulkItem[] = keywords.map((k) => ({ keyword: k, status: "pendiente" }));
+    setBulkItems(items);
+
+    for (let i = 0; i < keywords.length; i++) {
+      setBulkItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, status: "generando" } : it)));
+      try {
+        const draft = await generateArticleFromKeyword(keywords[i], bulkTone, null);
+        await saveAndPublish(draft, keywords[i], false);
+        setBulkItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, status: "hecho" } : it)));
+      } catch (e: unknown) {
+        setBulkItems((prev) =>
+          prev.map((it, idx) => (idx === i ? { ...it, status: "error", message: e instanceof Error ? e.message : "Error" } : it))
+        );
+      }
+    }
+
+    setBulkRunning(false);
+    await loadList();
+  }
+
+  async function openEditor(id: string) {
+    const res = await fetch(`/api/admin/articulos?id=${id}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setEditingArticle({
+      id: data.id,
+      slug: data.slug,
+      meta_title: data.meta_title,
+      meta_description: data.meta_description,
+      h1: data.h1,
+      intro: data.intro,
+      sections: data.sections ?? [],
+      cta: data.cta,
+      faq: data.faq ?? [],
+      keyword: data.keyword ?? null,
+      hero_image: data.hero_image ?? null,
+      mostrar_en_listado: data.mostrar_en_listado ?? true,
+    });
+  }
 
   const loadList = useCallback(async () => {
     setLoadingList(true);
@@ -70,44 +194,7 @@ export default function ArticulosManager() {
     setSavedId(null);
     setSavedEstado(null);
     try {
-      const res = await fetch("/api/admin/articulos/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword: keyword.trim(), tone, material: material.trim() || null }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Error generando artículo" }));
-        setError(data.error || "Error generando artículo");
-        return;
-      }
-
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let raw = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        raw += decoder.decode(value, { stream: true });
-      }
-      raw += decoder.decode();
-
-      const jsonMatch = raw.match(/```json\s*([\s\S]*?)\s*```/) || raw.match(/```\s*([\s\S]*?)\s*```/);
-      let data: DraftArticle;
-      try {
-        data = JSON.parse(jsonMatch ? jsonMatch[1] : raw);
-      } catch {
-        const objMatch = raw.match(/\{[\s\S]*\}/);
-        if (!objMatch) {
-          setError("Respuesta inválida del modelo");
-          return;
-        }
-        try {
-          data = JSON.parse(objMatch[0]);
-        } catch {
-          setError("Error parseando respuesta del modelo");
-          return;
-        }
-      }
+      const data = await generateArticleFromKeyword(keyword.trim(), tone, material.trim() || null);
       setArticle(data);
     } catch (e: unknown) {
       setError("Error: " + (e instanceof Error ? e.message : "desconocido"));
@@ -216,6 +303,13 @@ export default function ArticulosManager() {
 
   return (
     <div className="articulos-manager">
+      {editingArticle && (
+        <ArticleEditor
+          article={editingArticle}
+          onClose={() => setEditingArticle(null)}
+          onSaved={() => loadList()}
+        />
+      )}
       <div className="articulos-generator">
         <div className="piso-form">
           <label>
@@ -294,6 +388,56 @@ export default function ArticulosManager() {
         )}
       </div>
 
+      <div className="articulos-bulk">
+        <div className="section-head">
+          <h2>Generación masiva</h2>
+          <p>Una keyword por línea. Se generan, publican y quedan ocultos del listado del blog (indexables, solo por URL directa).</p>
+        </div>
+        <div className="piso-form">
+          <label>
+            Keywords (una por línea)
+            <textarea
+              rows={6}
+              value={bulkKeywords}
+              onChange={(e) => setBulkKeywords(e.target.value)}
+              placeholder={"habitaciones baratas cerca de la UMU\npisos compartidos en Espinardo\nalquiler estudiantes Cartagena centro"}
+              disabled={bulkRunning}
+            />
+          </label>
+          <div className="lead-form-row">
+            <label>
+              Tono
+              <select value={bulkTone} onChange={(e) => setBulkTone(e.target.value as "cercano" | "profesional")} disabled={bulkRunning}>
+                <option value="cercano">Cercano</option>
+                <option value="profesional">Profesional</option>
+              </select>
+            </label>
+          </div>
+          <div className="lead-form-actions">
+            <button type="button" className="btn-primary" onClick={runBulkGenerate} disabled={bulkRunning || !bulkKeywords.trim()}>
+              {bulkRunning ? "Generando en lote…" : "Generar en lote"}
+            </button>
+          </div>
+        </div>
+
+        {bulkItems.length > 0 && (
+          <div className="articulos-bulk-progress">
+            {bulkItems.map((it, i) => (
+              <div key={i} className="articulos-bulk-row">
+                <span className={`articulos-bulk-status ${it.status}`}>
+                  {it.status === "pendiente" && "○"}
+                  {it.status === "generando" && "⏳"}
+                  {it.status === "hecho" && "✓"}
+                  {it.status === "error" && "✕"}
+                </span>
+                <span className="articulos-bulk-keyword">{it.keyword}</span>
+                {it.message && <span className="articulos-bulk-message">{it.message}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {loading && <div className="admin-empty">Claude está redactando el artículo... suele tardar 20-40s.</div>}
 
       {article && (
@@ -353,6 +497,7 @@ export default function ArticulosManager() {
               onToggleStats={() => toggleStats(a.slug)}
               onToggleEstado={() => toggleEstado(a.id, "borrador")}
               onDelete={() => deleteArticle(a.id)}
+              onEdit={() => openEditor(a.id)}
             />
           ))
         )}
@@ -374,6 +519,7 @@ export default function ArticulosManager() {
               onToggleStats={() => toggleStats(a.slug)}
               onToggleEstado={() => toggleEstado(a.id, "publicado")}
               onDelete={() => deleteArticle(a.id)}
+              onEdit={() => openEditor(a.id)}
             />
           ))
         )}
@@ -389,6 +535,7 @@ function ArticleRow({
   onToggleStats,
   onToggleEstado,
   onDelete,
+  onEdit,
 }: {
   art: SavedArticle;
   expanded: boolean;
@@ -396,6 +543,7 @@ function ArticleRow({
   onToggleStats: () => void;
   onToggleEstado: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   return (
     <div className="pisos-list-item">
@@ -410,6 +558,9 @@ function ArticleRow({
               {" "}
               · {art.views ?? 0} vistas · {art.cta_clicks ?? 0} clicks
             </>
+          )}
+          {art.estado === "publicado" && !art.mostrar_en_listado && (
+            <span className="editor-badge-hidden"> · oculto del listado</span>
           )}
         </div>
         {expanded && (
@@ -430,6 +581,9 @@ function ArticleRow({
         )}
       </div>
       <div className="pisos-list-actions">
+        <button type="button" className="btn-ghost" onClick={onEdit}>
+          Editar
+        </button>
         {art.estado === "publicado" && (
           <button type="button" className="btn-ghost" onClick={onToggleStats}>
             Stats
