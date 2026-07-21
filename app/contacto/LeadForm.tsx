@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 
-// TODO: sustituir por el numero de WhatsApp real, formato internacional sin espacios ni "+" (ej: 34600000000)
-const WHATSAPP_NUMBER = "34600000000";
+const WHATSAPP_NUMBER = "34613096518";
 
 const WHATSAPP_MESSAGE =
   "Hola, soy propietario y quiero una valoracion gratuita de mi vivienda para alquilarla con InterRoom Murcia.";
