@@ -12,6 +12,35 @@ function whatsappHref(extra?: string) {
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
 }
 
+const ORIGENES_CONOCIDOS: [pattern: string, label: string][] = [
+  ["chatgpt.com", "ChatGPT"],
+  ["openai.com", "ChatGPT"],
+  ["wa.me", "WhatsApp"],
+  ["whatsapp.com", "WhatsApp"],
+  ["google.", "Google"],
+  ["instagram.com", "Instagram"],
+  ["facebook.com", "Facebook"],
+  ["tiktok.com", "TikTok"],
+  ["bing.com", "Bing"],
+];
+
+function detectarOrigen(): string {
+  const params = new URLSearchParams(window.location.search);
+  const utmSource = params.get("utm_source");
+  if (utmSource) return utmSource.slice(0, 60);
+
+  const ref = document.referrer;
+  if (!ref) return "Directo / sin referencia";
+
+  try {
+    const host = new URL(ref).hostname.replace(/^www\./, "");
+    const conocido = ORIGENES_CONOCIDOS.find(([pattern]) => host.includes(pattern));
+    return conocido ? conocido[1] : host;
+  } catch {
+    return "Directo / sin referencia";
+  }
+}
+
 type Status = "idle" | "sending" | "sent" | "error";
 
 export default function LeadForm() {
@@ -25,7 +54,7 @@ export default function LeadForm() {
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, origen: detectarOrigen() }),
       });
       if (!res.ok) throw new Error("request failed");
       setStatus("sent");

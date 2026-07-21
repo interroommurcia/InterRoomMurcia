@@ -27,6 +27,7 @@ export default async function AdminPage() {
                 <th>Teléfono</th>
                 <th>Dirección / zona</th>
                 <th>Mensaje</th>
+                <th>Origen</th>
               </tr>
             </thead>
             <tbody>
@@ -39,11 +40,12 @@ export default async function AdminPage() {
                   </td>
                   <td>{lead.direccion}</td>
                   <td>{lead.mensaje || "—"}</td>
+                  <td>{lead.origen || "—"}</td>
                 </tr>
               ))}
               {leads.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="admin-empty">
+                  <td colSpan={6} className="admin-empty">
                     Todavía no hay solicitudes.
                   </td>
                 </tr>
