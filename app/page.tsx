@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { zonas, pisos } from "../lib/pisos";
+import { zonas, getPisos } from "../lib/pisos";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const pisos = await getPisos();
   const disponibles = pisos.filter((p) => p.disponible).length;
 
   return (

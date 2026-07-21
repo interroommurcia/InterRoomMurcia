@@ -1,7 +1,4 @@
-// Esta capa de datos imita la forma de la tabla `pisos` que vivirá en Supabase.
-// Cuando el proyecto de Supabase esté listo, estas funciones se sustituyen por
-// llamadas reales (supabase.from('pisos').select(...)) sin tocar las páginas
-// que las consumen.
+import { supabase } from "./supabaseClient";
 
 export type Zona = {
   slug: "ucam" | "umu" | "upct";
@@ -66,71 +63,56 @@ export const zonas: Zona[] = [
   },
 ];
 
-export const pisos: Piso[] = [
-  {
-    id: "1",
-    slug: "habitacion-luminosa-el-carmen",
-    titulo: "Habitación luminosa en El Carmen",
-    zona: "umu",
-    barrio: "El Carmen, Murcia",
-    precioMes: 265,
-    metros: 12,
-    descripcion:
-      "Habitación exterior con mucha luz natural, a 10 minutos andando de La Merced. Piso compartido con dos estudiantes más, cocina equipada y wifi de alta velocidad incluido.",
-    disponible: true,
-  },
-  {
-    id: "2",
-    slug: "doble-con-balcon-guadalupe",
-    titulo: "Habitación con balcón en Guadalupe",
-    zona: "ucam",
-    barrio: "Guadalupe, Murcia",
-    precioMes: 255,
-    metros: 14,
-    descripcion:
-      "A 5 minutos a pie del campus de la UCAM. Balcón propio, armario empotrado y zona de estudio. Piso reformado en 2024.",
-    disponible: true,
-  },
-  {
-    id: "3",
-    slug: "habitacion-espinardo-campus",
-    titulo: "Habitación junto al campus de Espinardo",
-    zona: "umu",
-    barrio: "Espinardo, Murcia",
-    precioMes: 240,
-    metros: 11,
-    descripcion:
-      "Piso compartido a 3 minutos andando de las facultades de Espinardo. Ideal para estudiantes de ingeniería o ciencias.",
-    disponible: true,
-  },
-  {
-    id: "4",
-    slug: "habitacion-centro-cartagena",
-    titulo: "Habitación en el centro de Cartagena",
-    zona: "upct",
-    barrio: "Centro, Cartagena",
-    precioMes: 280,
-    metros: 13,
-    descripcion:
-      "A 8 minutos a pie de los campus de la UPCT. Edificio con ascensor, habitación exterior con escritorio incluido.",
-    disponible: true,
-  },
-  {
-    id: "5",
-    slug: "habitacion-la-nora-tranquila",
-    titulo: "Habitación tranquila en La Ñora",
-    zona: "ucam",
-    barrio: "La Ñora, Murcia",
-    precioMes: 245,
-    metros: 12,
-    descripcion:
-      "Zona residencial muy tranquila, a 10 minutos en bus de la UCAM. Piso con jardín compartido y plaza de aparcamiento disponible.",
-    disponible: false,
-  },
-];
+type PisoRow = {
+  id: string;
+  slug: string;
+  titulo: string;
+  zona: Zona["slug"];
+  barrio: string;
+  precio_mes: number;
+  metros: number | null;
+  descripcion: string;
+  disponible: boolean;
+};
 
-export function pisosPorZona(zona: Zona["slug"]) {
-  return pisos.filter((p) => p.zona === zona);
+function mapPiso(row: PisoRow): Piso {
+  return {
+    id: row.id,
+    slug: row.slug,
+    titulo: row.titulo,
+    zona: row.zona,
+    barrio: row.barrio,
+    precioMes: row.precio_mes,
+    metros: row.metros,
+    descripcion: row.descripcion,
+    disponible: row.disponible,
+  };
+}
+
+export async function getPisos(): Promise<Piso[]> {
+  const { data, error } = await supabase
+    .from("pisos")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(mapPiso);
+}
+
+export async function pisosPorZona(zona: Zona["slug"]): Promise<Piso[]> {
+  const { data, error } = await supabase.from("pisos").select("*").eq("zona", zona);
+  if (error) throw error;
+  return (data ?? []).map(mapPiso);
+}
+
+export async function pisoPorSlug(zona: Zona["slug"], slug: string): Promise<Piso | null> {
+  const { data, error } = await supabase
+    .from("pisos")
+    .select("*")
+    .eq("zona", zona)
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapPiso(data) : null;
 }
 
 export function zonaPorSlug(slug: string) {

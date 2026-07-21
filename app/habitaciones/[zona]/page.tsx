@@ -16,11 +16,11 @@ export function generateMetadata({ params }: { params: { zona: string } }): Meta
   };
 }
 
-export default function ZonaPage({ params }: { params: { zona: string } }) {
+export default async function ZonaPage({ params }: { params: { zona: string } }) {
   const zona = zonaPorSlug(params.zona);
   if (!zona) return notFound();
 
-  const pisosZona = pisosPorZona(zona.slug);
+  const pisosZona = await pisosPorZona(zona.slug);
 
   return (
     <>
