@@ -415,7 +415,7 @@ h1 em {
   margin-top: 80px;
   background-image: url("/footer-murcia.jpg");
   background-size: cover;
-  background-position: center;
+  background-position: center 15%;
   color: #fff;
 }
 
