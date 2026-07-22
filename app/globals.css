@@ -411,18 +411,84 @@ h1 em {
   margin-bottom: 18px;
 }
 
-footer {
-  padding: 50px 0 40px;
+.site-footer {
+  margin-top: 80px;
+  background-image: url("/footer-murcia.jpg");
+  background-size: cover;
+  background-position: center;
+  color: #fff;
 }
 
-.foot-grid {
+.site-footer-overlay {
+  background: linear-gradient(180deg, rgba(26, 26, 26, 0.55) 0%, rgba(20, 20, 20, 0.92) 100%);
+  padding: 64px 0 28px;
+}
+
+.site-footer-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 40px;
+}
+
+.site-footer-brand p {
+  margin-top: 14px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  opacity: 0.75;
+  max-width: 320px;
+}
+
+.site-footer-brand .logo {
+  color: #fff;
+  font-size: 1.3rem;
+}
+
+.site-footer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.site-footer-links a,
+.site-footer-links span {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.site-footer-links a:hover {
+  opacity: 1;
+}
+
+.site-footer-heading {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  opacity: 0.5 !important;
+  margin-bottom: 4px;
+}
+
+.site-footer-bottom {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 24px;
-  border-top: 1px solid rgba(26, 26, 26, 0.1);
-  font-size: 0.82rem;
-  opacity: 0.6;
+  margin-top: 50px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.78rem;
+  opacity: 0.55;
+}
+
+@media (max-width: 860px) {
+  .site-footer-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .site-footer-bottom {
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+  }
 }
 
 .reveal {

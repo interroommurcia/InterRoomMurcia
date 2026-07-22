@@ -41,10 +41,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </nav>
           </header>
           {children}
-          <footer>
-            <div className="wrap foot-grid">
-              <span>InterRoom Murcia — habitaciones para estudiantes</span>
-              <span>Murcia · Cartagena</span>
+          <footer className="site-footer">
+            <div className="site-footer-overlay">
+              <div className="wrap site-footer-grid">
+                <div className="site-footer-brand">
+                  <a href="/" className="logo">
+                    Inter<span>Room</span> Murcia
+                  </a>
+                  <p>Alquiler de habitaciones, búsqueda de inquilinos y gestión del inmueble en Murcia y Cartagena.</p>
+                </div>
+                <div className="site-footer-links">
+                  <span className="site-footer-heading">Navegación</span>
+                  <a href="/#zonas">Zonas</a>
+                  <a href="/#catalogo">Catálogo</a>
+                  <a href="/blog">Blog</a>
+                  <a href="/contacto">Contacto</a>
+                </div>
+                <div className="site-footer-links">
+                  <span className="site-footer-heading">Contacto</span>
+                  <a href="https://wa.me/34613096518" target="_blank" rel="noopener noreferrer">
+                    WhatsApp
+                  </a>
+                  <span>Murcia · Cartagena</span>
+                </div>
+              </div>
+              <div className="wrap site-footer-bottom">
+                <span>© {new Date().getFullYear()} InterRoom Murcia</span>
+                <span>Habitaciones para estudiantes</span>
+              </div>
             </div>
           </footer>
         </PostHogProvider>
