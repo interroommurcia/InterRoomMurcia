@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   description:
     "Habitaciones para estudiantes verificadas cerca de la UCAM, la UMU y la UPCT. Disponibilidad real, actualizada al minuto.",
   verification: {
-    google: "JdK4Tje4IR5mI8-CDMOYJfzlHRK19M2NnWyvWU2BDhE",
+    google: ["JdK4Tje4IR5mI8-CDMOYJfzlHRK19M2NnWyvWU2BDhE", "qGUypLyIprjg4UEDWQW1Uy0XPBv9bUSOi8GEXbIL1SA"],
   },
 };
 
