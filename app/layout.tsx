@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   },
   description:
     "Habitaciones para estudiantes verificadas cerca de la UCAM, la UMU y la UPCT. Disponibilidad real, actualizada al minuto.",
+  verification: {
+    google: "JdK4Tje4IR5mI8-CDMOYJfzlHRK19M2NnWyvWU2BDhE",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
