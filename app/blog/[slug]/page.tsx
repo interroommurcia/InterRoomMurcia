@@ -4,6 +4,7 @@ import { getArticuloPorSlug } from "../../../lib/articulos";
 import { ViewTracker, CtaLink } from "../ViewTracker";
 import { SectionVideo } from "../SectionVideo";
 import Reveal from "../../../components/Reveal";
+import { SITE_URL } from "../../../lib/site";
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const art = await getArticuloPorSlug(params.slug);
@@ -16,13 +17,13 @@ export async function generateMetadata({ params }: { params: { slug: string } })
         "@type": "Article",
         headline: art.h1,
         description: art.metaDescription,
-        author: { "@type": "Organization", name: "InterRoom Murcia", url: "https://interroommurcia.com" },
+        author: { "@type": "Organization", name: "InterRoom Murcia", url: SITE_URL },
         publisher: {
           "@type": "Organization",
           name: "InterRoom Murcia",
-          logo: { "@type": "ImageObject", url: "https://interroommurcia.com/logo.png" },
+          logo: { "@type": "ImageObject", url: `${SITE_URL}/logo.png` },
         },
-        url: `https://interroommurcia.com/blog/${art.slug}`,
+        url: `${SITE_URL}/blog/${art.slug}`,
         datePublished: art.createdAt,
         ...(art.heroImage ? { image: art.heroImage } : {}),
       },
@@ -40,12 +41,12 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   return {
     title: art.metaTitle,
     description: art.metaDescription,
-    alternates: { canonical: `https://interroommurcia.com/blog/${art.slug}` },
+    alternates: { canonical: `${SITE_URL}/blog/${art.slug}` },
     openGraph: {
       title: art.metaTitle,
       description: art.metaDescription,
       type: "article",
-      url: `https://interroommurcia.com/blog/${art.slug}`,
+      url: `${SITE_URL}/blog/${art.slug}`,
       publishedTime: art.createdAt,
       ...(art.heroImage ? { images: [{ url: art.heroImage, width: 1200, height: 675, alt: art.h1 }] } : {}),
     },

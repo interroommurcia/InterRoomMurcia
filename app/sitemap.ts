@@ -1,9 +1,7 @@
 import type { MetadataRoute } from "next";
 import { zonas } from "../lib/pisos";
 import { getSlugsPublicados } from "../lib/articulos";
-
-// Mismo dominio que metadataBase (app/layout.tsx) y las URLs canónicas del blog.
-const BASE_URL = "https://interroommurcia.com";
+import { SITE_URL as BASE_URL } from "../lib/site";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const articulos = await getSlugsPublicados().catch(() => []);

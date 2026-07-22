@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ArticleEditor, type EditableArticle } from "./ArticleEditor";
+import { SITE_URL } from "../../../lib/site";
+
+const SITE_HOST = SITE_URL.replace(/^https?:\/\//, "");
 
 type Section = { h2: string; content: string; highlight: string | null; imagePrompt?: string; image?: string };
 type FAQ = { question: string; answer: string };
@@ -363,7 +366,7 @@ export default function ArticulosManager() {
             <div className="articulos-meta-label">Meta descripción ({article.metaDescription.length}/155)</div>
             <div className="articulos-meta-value">{article.metaDescription}</div>
             <div className="articulos-meta-label">URL</div>
-            <div className="articulos-meta-value mono">interroommurcia.com/blog/{article.slug}</div>
+            <div className="articulos-meta-value mono">{SITE_HOST}/blog/{article.slug}</div>
 
             {savedId && savedEstado && (
               <div className={`articulos-status ${savedEstado}`}>
@@ -395,7 +398,7 @@ export default function ArticulosManager() {
                 </>
               ) : savedEstado === "borrador" ? (
                 <button type="button" className="btn-primary" onClick={() => toggleEstado(savedId, "publicado")}>
-                  Publicar en interroommurcia.com/blog
+                  Publicar en {SITE_HOST}/blog
                 </button>
               ) : (
                 <button type="button" className="btn-ghost" onClick={() => toggleEstado(savedId, "borrador")}>

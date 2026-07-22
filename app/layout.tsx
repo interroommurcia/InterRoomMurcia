@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import { PostHogProvider } from "../components/PostHogProvider";
+import { SITE_URL } from "../lib/site";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -10,7 +11,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://interroommurcia.com"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "InterRoom Murcia — Habitaciones para estudiantes en Murcia y Cartagena",
     template: "%s | InterRoom Murcia",
