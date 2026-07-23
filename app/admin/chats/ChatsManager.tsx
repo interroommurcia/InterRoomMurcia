@@ -32,6 +32,8 @@ export default function ChatsManager() {
   const [knowledgeBase, setKnowledgeBase] = useState("");
   const [savingKb, setSavingKb] = useState(false);
   const [kbSaved, setKbSaved] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState("");
 
   async function loadConversaciones() {
     const res = await fetch("/api/admin/chats");
@@ -75,6 +77,31 @@ export default function ChatsManager() {
     }
   }
 
+  async function subirPdf(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploadingPdf(true);
+    setPdfError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/admin/chat-pdf", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setPdfError(data.error || "No se pudo procesar el PDF");
+        return;
+      }
+      setKnowledgeBase(data.knowledgeBase);
+      setKbSaved(true);
+      setTimeout(() => setKbSaved(false), 2000);
+    } catch {
+      setPdfError("Error de conexión al subir el PDF");
+    } finally {
+      setUploadingPdf(false);
+    }
+  }
+
   const ordenadas = [...conversaciones].sort((a, b) => ordenPrioridad(a) - ordenPrioridad(b));
 
   return (
@@ -93,8 +120,19 @@ export default function ChatsManager() {
           <button type="button" className="btn-primary" onClick={guardarKb} disabled={savingKb}>
             {savingKb ? "Guardando..." : "Guardar"}
           </button>
+          <label className="btn-ghost" style={{ cursor: uploadingPdf ? "wait" : "pointer" }}>
+            {uploadingPdf ? "Leyendo PDF..." : "Subir protocolo (PDF)"}
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={subirPdf}
+              disabled={uploadingPdf}
+              style={{ display: "none" }}
+            />
+          </label>
           {kbSaved && <span>Guardado</span>}
         </div>
+        {pdfError && <p className="lead-form-error">{pdfError}</p>}
       </div>
 
       <div className="articulos-list-section" style={{ marginTop: 30 }}>

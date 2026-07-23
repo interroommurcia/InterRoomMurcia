@@ -68,6 +68,8 @@ export async function marcarLeido(id: string, leido: boolean) {
   if (error) throw error;
 }
 
+export const KNOWLEDGE_BASE_MAX_CHARS = 20000;
+
 export async function getKnowledgeBase(): Promise<string> {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin.from("chat_config").select("knowledge_base").eq("id", 1).maybeSingle();
