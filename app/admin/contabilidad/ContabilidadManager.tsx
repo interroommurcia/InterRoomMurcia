@@ -14,6 +14,8 @@ type Cliente = {
   origen: "manual" | "lead" | "autocompletado";
   datos_completados: boolean;
   token: string;
+  mensualidad: number;
+  comision_pct_alquiler: number;
   created_at: string;
 };
 
@@ -23,6 +25,7 @@ type Ingreso = {
   ingreso_bruto: number;
   comision_pct: number;
   comision_calculada: number;
+  cobrado: boolean;
 };
 
 type Operacion = {
@@ -54,7 +57,11 @@ function fmt(n: number) {
   return EUR.format(n || 0);
 }
 
-const NUEVO_CLIENTE = { nombre: "", apellidos: "", telefono: "", tipo: "propietario" as Cliente["tipo"], zona_interes: "", operacion: "alquiler" as NonNullable<Cliente["operacion"]> };
+const NUEVO_CLIENTE = { nombre: "", apellidos: "", telefono: "", tipo: "propietario" as Cliente["tipo"], zona_interes: "", operacion: "alquiler" as NonNullable<Cliente["operacion"]>, mensualidad: "" };
+
+function añoActual(mes: string) {
+  return new Date(mes).getUTCFullYear();
+}
 
 export default function ContabilidadManager() {
   const [tab, setTab] = useState<"alquileres" | "compraventas">("alquileres");
@@ -69,6 +76,8 @@ export default function ContabilidadManager() {
   const [ingresos, setIngresos] = useState<Record<string, Ingreso[]>>({});
   const [clienteAbierto, setClienteAbierto] = useState<string | null>(null);
   const [nuevoIngreso, setNuevoIngreso] = useState({ mes: "", ingresoBruto: "" });
+  const [mostrarAjusteManual, setMostrarAjusteManual] = useState(false);
+  const [mensualidadInput, setMensualidadInput] = useState("");
 
   const [gastos, setGastos] = useState<Record<string, Gasto[]>>({});
   const [operacionAbierta, setOperacionAbierta] = useState<string | null>(null);
@@ -101,7 +110,7 @@ export default function ContabilidadManager() {
     await fetch("/api/admin/clientes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(nuevoCliente),
+      body: JSON.stringify({ ...nuevoCliente, mensualidad: Number(nuevoCliente.mensualidad) || 0 }),
     });
     setNuevoCliente(NUEVO_CLIENTE);
     setMostrarNuevoCliente(false);
@@ -116,10 +125,33 @@ export default function ContabilidadManager() {
   async function toggleCliente(cliente: Cliente) {
     const next = clienteAbierto === cliente.id ? null : cliente.id;
     setClienteAbierto(next);
-    if (next && !ingresos[cliente.id]) {
+    setMostrarAjusteManual(false);
+    if (next) {
+      setMensualidadInput(String(cliente.mensualidad ?? 0));
       const data = await fetch(`/api/admin/clientes/${cliente.id}/ingresos`).then((r) => r.json());
       setIngresos((prev) => ({ ...prev, [cliente.id]: Array.isArray(data) ? data : [] }));
     }
+  }
+
+  async function actualizarMensualidad(clienteId: string) {
+    await fetch(`/api/admin/clientes/${clienteId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mensualidad: Number(mensualidadInput) || 0 }),
+    });
+    const data = await fetch(`/api/admin/clientes/${clienteId}/ingresos`).then((r) => r.json());
+    setIngresos((prev) => ({ ...prev, [clienteId]: Array.isArray(data) ? data : [] }));
+    cargarTodo();
+  }
+
+  async function toggleIngresoCobrado(clienteId: string, ingresoId: string, cobrado: boolean) {
+    await fetch(`/api/admin/ingresos/${ingresoId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cobrado }),
+    });
+    const data = await fetch(`/api/admin/clientes/${clienteId}/ingresos`).then((r) => r.json());
+    setIngresos((prev) => ({ ...prev, [clienteId]: Array.isArray(data) ? data : [] }));
   }
 
   async function añadirIngreso(clienteId: string, e: React.FormEvent) {
@@ -294,6 +326,14 @@ export default function ContabilidadManager() {
                   </select>
                 </label>
               </div>
+              {nuevoCliente.tipo === "propietario" && (
+                <div className="lead-form-row">
+                  <label>
+                    Mensualidad de alquiler (€)
+                    <input type="number" min={0} value={nuevoCliente.mensualidad} onChange={(e) => setNuevoCliente({ ...nuevoCliente, mensualidad: e.target.value })} placeholder="0 = sin alquiler activo" />
+                  </label>
+                </div>
+              )}
               <div className="lead-form-actions">
                 <button type="submit" className="btn-primary">Guardar cliente</button>
               </div>
@@ -326,26 +366,65 @@ export default function ContabilidadManager() {
 
                 {clienteAbierto === cliente.id && cliente.tipo === "propietario" && (
                   <div className="chat-transcript">
-                    <form className="lead-form-row" onSubmit={(e) => añadirIngreso(cliente.id, e)}>
+                    <div className="lead-form-row">
                       <label>
-                        Mes
-                        <input type="month" required value={nuevoIngreso.mes} onChange={(e) => setNuevoIngreso({ ...nuevoIngreso, mes: e.target.value })} />
+                        Mensualidad activa (€)
+                        <input type="number" min={0} value={mensualidadInput} onChange={(e) => setMensualidadInput(e.target.value)} placeholder="0 = pausado" />
                       </label>
-                      <label>
-                        Ingreso bruto (€)
-                        <input type="number" min={0} required value={nuevoIngreso.ingresoBruto} onChange={(e) => setNuevoIngreso({ ...nuevoIngreso, ingresoBruto: e.target.value })} />
-                      </label>
-                      <button type="submit" className="btn-primary">Añadir mes</button>
-                    </form>
+                      <button type="button" className="btn-primary" onClick={() => actualizarMensualidad(cliente.id)}>
+                        Actualizar mensualidad
+                      </button>
+                    </div>
+                    <p className="admin-empty" style={{ margin: "4px 0 12px" }}>
+                      Cada mes se genera solo mientras la mensualidad sea mayor que 0. Ponla a 0 para pausar (por ejemplo, si el inquilino se va).
+                    </p>
+
+                    {(() => {
+                      const lista = ingresos[cliente.id] ?? [];
+                      const año = new Date().getUTCFullYear();
+                      const totalAño = lista.filter((i) => añoActual(i.mes) === año).reduce((s, i) => s + i.comision_calculada, 0);
+                      const pendientes = lista.filter((i) => !i.cobrado).length;
+                      return (
+                        <p className="loc" style={{ marginBottom: 12 }}>
+                          Comisión {año}: {fmt(totalAño)} · Meses sin cobrar: {pendientes}
+                        </p>
+                      );
+                    })()}
+
                     {(ingresos[cliente.id] ?? []).map((ing) => (
-                      <div key={ing.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                      <div key={ing.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                         <span>{ing.mes.slice(0, 7)} — ingreso {fmt(ing.ingreso_bruto)}, comisión {fmt(ing.comision_calculada)}</span>
-                        <button type="button" className="btn-ghost" onClick={() => eliminarIngreso(cliente.id, ing.id)}>
-                          Borrar
-                        </button>
+                        <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                            <input type="checkbox" checked={ing.cobrado} onChange={(e) => toggleIngresoCobrado(cliente.id, ing.id, e.target.checked)} />
+                            Cobrado
+                          </label>
+                          <button type="button" className="btn-ghost" onClick={() => eliminarIngreso(cliente.id, ing.id)}>
+                            Borrar
+                          </button>
+                        </span>
                       </div>
                     ))}
                     {(ingresos[cliente.id] ?? []).length === 0 && <p className="admin-empty">Sin meses registrados todavía.</p>}
+
+                    <div className="lead-form-actions" style={{ marginTop: 12 }}>
+                      <button type="button" className="btn-ghost" onClick={() => setMostrarAjusteManual((v) => !v)}>
+                        {mostrarAjusteManual ? "Ocultar ajuste manual" : "Ajustar un mes manualmente"}
+                      </button>
+                    </div>
+                    {mostrarAjusteManual && (
+                      <form className="lead-form-row" onSubmit={(e) => añadirIngreso(cliente.id, e)}>
+                        <label>
+                          Mes
+                          <input type="month" required value={nuevoIngreso.mes} onChange={(e) => setNuevoIngreso({ ...nuevoIngreso, mes: e.target.value })} />
+                        </label>
+                        <label>
+                          Ingreso bruto (€)
+                          <input type="number" min={0} required value={nuevoIngreso.ingresoBruto} onChange={(e) => setNuevoIngreso({ ...nuevoIngreso, ingresoBruto: e.target.value })} />
+                        </label>
+                        <button type="submit" className="btn-primary">Guardar mes</button>
+                      </form>
+                    )}
                   </div>
                 )}
               </div>
@@ -406,6 +485,13 @@ export default function ContabilidadManager() {
                   <div className="loc">
                     Cierre {new Date(op.fecha_cierre).toLocaleDateString("es-ES")} · Venta {fmt(op.precio_venta)} · Comisión {fmt(op.comision_calculada)}
                   </div>
+                  {operacionAbierta === op.id && (
+                    <div className="loc">
+                      Ganancia neta {fmt(op.comision_calculada - (gastos[op.id] ?? []).filter((g) => g.pagado).reduce((s, g) => s + g.importe, 0))}
+                      {" "}
+                      (gastos pagados {fmt((gastos[op.id] ?? []).filter((g) => g.pagado).reduce((s, g) => s + g.importe, 0))})
+                    </div>
+                  )}
                 </div>
                 <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
                   <button type="button" className="btn-ghost" onClick={() => eliminarOperacion(op.id)}>

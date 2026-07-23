@@ -144,10 +144,14 @@ create table if not exists public.clientes (
   notas text,
   token uuid not null default gen_random_uuid() unique,
   datos_completados boolean not null default false,
+  mensualidad numeric not null default 0,
+  comision_pct_alquiler numeric not null default 15,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 alter table public.clientes enable row level security;
+alter table public.clientes add column if not exists mensualidad numeric not null default 0;
+alter table public.clientes add column if not exists comision_pct_alquiler numeric not null default 15;
 
 create table if not exists public.cliente_ingresos (
   id uuid primary key default gen_random_uuid(),
@@ -156,11 +160,15 @@ create table if not exists public.cliente_ingresos (
   ingreso_bruto numeric not null,
   comision_pct numeric not null default 15,
   comision_calculada numeric not null,
+  cobrado boolean not null default false,
+  fecha_cobro date,
   notas text,
   created_at timestamptz not null default now(),
   unique (cliente_id, mes)
 );
 alter table public.cliente_ingresos enable row level security;
+alter table public.cliente_ingresos add column if not exists cobrado boolean not null default false;
+alter table public.cliente_ingresos add column if not exists fecha_cobro date;
 
 create table if not exists public.operaciones_compraventa (
   id uuid primary key default gen_random_uuid(),

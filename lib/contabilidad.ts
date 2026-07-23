@@ -23,6 +23,8 @@ export type Cliente = {
   notas: string | null;
   token: string;
   datos_completados: boolean;
+  mensualidad: number;
+  comision_pct_alquiler: number;
   created_at: string;
   updated_at: string;
 };
@@ -34,6 +36,8 @@ export type IngresoMensual = {
   ingreso_bruto: number;
   comision_pct: number;
   comision_calculada: number;
+  cobrado: boolean;
+  fecha_cobro: string | null;
   notas: string | null;
   created_at: string;
 };
@@ -91,6 +95,8 @@ export async function crearCliente(input: {
   origen?: OrigenCliente;
   lead_id?: number;
   notas?: string;
+  mensualidad?: number;
+  comision_pct_alquiler?: number;
 }): Promise<Cliente> {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
@@ -105,6 +111,8 @@ export async function crearCliente(input: {
       origen: input.origen || "manual",
       lead_id: input.lead_id ?? null,
       notas: input.notas || null,
+      mensualidad: input.mensualidad ?? 0,
+      comision_pct_alquiler: input.comision_pct_alquiler ?? 15,
     })
     .select()
     .single();
@@ -122,6 +130,8 @@ export async function actualizarCliente(
     zona_interes: string | null;
     operacion: OperacionCliente;
     notas: string | null;
+    mensualidad: number;
+    comision_pct_alquiler: number;
   }>
 ) {
   const admin = getSupabaseAdmin();
@@ -166,8 +176,65 @@ export async function eliminarCliente(id: string) {
   if (error) throw error;
 }
 
+function primerDiaMes(d: Date) {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+}
+
+// Genera automáticamente los meses que falten hasta el mes actual usando la
+// mensualidad activa del cliente, sin tocar meses ya registrados (manuales o
+// de un cobro anterior). Si mensualidad es 0, el cliente está "pausado" y no
+// se genera nada.
+export async function sincronizarIngresosCliente(cliente: Cliente) {
+  if (!cliente.mensualidad || cliente.mensualidad <= 0) return;
+  const admin = getSupabaseAdmin();
+  const { data: ultimos, error } = await admin
+    .from("cliente_ingresos")
+    .select("mes")
+    .eq("cliente_id", cliente.id)
+    .order("mes", { ascending: false })
+    .limit(1);
+  if (error) throw error;
+
+  const mesActual = primerDiaMes(new Date());
+  let cursor = ultimos?.[0]
+    ? (() => {
+        const u = new Date(ultimos[0].mes);
+        return new Date(Date.UTC(u.getUTCFullYear(), u.getUTCMonth() + 1, 1));
+      })()
+    : mesActual;
+
+  const filas: { cliente_id: string; mes: string; ingreso_bruto: number; comision_pct: number; comision_calculada: number }[] = [];
+  while (cursor <= mesActual) {
+    filas.push({
+      cliente_id: cliente.id,
+      mes: cursor.toISOString().slice(0, 10),
+      ingreso_bruto: cliente.mensualidad,
+      comision_pct: cliente.comision_pct_alquiler,
+      comision_calculada: calcularComision(cliente.mensualidad, cliente.comision_pct_alquiler),
+    });
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
+  }
+  if (filas.length === 0) return;
+
+  const { error: insertError } = await admin
+    .from("cliente_ingresos")
+    .upsert(filas, { onConflict: "cliente_id,mes", ignoreDuplicates: true });
+  if (insertError) throw insertError;
+}
+
+export async function sincronizarTodosLosIngresos() {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin.from("clientes").select("*").gt("mensualidad", 0);
+  if (error) throw error;
+  for (const cliente of (data ?? []) as Cliente[]) {
+    await sincronizarIngresosCliente(cliente);
+  }
+}
+
 export async function listarIngresos(clienteId: string): Promise<IngresoMensual[]> {
   const admin = getSupabaseAdmin();
+  const cliente = await getCliente(clienteId);
+  if (cliente) await sincronizarIngresosCliente(cliente);
   const { data, error } = await admin
     .from("cliente_ingresos")
     .select("*")
@@ -192,6 +259,15 @@ export async function añadirIngreso(clienteId: string, mes: string, ingresoBrut
 export async function eliminarIngreso(id: string) {
   const admin = getSupabaseAdmin();
   const { error } = await admin.from("cliente_ingresos").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function marcarIngresoCobrado(id: string, cobrado: boolean) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin
+    .from("cliente_ingresos")
+    .update({ cobrado, fecha_cobro: cobrado ? new Date().toISOString().slice(0, 10) : null })
+    .eq("id", id);
   if (error) throw error;
 }
 
@@ -267,6 +343,7 @@ export async function eliminarGasto(id: string) {
 }
 
 export async function balanceTotal() {
+  await sincronizarTodosLosIngresos();
   const admin = getSupabaseAdmin();
   const [ingresosRes, operacionesRes, gastosRes] = await Promise.all([
     admin.from("cliente_ingresos").select("comision_calculada"),

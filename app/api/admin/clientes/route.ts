@@ -17,7 +17,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "nombre y tipo son requeridos" }, { status: 400 });
   }
   try {
-    const cliente = await crearCliente(body);
+    const cliente = await crearCliente({
+      ...body,
+      mensualidad: body.mensualidad !== undefined ? Number(body.mensualidad) || 0 : undefined,
+      comision_pct_alquiler: body.comision_pct_alquiler !== undefined ? Number(body.comision_pct_alquiler) || 15 : undefined,
+    });
     return NextResponse.json(cliente);
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error desconocido" }, { status: 500 });
