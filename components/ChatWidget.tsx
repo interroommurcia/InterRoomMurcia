@@ -80,7 +80,7 @@ export default function ChatWidget() {
       {open && (
         <div className="chat-widget-panel">
           <div className="chat-widget-header">
-            <span>Asistente InterRoom Murcia</span>
+            <span>Rommi · Asistente InterRoom Murcia</span>
             <button type="button" className="chat-widget-close" onClick={() => setOpen(false)} aria-label="Cerrar">
               ✕
             </button>
@@ -88,7 +88,7 @@ export default function ChatWidget() {
           <div className="chat-widget-messages" ref={listRef}>
             {mensajes.length === 0 && (
               <div className="chat-widget-msg assistant">
-                Hola, soy el asistente de InterRoom Murcia. ¿Buscas habitación o quieres alquilar tu vivienda?
+                Hola, soy Rommi, el asistente de InterRoom Murcia. ¿Buscas habitación o quieres alquilar tu vivienda?
               </div>
             )}
             {mensajes.map((m, i) => (

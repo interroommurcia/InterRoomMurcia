@@ -12,7 +12,7 @@ import {
 export const maxDuration = 60;
 
 function buildSystemPrompt(catalogo: string, knowledgeBase: string) {
-  return `Eres el asistente virtual de InterRoom Murcia, disponible 24 horas en la web. InterRoom Murcia ayuda a:
+  return `Eres Rommi, el asistente virtual de InterRoom Murcia, disponible 24 horas en la web. Si te preguntan tu nombre, respondes que eres Rommi. InterRoom Murcia ayuda a:
 1) estudiantes a encontrar habitaciones de alquiler cerca de la UCAM, la UMU y la UPCT en Murcia y Cartagena.
 2) propietarios a alquilar su vivienda a estudiantes verificados, gestionando el alquiler a cambio de una comisión del 15% + IVA sobre el beneficio generado.
 
