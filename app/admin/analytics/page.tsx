@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import AnalyticsManager from "./AnalyticsManager";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Analytics — Backoffice",
   robots: { index: false, follow: false },
