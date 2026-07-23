@@ -411,6 +411,122 @@ h1 em {
   margin-bottom: 18px;
 }
 
+.ficha {
+  padding: 50px 0 70px;
+}
+
+.ficha-back {
+  display: inline-block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.6;
+  margin-bottom: 24px;
+}
+
+.ficha-back:hover {
+  opacity: 1;
+  color: var(--orange-dark);
+}
+
+.ficha-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+.ficha-hero {
+  height: 340px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--orange), var(--orange-dark) 140%);
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.ficha h1 {
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  margin-bottom: 10px;
+}
+
+.ficha-loc {
+  font-size: 0.95rem;
+  opacity: 0.6;
+  margin-bottom: 24px;
+}
+
+.ficha-facts {
+  display: flex;
+  gap: 28px;
+  padding: 20px 0;
+  border-top: 1px solid rgba(26, 26, 26, 0.08);
+  border-bottom: 1px solid rgba(26, 26, 26, 0.08);
+  margin-bottom: 30px;
+}
+
+.ficha-facts div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ficha-facts b {
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.ficha-facts span {
+  font-size: 0.75rem;
+  opacity: 0.55;
+}
+
+.ficha-desc h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.ficha-desc p {
+  line-height: 1.7;
+  opacity: 0.85;
+  white-space: pre-line;
+}
+
+.ficha-cta-card {
+  position: sticky;
+  top: 24px;
+  background: var(--paper-dim);
+  border-radius: 20px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ficha-cta-price {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--orange-dark);
+}
+
+.ficha-cta-price span {
+  font-size: 0.85rem;
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+.ficha-cta-card p {
+  font-size: 0.88rem;
+  opacity: 0.7;
+  line-height: 1.5;
+}
+
+.ficha-cta-card .btn-primary,
+.ficha-cta-card .btn-ghost {
+  text-align: center;
+}
+
 .site-footer {
   margin-top: 80px;
   background-image: url("/footer-murcia.jpg");
@@ -1382,6 +1498,12 @@ h1 em {
   }
   .blog-grid {
     grid-template-columns: 1fr;
+  }
+  .ficha-grid {
+    grid-template-columns: 1fr;
+  }
+  .ficha-cta-card {
+    position: static;
   }
 }
 

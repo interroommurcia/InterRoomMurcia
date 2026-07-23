@@ -2,15 +2,14 @@
 
 import { useState } from "react";
 import { SITE_URL } from "../../lib/site";
-
-const WHATSAPP_NUMBER = "34613096518";
+import { whatsappHref as buildWhatsappHref } from "../../lib/whatsapp";
 
 const WHATSAPP_MESSAGE =
   "Hola, soy propietario y quiero una valoracion gratuita de mi vivienda para alquilarla con InterRoom Murcia.";
 
 function whatsappHref(extra?: string) {
   const text = extra ? `${WHATSAPP_MESSAGE} ${extra}` : WHATSAPP_MESSAGE;
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+  return buildWhatsappHref(text);
 }
 
 const ORIGENES_CONOCIDOS: [pattern: string, label: string][] = [
