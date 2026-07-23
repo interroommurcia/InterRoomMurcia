@@ -61,3 +61,28 @@ export async function listarLeads(): Promise<Lead[]> {
   `;
   return rows;
 }
+
+export async function leadsStats(): Promise<{
+  total7d: number;
+  total30d: number;
+  byOrigen: { origen: string; count: number }[];
+}> {
+  await ensureTable();
+  const { rows: r7 } = await sql`
+    SELECT count(*)::int AS c FROM leads_propietarios WHERE created_at >= now() - interval '7 days';
+  `;
+  const { rows: r30 } = await sql`
+    SELECT count(*)::int AS c FROM leads_propietarios WHERE created_at >= now() - interval '30 days';
+  `;
+  const { rows: byOrigen } = await sql`
+    SELECT coalesce(nullif(trim(origen), ''), 'Directo / sin referencia') AS origen, count(*)::int AS c
+    FROM leads_propietarios
+    WHERE created_at >= now() - interval '30 days'
+    GROUP BY origen ORDER BY c DESC LIMIT 15;
+  `;
+  return {
+    total7d: (r7[0]?.c as number) ?? 0,
+    total30d: (r30[0]?.c as number) ?? 0,
+    byOrigen: byOrigen.map((r) => ({ origen: r.origen as string, count: r.c as number })),
+  };
+}

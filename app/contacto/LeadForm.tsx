@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SITE_URL } from "../../lib/site";
 
 const WHATSAPP_NUMBER = "34613096518";
 
@@ -33,7 +34,15 @@ function detectarOrigen(): string {
   if (!ref) return "Directo / sin referencia";
 
   try {
-    const host = new URL(ref).hostname.replace(/^www\./, "");
+    const refUrl = new URL(ref);
+    const host = refUrl.hostname.replace(/^www\./, "");
+    const siteHost = new URL(SITE_URL).hostname.replace(/^www\./, "");
+    if (host === siteHost) {
+      if (refUrl.pathname.startsWith("/blog/")) {
+        return `Blog: ${refUrl.pathname.replace("/blog/", "")}`.slice(0, 120);
+      }
+      return `Interno: ${refUrl.pathname || "/"}`.slice(0, 120);
+    }
     const conocido = ORIGENES_CONOCIDOS.find(([pattern]) => host.includes(pattern));
     return conocido ? conocido[1] : host;
   } catch {

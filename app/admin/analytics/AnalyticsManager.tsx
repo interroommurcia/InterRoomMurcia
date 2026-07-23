@@ -17,6 +17,12 @@ type PostHogData = {
   clicks: { element: string; clicks: number; users: number }[];
 };
 
+type LeadsData = {
+  total7d: number;
+  total30d: number;
+  byOrigen: { origen: string; count: number }[];
+};
+
 function Bar({ label, value, max }: { label: string; value: number; max: number }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
@@ -34,6 +40,7 @@ export default function AnalyticsManager() {
   const [data, setData] = useState<PostHogData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [leads, setLeads] = useState<LeadsData | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/posthog")
@@ -47,6 +54,11 @@ export default function AnalyticsManager() {
       })
       .catch(() => setError("Error de red cargando analytics"))
       .finally(() => setLoading(false));
+
+    fetch("/api/admin/leads-stats")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((d) => setLeads(d))
+      .catch(() => {});
   }, []);
 
   if (loading) return <p className="admin-empty">Cargando analytics...</p>;
@@ -87,6 +99,42 @@ export default function AnalyticsManager() {
               <span>{r.active} activos</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {leads && (
+        <div className="analytics-grid">
+          <div className="analytics-card">
+            <h3>Leads y conversión</h3>
+            <div className="analytics-row">
+              <span>Leads (7d)</span>
+              <span>{leads.total7d}</span>
+            </div>
+            <div className="analytics-row">
+              <span>Leads (30d)</span>
+              <span>{leads.total30d}</span>
+            </div>
+            {data && data.stats30d.visitors > 0 && (
+              <div className="analytics-row">
+                <span>Conversión visitantes → lead (30d)</span>
+                <span>{((leads.total30d / data.stats30d.visitors) * 100).toFixed(1)}%</span>
+              </div>
+            )}
+          </div>
+
+          <div className="analytics-card">
+            <h3>Leads por origen (30d)</h3>
+            {leads.byOrigen.length === 0 ? (
+              <p className="admin-empty">Sin leads todavía.</p>
+            ) : (
+              leads.byOrigen.map((o) => (
+                <div key={o.origen} className="analytics-row">
+                  <span>{o.origen}</span>
+                  <span>{o.count}</span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 
