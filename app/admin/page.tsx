@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { listarLeads } from "../../lib/leads";
 import { AdminNav } from "../../components/AdminNav";
+import ConvertirClienteButton from "./ConvertirClienteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ export default async function AdminPage() {
                 <th>Precio deseado</th>
                 <th>Mensaje</th>
                 <th>Origen</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -51,11 +53,19 @@ export default async function AdminPage() {
                   <td>{lead.precio_deseado ? `${lead.precio_deseado}€` : "—"}</td>
                   <td>{lead.mensaje || "—"}</td>
                   <td>{lead.origen || "—"}</td>
+                  <td>
+                    <ConvertirClienteButton
+                      leadId={lead.id}
+                      nombre={lead.nombre}
+                      telefono={lead.telefono}
+                      direccion={lead.direccion}
+                    />
+                  </td>
                 </tr>
               ))}
               {leads.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="admin-empty">
+                  <td colSpan={11} className="admin-empty">
                     Todavía no hay solicitudes.
                   </td>
                 </tr>

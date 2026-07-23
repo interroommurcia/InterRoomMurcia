@@ -123,3 +123,65 @@ create table if not exists public.chat_config (
   updated_at timestamptz not null default now()
 );
 alter table public.chat_config enable row level security;
+
+-- ============================================================
+-- CONTABILIDAD: fichas de clientes, alquileres (mensual) y
+-- compraventas (por operación, con gastos particulares).
+-- Sin políticas públicas: el backoffice usa el service role;
+-- el enlace de autorrelleno pasa por /api/clientes/completar/[token]
+-- que valida el token antes de tocar la fila.
+-- ============================================================
+create table if not exists public.clientes (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  apellidos text,
+  telefono text,
+  tipo text not null check (tipo in ('propietario', 'estudiante', 'comprador')),
+  zona_interes text,
+  operacion text check (operacion in ('alquiler', 'venta')),
+  origen text not null default 'manual' check (origen in ('manual', 'lead', 'autocompletado')),
+  lead_id integer,
+  notas text,
+  token uuid not null default gen_random_uuid() unique,
+  datos_completados boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.clientes enable row level security;
+
+create table if not exists public.cliente_ingresos (
+  id uuid primary key default gen_random_uuid(),
+  cliente_id uuid not null references public.clientes(id) on delete cascade,
+  mes date not null,
+  ingreso_bruto numeric not null,
+  comision_pct numeric not null default 15,
+  comision_calculada numeric not null,
+  notas text,
+  created_at timestamptz not null default now(),
+  unique (cliente_id, mes)
+);
+alter table public.cliente_ingresos enable row level security;
+
+create table if not exists public.operaciones_compraventa (
+  id uuid primary key default gen_random_uuid(),
+  cliente_id uuid not null references public.clientes(id) on delete cascade,
+  fecha_cierre date not null,
+  precio_venta numeric not null,
+  comision_pct numeric not null default 3,
+  comision_calculada numeric not null,
+  notas text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.operaciones_compraventa enable row level security;
+
+create table if not exists public.operacion_gastos (
+  id uuid primary key default gen_random_uuid(),
+  operacion_id uuid not null references public.operaciones_compraventa(id) on delete cascade,
+  concepto text not null,
+  importe numeric not null,
+  pagado boolean not null default false,
+  fecha_pago date,
+  created_at timestamptz not null default now()
+);
+alter table public.operacion_gastos enable row level security;

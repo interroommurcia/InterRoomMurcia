@@ -900,6 +900,28 @@ h1 em {
   color: var(--orange-dark);
 }
 
+.contabilidad-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.contabilidad-tab {
+  padding: 8px 16px;
+  border-radius: 100px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--ink);
+  opacity: 0.6;
+  background: var(--paper-dim);
+}
+
+.contabilidad-tab.active {
+  opacity: 1;
+  background: var(--orange-light);
+  color: var(--orange-dark);
+}
+
 .pisos-manager {
   display: flex;
   flex-direction: column;

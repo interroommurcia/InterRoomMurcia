@@ -6,6 +6,7 @@ const ITEMS = [
   { href: "/admin/articulos", label: "Artículos" },
   { href: "/admin/analytics", label: "Analytics" },
   { href: "/admin/chats", label: "Chats" },
+  { href: "/admin/contabilidad", label: "Contabilidad" },
 ] as const;
 
 export function AdminNav({ active }: { active: (typeof ITEMS)[number]["href"] }) {
