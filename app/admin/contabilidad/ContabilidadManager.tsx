@@ -43,8 +43,13 @@ type Gasto = {
   id: string;
   concepto: string;
   importe: number;
+  es_negativo: boolean;
   pagado: boolean;
 };
+
+function netoDeOperacion(comisionCalculada: number, gastos: Gasto[]) {
+  return comisionCalculada + gastos.filter((g) => g.pagado).reduce((s, g) => s + (g.es_negativo ? -g.importe : g.importe), 0);
+}
 
 type Documento = {
   id: string;
@@ -139,7 +144,7 @@ export default function ContabilidadManager() {
 
   const [gastos, setGastos] = useState<Record<string, Gasto[]>>({});
   const [operacionAbierta, setOperacionAbierta] = useState<string | null>(null);
-  const [nuevoGasto, setNuevoGasto] = useState({ concepto: "", importe: "" });
+  const [nuevoGasto, setNuevoGasto] = useState({ concepto: "", importe: "", esNegativo: true });
 
   const [documentos, setDocumentos] = useState<Record<string, Documento[]>>({});
   const [subiendoDocumento, setSubiendoDocumento] = useState(false);
@@ -319,9 +324,9 @@ export default function ContabilidadManager() {
     await fetch(`/api/admin/operaciones/${operacionId}/gastos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ concepto: nuevoGasto.concepto, importe: Number(nuevoGasto.importe) }),
+      body: JSON.stringify({ concepto: nuevoGasto.concepto, importe: Number(nuevoGasto.importe), es_negativo: nuevoGasto.esNegativo }),
     });
-    setNuevoGasto({ concepto: "", importe: "" });
+    setNuevoGasto({ concepto: "", importe: "", esNegativo: true });
     const data = await fetch(`/api/admin/operaciones/${operacionId}/gastos`).then((r) => r.json());
     setGastos((prev) => ({ ...prev, [operacionId]: Array.isArray(data) ? data : [] }));
     cargarTodo();
@@ -675,14 +680,10 @@ export default function ContabilidadManager() {
                 <div className="pisos-list-body" onClick={() => toggleOperacion(op)} style={{ cursor: "pointer" }}>
                   <h4>{clienteNombre(op.cliente_id)}</h4>
                   <div className="loc">
-                    Cierre {new Date(op.fecha_cierre).toLocaleDateString("es-ES")} · Venta {fmt(op.precio_venta)} · Comisión {fmt(op.comision_calculada)}
+                    Cierre {new Date(op.fecha_cierre).toLocaleDateString("es-ES")} · Venta {fmt(op.precio_venta)} · Bruto (comisión) {fmt(op.comision_calculada)}
                   </div>
                   {operacionAbierta === op.id && (
-                    <div className="loc">
-                      Ganancia neta {fmt(op.comision_calculada - (gastos[op.id] ?? []).filter((g) => g.pagado).reduce((s, g) => s + g.importe, 0))}
-                      {" "}
-                      (gastos pagados {fmt((gastos[op.id] ?? []).filter((g) => g.pagado).reduce((s, g) => s + g.importe, 0))})
-                    </div>
+                    <div className="loc">Ganancia neta {fmt(netoDeOperacion(op.comision_calculada, gastos[op.id] ?? []))}</div>
                   )}
                 </div>
                 <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
@@ -702,15 +703,22 @@ export default function ContabilidadManager() {
                         Importe (€)
                         <input type="number" min={0} required value={nuevoGasto.importe} onChange={(e) => setNuevoGasto({ ...nuevoGasto, importe: e.target.value })} />
                       </label>
-                      <button type="submit" className="btn-primary">Añadir gasto</button>
+                      <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                        <input type="checkbox" checked={nuevoGasto.esNegativo} onChange={(e) => setNuevoGasto({ ...nuevoGasto, esNegativo: e.target.checked })} />
+                        Resta del neto (gasto)
+                      </label>
+                      <button type="submit" className="btn-primary">Añadir movimiento</button>
                     </form>
+                    <p className="admin-empty" style={{ margin: "4px 0 12px" }}>
+                      Desmarca la casilla para un ingreso extra que suma al neto en vez de restar.
+                    </p>
                     {(gastos[op.id] ?? []).map((g) => (
                       <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                        <span>{g.concepto} — {fmt(g.importe)}</span>
+                        <span>{g.concepto} — {g.es_negativo ? "-" : "+"}{fmt(g.importe)}</span>
                         <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
                             <input type="checkbox" checked={g.pagado} onChange={(e) => toggleGastoPagado(op.id, g.id, e.target.checked)} />
-                            Pagado
+                            Liquidado
                           </label>
                           <button type="button" className="btn-ghost" onClick={() => eliminarGasto(op.id, g.id)}>
                             Borrar
@@ -718,7 +726,7 @@ export default function ContabilidadManager() {
                         </span>
                       </div>
                     ))}
-                    {(gastos[op.id] ?? []).length === 0 && <p className="admin-empty">Sin gastos registrados todavía.</p>}
+                    {(gastos[op.id] ?? []).length === 0 && <p className="admin-empty">Sin movimientos registrados todavía.</p>}
 
                     <div className="lead-form-row" style={{ marginTop: 16 }}>
                       <label style={{ flex: 1 }}>

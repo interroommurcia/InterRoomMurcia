@@ -4,11 +4,15 @@ import { listarLeads } from "./leads";
 import {
   listarClientes,
   listarOperaciones,
+  listarOperacionesPorMes,
+  listarIngresosPorMes,
   listarGastos,
   listarIngresos,
   balanceTotal,
+  netoDeOperacion,
   buscarDocumentosPorOperacion,
   descargarDocumento,
+  type OperacionCompraventa,
 } from "./contabilidad";
 import { calcularPendientes, formatearPendientes } from "./secretaria";
 import { telegramSendDocument } from "./telegram";
@@ -28,7 +32,9 @@ Guía de uso de herramientas:
 - Si te piden localizar a alguien (por teléfono, email, nombre o zona/comunidad autónoma), usa buscar_contacto — busca en leads sin convertir y en clientes a la vez.
 - Si preguntan qué hay pendiente (leads sin contactar, teléfonos incompletos, alquileres sin cobrar), usa listar_pendientes.
 - Si piden un documento/PDF de un cliente u operación, usa buscar_documentos primero; si hay un resultado claro (o el usuario confirma cuál), usa enviar_documento con su id para mandarlo a este mismo chat.
-- Si preguntan por dinero, comisiones, beneficio o gastos de un cliente/operación concreta, usa detalle_cliente. Para el balance global del negocio, usa consultar_balance.
+- Si preguntan por dinero, comisiones, beneficio o gastos de un cliente concreto, usa detalle_cliente. Para una operación de compraventa concreta con su desglose completo (bruto, cada movimiento con signo, neto), usa detalle_operacion. Para el balance global del negocio, usa consultar_balance.
+- Si preguntan por un mes concreto (ingresos de alquiler o compraventas cerradas ese mes), usa ingresos_del_mes u operaciones_del_mes con formato "YYYY-MM".
+- Cuando muestres el desglose de una operación, preséntalo como un asiento contable: primero el bruto (comisión), luego cada movimiento con su signo (+ suma, - resta) y si está liquidado o pendiente, y termina con el neto. No mezcles bruto y neto en una sola cifra sin aclararlo.
 - Si preguntan qué se ha hablado con algún cliente en el chat de la web, o quieren revisar conversaciones escaladas, usa buscar_chats.
 - Si preguntan "qué respondería Rommi" (el chatbot de la web) ante algo, usa consultar_rommi — simula su respuesta real con el mismo catálogo y base de conocimiento que usa en la web.
 - Si ninguna herramienta resuelve la pregunta, dilo con claridad en vez de inventar una respuesta.`;
@@ -93,6 +99,34 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "detalle_operacion",
+    description:
+      "Devuelve el asiento contable completo de una operación de compraventa: bruto (comisión), cada movimiento con su signo y estado, y el neto final. Busca por nombre del cliente.",
+    input_schema: {
+      type: "object",
+      properties: { nombre: { type: "string", description: "Nombre o parte del nombre del cliente de la operación" } },
+      required: ["nombre"],
+    },
+  },
+  {
+    name: "ingresos_del_mes",
+    description: "Devuelve los ingresos de alquiler (comisión por cliente y total) de un mes concreto.",
+    input_schema: {
+      type: "object",
+      properties: { mes: { type: "string", description: 'Mes en formato "YYYY-MM"' } },
+      required: ["mes"],
+    },
+  },
+  {
+    name: "operaciones_del_mes",
+    description: "Devuelve las operaciones de compraventa cerradas en un mes concreto, cada una con su asiento contable (bruto/neto).",
+    input_schema: {
+      type: "object",
+      properties: { mes: { type: "string", description: 'Mes en formato "YYYY-MM"' } },
+      required: ["mes"],
+    },
+  },
+  {
     name: "consultar_rommi",
     description: "Simula la respuesta real que daría Rommi (el chatbot de la web) a una pregunta, usando su mismo catálogo y base de conocimiento.",
     input_schema: {
@@ -124,6 +158,18 @@ function contiene(campo: string | null | undefined, q: string, qDigits: string) 
   if (!campo) return false;
   if (campo.toLowerCase().includes(q)) return true;
   return qDigits.length > 0 && telefonoDigits(campo).includes(qDigits);
+}
+
+async function formatearOperacion(op: OperacionCompraventa, clienteNombre: string): Promise<string> {
+  const gastos = await listarGastos(op.id);
+  const neto = netoDeOperacion(op.comision_calculada, gastos);
+  const lineas = [
+    `OPERACIÓN: ${clienteNombre} · cierre ${op.fecha_cierre} · venta ${op.precio_venta}€`,
+    `  BRUTO (comisión ${op.comision_pct}%): +${op.comision_calculada.toFixed(2)}€`,
+  ];
+  gastos.forEach((g) => lineas.push(`    ${g.es_negativo ? "-" : "+"}${g.importe.toFixed(2)}€ · ${g.concepto} · ${g.pagado ? "liquidado" : "pendiente"}`));
+  lineas.push(`  NETO: ${neto.toFixed(2)}€`);
+  return lineas.join("\n");
 }
 
 async function ejecutarHerramienta(nombre: string, input: Record<string, unknown>, chatId: string): Promise<string> {
@@ -192,14 +238,43 @@ Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.co
       }
       const operaciones = (await listarOperaciones()).filter((o) => o.cliente_id === c.id);
       for (const op of operaciones) {
-        const gastos = await listarGastos(op.id);
-        const gastosPagados = gastos.filter((g) => g.pagado).reduce((s, g) => s + g.importe, 0);
-        partes.push(
-          `  Operación compraventa: cierre ${op.fecha_cierre}, venta ${op.precio_venta}€, comisión ${op.comision_calculada}€, ganancia neta ${(op.comision_calculada - gastosPagados).toFixed(2)}€`
-        );
+        partes.push(await formatearOperacion(op, `${c.nombre} ${c.apellidos ?? ""}`.trim()));
       }
     }
     return partes.join("\n");
+  }
+  if (nombre === "detalle_operacion") {
+    const query = String(input.nombre ?? "").toLowerCase();
+    const clientes = await listarClientes();
+    const encontrados = clientes.filter((c) => `${c.nombre} ${c.apellidos ?? ""}`.toLowerCase().includes(query));
+    if (!encontrados.length) return "Cliente no encontrado.";
+    const idsMatch = new Set(encontrados.map((c) => c.id));
+    const operaciones = (await listarOperaciones()).filter((o) => idsMatch.has(o.cliente_id));
+    if (!operaciones.length) return "Ese cliente no tiene operaciones de compraventa.";
+    const nombrePorId = new Map(encontrados.map((c) => [c.id, `${c.nombre} ${c.apellidos ?? ""}`.trim()]));
+    const partes: string[] = [];
+    for (const op of operaciones) partes.push(await formatearOperacion(op, nombrePorId.get(op.cliente_id) ?? "—"));
+    return partes.join("\n\n");
+  }
+  if (nombre === "ingresos_del_mes") {
+    const mes = String(input.mes ?? "").trim();
+    if (!/^\d{4}-\d{2}$/.test(mes)) return 'Formato de mes inválido, usa "YYYY-MM".';
+    const ingresos = await listarIngresosPorMes(mes);
+    if (!ingresos.length) return `Sin ingresos de alquiler registrados en ${mes}.`;
+    const total = ingresos.reduce((s, i) => s + i.comision_calculada, 0);
+    const lineas = ingresos.map((i) => `- ${i.clienteNombre}: ingreso ${i.ingreso_bruto}€, comisión ${i.comision_calculada.toFixed(2)}€ (${i.cobrado ? "cobrado" : "pendiente"})`);
+    return [`Ingresos de alquiler ${mes}:`, ...lineas, `TOTAL comisión: ${total.toFixed(2)}€`].join("\n");
+  }
+  if (nombre === "operaciones_del_mes") {
+    const mes = String(input.mes ?? "").trim();
+    if (!/^\d{4}-\d{2}$/.test(mes)) return 'Formato de mes inválido, usa "YYYY-MM".';
+    const operaciones = await listarOperacionesPorMes(mes);
+    if (!operaciones.length) return `Sin operaciones de compraventa cerradas en ${mes}.`;
+    const clientes = await listarClientes();
+    const nombrePorId = new Map(clientes.map((c) => [c.id, `${c.nombre} ${c.apellidos ?? ""}`.trim()]));
+    const partes: string[] = [];
+    for (const op of operaciones) partes.push(await formatearOperacion(op, nombrePorId.get(op.cliente_id) ?? "—"));
+    return partes.join("\n\n");
   }
   if (nombre === "buscar_chats") {
     const query = String(input.query ?? "").trim().toLowerCase();

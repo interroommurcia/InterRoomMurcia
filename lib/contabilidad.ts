@@ -62,10 +62,20 @@ export type Gasto = {
   operacion_id: string;
   concepto: string;
   importe: number;
+  es_negativo: boolean;
   pagado: boolean;
   fecha_pago: string | null;
   created_at: string;
 };
+
+// Neto de una operación = bruto (comisión) +/- cada movimiento liquidado,
+// según el signo que se marcó al crearlo (gasto = negativo, ingreso extra = positivo).
+export function netoDeOperacion(comisionCalculada: number, gastos: Gasto[]) {
+  return (
+    comisionCalculada +
+    gastos.filter((g) => g.pagado).reduce((s, g) => s + (g.es_negativo ? -g.importe : g.importe), 0)
+  );
+}
 
 export type Documento = {
   id: string;
@@ -299,6 +309,37 @@ export async function listarOperaciones(): Promise<OperacionCompraventa[]> {
   return (data ?? []) as OperacionCompraventa[];
 }
 
+// mes en formato "YYYY-MM". Compraventas cerradas ese mes.
+export async function listarOperacionesPorMes(mes: string): Promise<OperacionCompraventa[]> {
+  const admin = getSupabaseAdmin();
+  const inicio = `${mes}-01`;
+  const d = new Date(inicio);
+  const fin = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
+  const { data, error } = await admin
+    .from("operaciones_compraventa")
+    .select("*")
+    .gte("fecha_cierre", inicio)
+    .lt("fecha_cierre", fin)
+    .order("fecha_cierre", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as OperacionCompraventa[];
+}
+
+// mes en formato "YYYY-MM". Ingresos de alquiler de ese mes, de todos los clientes.
+export async function listarIngresosPorMes(mes: string): Promise<(IngresoMensual & { clienteNombre: string })[]> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("cliente_ingresos")
+    .select("*, clientes(nombre, apellidos)")
+    .eq("mes", `${mes}-01`)
+    .order("comision_calculada", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as unknown as (IngresoMensual & { clientes: { nombre: string; apellidos: string | null } | null })[]).map((r) => ({
+    ...r,
+    clienteNombre: `${r.clientes?.nombre ?? ""} ${r.clientes?.apellidos ?? ""}`.trim() || "Cliente desconocido",
+  }));
+}
+
 export async function crearOperacion(input: {
   cliente_id: string;
   fecha_cierre: string;
@@ -342,9 +383,11 @@ export async function listarGastos(operacionId: string): Promise<Gasto[]> {
   return (data ?? []) as Gasto[];
 }
 
-export async function añadirGasto(operacionId: string, concepto: string, importe: number) {
+export async function añadirGasto(operacionId: string, concepto: string, importe: number, esNegativo = true) {
   const admin = getSupabaseAdmin();
-  const { error } = await admin.from("operacion_gastos").insert({ operacion_id: operacionId, concepto, importe });
+  const { error } = await admin
+    .from("operacion_gastos")
+    .insert({ operacion_id: operacionId, concepto, importe, es_negativo: esNegativo });
   if (error) throw error;
 }
 

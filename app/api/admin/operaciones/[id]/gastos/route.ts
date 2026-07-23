@@ -18,7 +18,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "concepto e importe son requeridos" }, { status: 400 });
   }
   try {
-    await añadirGasto(params.id, body.concepto, importe);
+    await añadirGasto(params.id, body.concepto, importe, body?.es_negativo !== false);
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error desconocido" }, { status: 500 });
