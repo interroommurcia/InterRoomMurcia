@@ -15,6 +15,7 @@ export type Cliente = {
   nombre: string;
   apellidos: string | null;
   telefono: string | null;
+  email: string | null;
   tipo: TipoCliente;
   zona_interes: string | null;
   operacion: OperacionCliente;
@@ -28,6 +29,8 @@ export type Cliente = {
   created_at: string;
   updated_at: string;
 };
+
+export type ClienteConActividad = Cliente & { tieneIngresos: boolean };
 
 export type IngresoMensual = {
   id: string;
@@ -64,11 +67,16 @@ export type Gasto = {
   created_at: string;
 };
 
-export async function listarClientes(): Promise<Cliente[]> {
+export async function listarClientes(): Promise<ClienteConActividad[]> {
   const admin = getSupabaseAdmin();
-  const { data, error } = await admin.from("clientes").select("*").order("created_at", { ascending: false });
+  const [{ data, error }, { data: ingresosData, error: ingresosError }] = await Promise.all([
+    admin.from("clientes").select("*").order("created_at", { ascending: false }),
+    admin.from("cliente_ingresos").select("cliente_id"),
+  ]);
   if (error) throw error;
-  return (data ?? []) as Cliente[];
+  if (ingresosError) throw ingresosError;
+  const idsConIngresos = new Set((ingresosData ?? []).map((r) => r.cliente_id as string));
+  return ((data ?? []) as Cliente[]).map((c) => ({ ...c, tieneIngresos: idsConIngresos.has(c.id) }));
 }
 
 export async function getCliente(id: string): Promise<Cliente | null> {
@@ -89,6 +97,7 @@ export async function crearCliente(input: {
   nombre: string;
   apellidos?: string;
   telefono?: string;
+  email?: string;
   tipo: TipoCliente;
   zona_interes?: string;
   operacion?: OperacionCliente;
@@ -105,6 +114,7 @@ export async function crearCliente(input: {
       nombre: input.nombre,
       apellidos: input.apellidos || null,
       telefono: input.telefono || null,
+      email: input.email || null,
       tipo: input.tipo,
       zona_interes: input.zona_interes || null,
       operacion: input.operacion || null,
@@ -126,6 +136,7 @@ export async function actualizarCliente(
     nombre: string;
     apellidos: string | null;
     telefono: string | null;
+    email: string | null;
     tipo: TipoCliente;
     zona_interes: string | null;
     operacion: OperacionCliente;

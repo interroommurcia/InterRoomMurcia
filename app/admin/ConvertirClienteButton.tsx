@@ -7,11 +7,13 @@ export default function ConvertirClienteButton({
   nombre,
   telefono,
   direccion,
+  email,
 }: {
   leadId: number;
   nombre: string;
   telefono: string;
   direccion: string;
+  email?: string | null;
 }) {
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
 
@@ -21,7 +23,7 @@ export default function ConvertirClienteButton({
       const res = await fetch("/api/admin/clientes/convertir-lead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId, nombre, telefono, direccion }),
+        body: JSON.stringify({ leadId, nombre, telefono, direccion, email }),
       });
       setStatus(res.ok ? "done" : "error");
     } catch {

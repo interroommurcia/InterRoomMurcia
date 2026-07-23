@@ -59,6 +59,7 @@ export default async function AdminPage() {
                       nombre={lead.nombre}
                       telefono={lead.telefono}
                       direccion={lead.direccion}
+                      email={lead.email}
                     />
                   </td>
                 </tr>

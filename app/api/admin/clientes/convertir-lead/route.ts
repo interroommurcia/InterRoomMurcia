@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
     const cliente = await crearCliente({
       nombre: body.nombre,
       telefono: body.telefono,
+      email: body.email || undefined,
       tipo: "propietario",
       zona_interes: body.direccion || undefined,
       operacion: "alquiler",

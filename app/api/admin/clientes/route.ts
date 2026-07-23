@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
   try {
     const cliente = await crearCliente({
       ...body,
+      email: body.email || undefined,
       mensualidad: body.mensualidad !== undefined ? Number(body.mensualidad) || 0 : undefined,
       comision_pct_alquiler: body.comision_pct_alquiler !== undefined ? Number(body.comision_pct_alquiler) || 15 : undefined,
     });

@@ -136,6 +136,7 @@ create table if not exists public.clientes (
   nombre text not null,
   apellidos text,
   telefono text,
+  email text,
   tipo text not null check (tipo in ('propietario', 'estudiante', 'comprador')),
   zona_interes text,
   operacion text check (operacion in ('alquiler', 'venta')),
@@ -152,6 +153,7 @@ create table if not exists public.clientes (
 alter table public.clientes enable row level security;
 alter table public.clientes add column if not exists mensualidad numeric not null default 0;
 alter table public.clientes add column if not exists comision_pct_alquiler numeric not null default 15;
+alter table public.clientes add column if not exists email text;
 
 create table if not exists public.cliente_ingresos (
   id uuid primary key default gen_random_uuid(),

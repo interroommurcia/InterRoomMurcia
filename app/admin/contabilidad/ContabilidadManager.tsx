@@ -8,6 +8,7 @@ type Cliente = {
   nombre: string;
   apellidos: string | null;
   telefono: string | null;
+  email: string | null;
   tipo: "propietario" | "estudiante" | "comprador";
   zona_interes: string | null;
   operacion: "alquiler" | "venta" | null;
@@ -16,6 +17,7 @@ type Cliente = {
   token: string;
   mensualidad: number;
   comision_pct_alquiler: number;
+  tieneIngresos: boolean;
   created_at: string;
 };
 
@@ -57,21 +59,71 @@ function fmt(n: number) {
   return EUR.format(n || 0);
 }
 
-const NUEVO_CLIENTE = { nombre: "", apellidos: "", telefono: "", tipo: "propietario" as Cliente["tipo"], zona_interes: "", operacion: "alquiler" as NonNullable<Cliente["operacion"]>, mensualidad: "" };
+const PREFIJOS = [
+  { code: "+34", label: "España (+34)" },
+  { code: "+351", label: "Portugal (+351)" },
+  { code: "+33", label: "Francia (+33)" },
+  { code: "+39", label: "Italia (+39)" },
+  { code: "+49", label: "Alemania (+49)" },
+  { code: "+44", label: "Reino Unido (+44)" },
+  { code: "+353", label: "Irlanda (+353)" },
+  { code: "+31", label: "Países Bajos (+31)" },
+  { code: "+32", label: "Bélgica (+32)" },
+  { code: "+41", label: "Suiza (+41)" },
+  { code: "+43", label: "Austria (+43)" },
+  { code: "+48", label: "Polonia (+48)" },
+  { code: "+40", label: "Rumanía (+40)" },
+  { code: "+30", label: "Grecia (+30)" },
+  { code: "+36", label: "Hungría (+36)" },
+  { code: "+420", label: "Chequia (+420)" },
+  { code: "+380", label: "Ucrania (+380)" },
+  { code: "+7", label: "Rusia (+7)" },
+  { code: "+212", label: "Marruecos (+212)" },
+  { code: "+213", label: "Argelia (+213)" },
+  { code: "+216", label: "Túnez (+216)" },
+  { code: "+1", label: "EE.UU. / Canadá (+1)" },
+  { code: "+52", label: "México (+52)" },
+  { code: "+57", label: "Colombia (+57)" },
+  { code: "+58", label: "Venezuela (+58)" },
+  { code: "+54", label: "Argentina (+54)" },
+  { code: "+55", label: "Brasil (+55)" },
+  { code: "+56", label: "Chile (+56)" },
+  { code: "+51", label: "Perú (+51)" },
+  { code: "+593", label: "Ecuador (+593)" },
+  { code: "+86", label: "China (+86)" },
+  { code: "+91", label: "India (+91)" },
+];
+
+const NUEVO_CLIENTE = {
+  nombre: "",
+  apellidos: "",
+  telefonoPrefijo: "+34",
+  telefonoNumero: "",
+  email: "",
+  tipo: "propietario" as Cliente["tipo"],
+  zona_interes: "",
+  operacion: "alquiler" as NonNullable<Cliente["operacion"]>,
+};
+
+const ACTIVAR_ALQUILER = { cliente_id: "", mensualidad: "", comision_pct: "15" };
 
 function añoActual(mes: string) {
   return new Date(mes).getUTCFullYear();
 }
 
 export default function ContabilidadManager() {
-  const [tab, setTab] = useState<"alquileres" | "compraventas">("alquileres");
+  const [tab, setTab] = useState<"clientes" | "alquileres" | "compraventas">("clientes");
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [operaciones, setOperaciones] = useState<Operacion[]>([]);
   const [balance, setBalance] = useState<Balance | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [busqueda, setBusqueda] = useState("");
   const [nuevoCliente, setNuevoCliente] = useState(NUEVO_CLIENTE);
   const [mostrarNuevoCliente, setMostrarNuevoCliente] = useState(false);
+
+  const [activarAlquiler, setActivarAlquiler] = useState(ACTIVAR_ALQUILER);
+  const [mostrarActivarAlquiler, setMostrarActivarAlquiler] = useState(false);
 
   const [ingresos, setIngresos] = useState<Record<string, Ingreso[]>>({});
   const [clienteAbierto, setClienteAbierto] = useState<string | null>(null);
@@ -107,10 +159,19 @@ export default function ContabilidadManager() {
   async function crearCliente(e: React.FormEvent) {
     e.preventDefault();
     if (!nuevoCliente.nombre.trim()) return;
+    const telefono = nuevoCliente.telefonoNumero.trim() ? `${nuevoCliente.telefonoPrefijo} ${nuevoCliente.telefonoNumero.trim()}` : "";
     await fetch("/api/admin/clientes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...nuevoCliente, mensualidad: Number(nuevoCliente.mensualidad) || 0 }),
+      body: JSON.stringify({
+        nombre: nuevoCliente.nombre,
+        apellidos: nuevoCliente.apellidos,
+        telefono,
+        email: nuevoCliente.email,
+        tipo: nuevoCliente.tipo,
+        zona_interes: nuevoCliente.zona_interes,
+        operacion: nuevoCliente.operacion,
+      }),
     });
     setNuevoCliente(NUEVO_CLIENTE);
     setMostrarNuevoCliente(false);
@@ -119,6 +180,22 @@ export default function ContabilidadManager() {
 
   async function eliminarCliente(id: string) {
     await fetch(`/api/admin/clientes/${id}`, { method: "DELETE" });
+    cargarTodo();
+  }
+
+  async function activarCliente(e: React.FormEvent) {
+    e.preventDefault();
+    if (!activarAlquiler.cliente_id || !activarAlquiler.mensualidad) return;
+    await fetch(`/api/admin/clientes/${activarAlquiler.cliente_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mensualidad: Number(activarAlquiler.mensualidad) || 0,
+        comision_pct_alquiler: Number(activarAlquiler.comision_pct) || 15,
+      }),
+    });
+    setActivarAlquiler(ACTIVAR_ALQUILER);
+    setMostrarActivarAlquiler(false);
     cargarTodo();
   }
 
@@ -250,6 +327,18 @@ export default function ContabilidadManager() {
     return c ? `${c.nombre} ${c.apellidos ?? ""}`.trim() : "—";
   };
 
+  const clientesFiltrados = clientes.filter((c) => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return true;
+    const nombreCompleto = `${c.nombre} ${c.apellidos ?? ""}`.toLowerCase();
+    const qDigits = q.replace(/\D/g, "");
+    const telefonoDigits = (c.telefono ?? "").replace(/\D/g, "");
+    return nombreCompleto.includes(q) || (qDigits.length > 0 && telefonoDigits.includes(qDigits));
+  });
+
+  const clientesConAlquiler = clientes.filter((c) => c.tipo === "propietario" && (c.mensualidad > 0 || c.tieneIngresos));
+  const propietariosInactivos = clientes.filter((c) => c.tipo === "propietario" && !(c.mensualidad > 0 || c.tieneIngresos));
+
   if (loading) return <p className="admin-empty">Cargando...</p>;
 
   return (
@@ -270,6 +359,9 @@ export default function ContabilidadManager() {
       )}
 
       <div className="contabilidad-tabs">
+        <button type="button" className={`contabilidad-tab${tab === "clientes" ? " active" : ""}`} onClick={() => setTab("clientes")}>
+          Clientes
+        </button>
         <button type="button" className={`contabilidad-tab${tab === "alquileres" ? " active" : ""}`} onClick={() => setTab("alquileres")}>
           Alquileres
         </button>
@@ -278,13 +370,20 @@ export default function ContabilidadManager() {
         </button>
       </div>
 
-      {tab === "alquileres" && (
+      {tab === "clientes" && (
         <div className="articulos-list-section" style={{ marginTop: 20 }}>
           <div className="section-head">
-            <h2>Clientes ({clientes.length})</h2>
+            <h2>Clientes ({clientesFiltrados.length}/{clientes.length})</h2>
             <button type="button" className="btn-primary" onClick={() => setMostrarNuevoCliente((v) => !v)}>
               {mostrarNuevoCliente ? "Cancelar" : "Nuevo cliente"}
             </button>
+          </div>
+
+          <div className="lead-form-row" style={{ marginBottom: 16 }}>
+            <label style={{ flex: 1 }}>
+              Buscar por nombre o móvil
+              <input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Ej. Pepe o 612345678" />
+            </label>
           </div>
 
           {mostrarNuevoCliente && (
@@ -301,9 +400,25 @@ export default function ContabilidadManager() {
               </div>
               <div className="lead-form-row">
                 <label>
-                  Teléfono
-                  <input value={nuevoCliente.telefono} onChange={(e) => setNuevoCliente({ ...nuevoCliente, telefono: e.target.value })} />
+                  Prefijo
+                  <select value={nuevoCliente.telefonoPrefijo} onChange={(e) => setNuevoCliente({ ...nuevoCliente, telefonoPrefijo: e.target.value })}>
+                    {PREFIJOS.map((p) => (
+                      <option key={p.code} value={p.code}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
+                <label>
+                  Teléfono
+                  <input value={nuevoCliente.telefonoNumero} onChange={(e) => setNuevoCliente({ ...nuevoCliente, telefonoNumero: e.target.value })} />
+                </label>
+                <label>
+                  Email
+                  <input type="email" value={nuevoCliente.email} onChange={(e) => setNuevoCliente({ ...nuevoCliente, email: e.target.value })} />
+                </label>
+              </div>
+              <div className="lead-form-row">
                 <label>
                   Tipo
                   <select value={nuevoCliente.tipo} onChange={(e) => setNuevoCliente({ ...nuevoCliente, tipo: e.target.value as Cliente["tipo"] })}>
@@ -312,8 +427,6 @@ export default function ContabilidadManager() {
                     <option value="comprador">Comprador</option>
                   </select>
                 </label>
-              </div>
-              <div className="lead-form-row">
                 <label>
                   Zona de interés
                   <input value={nuevoCliente.zona_interes} onChange={(e) => setNuevoCliente({ ...nuevoCliente, zona_interes: e.target.value })} />
@@ -326,33 +439,25 @@ export default function ContabilidadManager() {
                   </select>
                 </label>
               </div>
-              {nuevoCliente.tipo === "propietario" && (
-                <div className="lead-form-row">
-                  <label>
-                    Mensualidad de alquiler (€)
-                    <input type="number" min={0} value={nuevoCliente.mensualidad} onChange={(e) => setNuevoCliente({ ...nuevoCliente, mensualidad: e.target.value })} placeholder="0 = sin alquiler activo" />
-                  </label>
-                </div>
-              )}
               <div className="lead-form-actions">
                 <button type="submit" className="btn-primary">Guardar cliente</button>
               </div>
             </form>
           )}
 
-          {clientes.length === 0 ? (
-            <p className="admin-empty">Todavía no hay clientes.</p>
+          {clientesFiltrados.length === 0 ? (
+            <p className="admin-empty">{clientes.length === 0 ? "Todavía no hay clientes." : "Sin resultados para esa búsqueda."}</p>
           ) : (
-            clientes.map((cliente) => (
+            clientesFiltrados.map((cliente) => (
               <div key={cliente.id} className="pisos-list-item">
-                <div className="pisos-list-body" onClick={() => toggleCliente(cliente)} style={{ cursor: "pointer" }}>
+                <div className="pisos-list-body">
                   <h4>
                     {cliente.nombre} {cliente.apellidos}
                     <span className="editor-badge-hidden"> · {cliente.tipo}</span>
                     {!cliente.datos_completados && cliente.origen !== "manual" && <span className="editor-badge-hidden"> · pendiente de rellenar</span>}
                   </h4>
                   <div className="loc">
-                    {cliente.telefono || "sin teléfono"} · {cliente.zona_interes || "sin zona"} · {cliente.operacion || "—"}
+                    {cliente.telefono || "sin teléfono"} · {cliente.email || "sin email"} · {cliente.zona_interes || "sin zona"} · {cliente.operacion || "—"}
                   </div>
                 </div>
                 <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
@@ -363,8 +468,66 @@ export default function ContabilidadManager() {
                     Eliminar
                   </button>
                 </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
-                {clienteAbierto === cliente.id && cliente.tipo === "propietario" && (
+      {tab === "alquileres" && (
+        <div className="articulos-list-section" style={{ marginTop: 20 }}>
+          <div className="section-head">
+            <h2>Alquileres ({clientesConAlquiler.length})</h2>
+            <button type="button" className="btn-primary" onClick={() => setMostrarActivarAlquiler((v) => !v)}>
+              {mostrarActivarAlquiler ? "Cancelar" : "Activar alquiler"}
+            </button>
+          </div>
+
+          {mostrarActivarAlquiler && (
+            <form className="piso-form" onSubmit={activarCliente}>
+              <label>
+                Cliente propietario
+                <select required value={activarAlquiler.cliente_id} onChange={(e) => setActivarAlquiler({ ...activarAlquiler, cliente_id: e.target.value })}>
+                  <option value="">Selecciona...</option>
+                  {propietariosInactivos.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre} {c.apellidos}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="lead-form-row">
+                <label>
+                  Mensualidad (€)
+                  <input type="number" min={0} required value={activarAlquiler.mensualidad} onChange={(e) => setActivarAlquiler({ ...activarAlquiler, mensualidad: e.target.value })} />
+                </label>
+                <label>
+                  % Comisión
+                  <input type="number" min={0} step="0.1" value={activarAlquiler.comision_pct} onChange={(e) => setActivarAlquiler({ ...activarAlquiler, comision_pct: e.target.value })} />
+                </label>
+              </div>
+              {propietariosInactivos.length === 0 && (
+                <p className="admin-empty">Todos los propietarios ya tienen un alquiler activo. Crea el cliente primero en la pestaña Clientes.</p>
+              )}
+              <div className="lead-form-actions">
+                <button type="submit" className="btn-primary">Activar</button>
+              </div>
+            </form>
+          )}
+
+          {clientesConAlquiler.length === 0 ? (
+            <p className="admin-empty">Todavía no hay alquileres activos. Actívalos desde aquí para un propietario ya creado en Clientes.</p>
+          ) : (
+            clientesConAlquiler.map((cliente) => (
+              <div key={cliente.id} className="pisos-list-item">
+                <div className="pisos-list-body" onClick={() => toggleCliente(cliente)} style={{ cursor: "pointer" }}>
+                  <h4>{cliente.nombre} {cliente.apellidos}</h4>
+                  <div className="loc">
+                    {cliente.telefono || "sin teléfono"} · {cliente.zona_interes || "sin zona"} · mensualidad {fmt(cliente.mensualidad)}
+                  </div>
+                </div>
+
+                {clienteAbierto === cliente.id && (
                   <div className="chat-transcript">
                     <div className="lead-form-row">
                       <label>
