@@ -1,9 +1,19 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getSupabaseAdmin } from "./supabaseAdmin";
 import { listarLeads } from "./leads";
-import { listarClientes, buscarDocumentosPorOperacion, descargarDocumento } from "./contabilidad";
+import {
+  listarClientes,
+  listarOperaciones,
+  listarGastos,
+  listarIngresos,
+  balanceTotal,
+  buscarDocumentosPorOperacion,
+  descargarDocumento,
+} from "./contabilidad";
 import { calcularPendientes, formatearPendientes } from "./secretaria";
 import { telegramSendDocument } from "./telegram";
+import { listarConversaciones, getKnowledgeBase, buildSystemPrompt } from "./chat";
+import { catalogSnapshot } from "./pisos";
 
 const MAX_HISTORIAL = 20;
 const MAX_TURNOS_HERRAMIENTA = 5;
@@ -15,20 +25,23 @@ const SYSTEM = `Eres Gladis, la secretaria interna de InterRoom Murcia. Trabajas
 Tono: directo, profesional, breve. Respondes en español.
 
 Guía de uso de herramientas:
-- Si te piden localizar a alguien por teléfono, usa buscar_por_telefono.
+- Si te piden localizar a alguien (por teléfono, email, nombre o zona/comunidad autónoma), usa buscar_contacto — busca en leads sin convertir y en clientes a la vez.
 - Si preguntan qué hay pendiente (leads sin contactar, teléfonos incompletos, alquileres sin cobrar), usa listar_pendientes.
 - Si piden un documento/PDF de un cliente u operación, usa buscar_documentos primero; si hay un resultado claro (o el usuario confirma cuál), usa enviar_documento con su id para mandarlo a este mismo chat.
+- Si preguntan por dinero, comisiones, beneficio o gastos de un cliente/operación concreta, usa detalle_cliente. Para el balance global del negocio, usa consultar_balance.
+- Si preguntan qué se ha hablado con algún cliente en el chat de la web, o quieren revisar conversaciones escaladas, usa buscar_chats.
+- Si preguntan "qué respondería Rommi" (el chatbot de la web) ante algo, usa consultar_rommi — simula su respuesta real con el mismo catálogo y base de conocimiento que usa en la web.
 - Si ninguna herramienta resuelve la pregunta, dilo con claridad en vez de inventar una respuesta.`;
 
 const TOOLS: Anthropic.Tool[] = [
   {
-    name: "buscar_por_telefono",
+    name: "buscar_contacto",
     description:
-      "Busca un lead (sin convertir) o un cliente ya creado en Contabilidad por número de teléfono, completo o parcial, con o sin prefijo.",
+      "Busca un lead (sin convertir) o un cliente ya creado en Contabilidad por teléfono, email, nombre o zona/comunidad autónoma de interés (completo o parcial).",
     input_schema: {
       type: "object",
-      properties: { telefono: { type: "string", description: "Número de teléfono completo o parcial" } },
-      required: ["telefono"],
+      properties: { query: { type: "string", description: "Teléfono, email, nombre o zona a buscar" } },
+      required: ["query"],
     },
   },
   {
@@ -55,6 +68,39 @@ const TOOLS: Anthropic.Tool[] = [
       required: ["documento_id"],
     },
   },
+  {
+    name: "consultar_balance",
+    description: "Devuelve el balance global del negocio: comisión bruta y beneficio neto, desglosado en alquileres y compraventas.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "detalle_cliente",
+    description:
+      "Devuelve el detalle económico de un cliente por nombre: si es alquiler, mensualidad y comisión acumulada; si tiene operaciones de compraventa, precio, comisión y ganancia neta de cada una.",
+    input_schema: {
+      type: "object",
+      properties: { nombre: { type: "string", description: "Nombre o parte del nombre del cliente" } },
+      required: ["nombre"],
+    },
+  },
+  {
+    name: "buscar_chats",
+    description:
+      "Busca en las conversaciones reales del chat de la web (Rommi) por nombre, contacto, motivo de escalado o contenido del mensaje. Sin query devuelve las 5 más recientes.",
+    input_schema: {
+      type: "object",
+      properties: { query: { type: "string", description: "Texto a buscar (nombre, teléfono/email, motivo o parte de un mensaje). Vacío para las recientes." } },
+    },
+  },
+  {
+    name: "consultar_rommi",
+    description: "Simula la respuesta real que daría Rommi (el chatbot de la web) a una pregunta, usando su mismo catálogo y base de conocimiento.",
+    input_schema: {
+      type: "object",
+      properties: { pregunta: { type: "string", description: "La pregunta tal como se la haría un usuario a Rommi en la web" } },
+      required: ["pregunta"],
+    },
+  },
 ];
 
 function telefonoDigits(s: string) {
@@ -74,21 +120,38 @@ async function guardarHistorial(chatId: string, mensajes: Turno[]) {
     .upsert({ chat_id: chatId, mensajes: mensajes.slice(-MAX_HISTORIAL), updated_at: new Date().toISOString() });
 }
 
+function contiene(campo: string | null | undefined, q: string, qDigits: string) {
+  if (!campo) return false;
+  if (campo.toLowerCase().includes(q)) return true;
+  return qDigits.length > 0 && telefonoDigits(campo).includes(qDigits);
+}
+
 async function ejecutarHerramienta(nombre: string, input: Record<string, unknown>, chatId: string): Promise<string> {
-  if (nombre === "buscar_por_telefono") {
-    const q = telefonoDigits(String(input.telefono ?? ""));
-    if (!q) return "Número vacío.";
+  if (nombre === "buscar_contacto") {
+    const query = String(input.query ?? "").trim();
+    if (!query) return "Búsqueda vacía.";
+    const q = query.toLowerCase();
+    const qDigits = telefonoDigits(query);
     const [leads, clientes] = await Promise.all([listarLeads(), listarClientes()]);
-    const leadsMatch = leads.filter((l) => telefonoDigits(l.telefono).includes(q));
-    const clientesMatch = clientes.filter((c) => telefonoDigits(c.telefono ?? "").includes(q));
-    if (!leadsMatch.length && !clientesMatch.length) return "Sin coincidencias para ese teléfono.";
+    const leadsMatch = leads.filter(
+      (l) => contiene(l.nombre, q, qDigits) || contiene(l.telefono, q, qDigits) || contiene(l.email, q, qDigits) || contiene(l.direccion, q, qDigits)
+    );
+    const clientesMatch = clientes.filter(
+      (c) =>
+        contiene(c.nombre, q, qDigits) ||
+        contiene(c.apellidos, q, qDigits) ||
+        contiene(c.telefono, q, qDigits) ||
+        contiene(c.email, q, qDigits) ||
+        contiene(c.zona_interes, q, qDigits)
+    );
+    if (!leadsMatch.length && !clientesMatch.length) return "Sin coincidencias.";
     const partes: string[] = [];
     leadsMatch.forEach((l) =>
-      partes.push(`LEAD (sin convertir): ${l.nombre} · ${l.telefono} · ${l.direccion} · recibido ${new Date(l.created_at).toLocaleDateString("es-ES")}`)
+      partes.push(`LEAD (sin convertir): ${l.nombre} · ${l.telefono} · ${l.email ?? "sin email"} · ${l.direccion} · recibido ${new Date(l.created_at).toLocaleDateString("es-ES")}`)
     );
     clientesMatch.forEach((c) =>
       partes.push(
-        `CLIENTE: ${c.nombre} ${c.apellidos ?? ""} · ${c.tipo} · ${c.telefono} · ${c.email ?? "sin email"}${c.mensualidad > 0 ? ` · mensualidad ${c.mensualidad}€` : ""}`
+        `CLIENTE: ${c.nombre} ${c.apellidos ?? ""} · ${c.tipo} · ${c.telefono ?? "sin tel"} · ${c.email ?? "sin email"} · zona ${c.zona_interes ?? "—"}${c.mensualidad > 0 ? ` · mensualidad ${c.mensualidad}€` : ""}`
       )
     );
     return partes.join("\n");
@@ -106,6 +169,76 @@ async function ejecutarHerramienta(nombre: string, input: Record<string, unknown
     if (!doc) return "Documento no encontrado.";
     await telegramSendDocument(chatId, doc.buffer, doc.nombre);
     return `Enviado: ${doc.nombre}`;
+  }
+  if (nombre === "consultar_balance") {
+    const b = await balanceTotal();
+    return `Comisión bruta total: ${b.comisionBrutaTotal.toFixed(2)}€ (alquileres ${b.alquileres.comisionBruta.toFixed(2)}€, compraventas ${b.compraventas.comisionBruta.toFixed(2)}€)
+Beneficio neto total: ${b.beneficioNetoTotal.toFixed(2)}€
+Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.compraventas.gastos.toFixed(2)}€, neto ${b.compraventas.neto.toFixed(2)}€`;
+  }
+  if (nombre === "detalle_cliente") {
+    const query = String(input.nombre ?? "").toLowerCase();
+    const clientes = await listarClientes();
+    const encontrados = clientes.filter((c) => `${c.nombre} ${c.apellidos ?? ""}`.toLowerCase().includes(query));
+    if (!encontrados.length) return "Cliente no encontrado.";
+    const partes: string[] = [];
+    for (const c of encontrados.slice(0, 3)) {
+      partes.push(`CLIENTE: ${c.nombre} ${c.apellidos ?? ""} (${c.tipo}) · ${c.telefono ?? "sin tel"} · ${c.email ?? "sin email"}`);
+      if (c.mensualidad > 0 || c.tieneIngresos) {
+        const ingresos = await listarIngresos(c.id);
+        const totalComision = ingresos.reduce((s, i) => s + i.comision_calculada, 0);
+        const pendientes = ingresos.filter((i) => !i.cobrado).length;
+        partes.push(`  Alquiler: mensualidad ${c.mensualidad}€, comisión acumulada ${totalComision.toFixed(2)}€, meses sin cobrar: ${pendientes}`);
+      }
+      const operaciones = (await listarOperaciones()).filter((o) => o.cliente_id === c.id);
+      for (const op of operaciones) {
+        const gastos = await listarGastos(op.id);
+        const gastosPagados = gastos.filter((g) => g.pagado).reduce((s, g) => s + g.importe, 0);
+        partes.push(
+          `  Operación compraventa: cierre ${op.fecha_cierre}, venta ${op.precio_venta}€, comisión ${op.comision_calculada}€, ganancia neta ${(op.comision_calculada - gastosPagados).toFixed(2)}€`
+        );
+      }
+    }
+    return partes.join("\n");
+  }
+  if (nombre === "buscar_chats") {
+    const query = String(input.query ?? "").trim().toLowerCase();
+    const conversaciones = await listarConversaciones();
+    const encontradas = query
+      ? conversaciones.filter(
+          (c) =>
+            (c.nombre ?? "").toLowerCase().includes(query) ||
+            (c.contacto ?? "").toLowerCase().includes(query) ||
+            (c.motivo_escalado ?? "").toLowerCase().includes(query) ||
+            c.mensajes.some((m) => m.text.toLowerCase().includes(query))
+        )
+      : conversaciones.slice(0, 5);
+    if (!encontradas.length) return "Sin conversaciones que coincidan.";
+    return encontradas
+      .slice(0, 5)
+      .map((c) => {
+        const resumen = c.mensajes.slice(-6).map((m) => `${m.role === "user" ? "Usuario" : "Rommi"}: ${m.text}`).join("\n");
+        return `--- ${c.estado}${c.motivo_escalado ? ` (motivo: ${c.motivo_escalado})` : ""} · ${c.nombre ?? "sin nombre"} ${c.contacto ?? ""} · ${new Date(c.updated_at).toLocaleString("es-ES")}\n${resumen}`;
+      })
+      .join("\n\n");
+  }
+  if (nombre === "consultar_rommi") {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return "Falta ANTHROPIC_API_KEY.";
+    const anthropic = new Anthropic({ apiKey });
+    const [catalogo, kb] = await Promise.all([catalogSnapshot(), getKnowledgeBase()]);
+    const res = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 400,
+      system: buildSystemPrompt(catalogo, kb),
+      messages: [{ role: "user", content: String(input.pregunta ?? "") }],
+    });
+    const texto = res.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("\n")
+      .trim();
+    return texto || "(Rommi no generó respuesta)";
   }
   return "Herramienta desconocida.";
 }
