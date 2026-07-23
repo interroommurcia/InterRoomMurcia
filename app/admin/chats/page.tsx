@@ -1,24 +1,24 @@
 import type { Metadata } from "next";
-import AnalyticsManager from "./AnalyticsManager";
+import ChatsManager from "./ChatsManager";
 import { AdminNav } from "../../../components/AdminNav";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Analytics — Backoffice",
+  title: "Chats — Backoffice",
   robots: { index: false, follow: false },
 };
 
-export default function AnalyticsPage() {
+export default function ChatsPage() {
   return (
     <section className="section admin">
       <div className="wrap">
-        <AdminNav active="/admin/analytics" />
+        <AdminNav active="/admin/chats" />
         <div className="section-head">
-          <h2>Tráfico web</h2>
-          <p>De dónde vienen tus visitas y qué páginas funcionan mejor.</p>
+          <h2>Chats del asistente</h2>
+          <p>Conversaciones del chatbot de la web. Las importantes quedan marcadas como escaladas.</p>
         </div>
-        <AnalyticsManager />
+        <ChatsManager />
       </div>
     </section>
   );

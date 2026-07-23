@@ -121,3 +121,16 @@ export async function pisoPorSlug(zona: Zona["slug"], slug: string): Promise<Pis
 export function zonaPorSlug(slug: string) {
   return zonas.find((z) => z.slug === slug);
 }
+
+export async function catalogSnapshot(): Promise<string> {
+  const pisos = await getPisos();
+  return zonas
+    .map((z) => {
+      const enZona = pisos.filter((p) => p.zona === z.slug);
+      if (enZona.length === 0) return `${z.universidad} (${z.barrio}): sin habitaciones publicadas ahora mismo.`;
+      const disponibles = enZona.filter((p) => p.disponible).length;
+      const precios = enZona.map((p) => p.precioMes);
+      return `${z.universidad} (${z.barrio}): ${enZona.length} habitaciones, ${disponibles} disponibles ahora, precios entre ${Math.min(...precios)}€ y ${Math.max(...precios)}€/mes.`;
+    })
+    .join("\n");
+}

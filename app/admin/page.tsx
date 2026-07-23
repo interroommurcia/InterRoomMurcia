@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { listarLeads } from "../../lib/leads";
+import { AdminNav } from "../../components/AdminNav";
 
 export const dynamic = "force-dynamic";
 
@@ -15,20 +15,7 @@ export default async function AdminPage() {
   return (
     <section className="section admin">
       <div className="wrap">
-        <div className="admin-nav">
-          <Link href="/admin" className="admin-nav-item active">
-            Leads
-          </Link>
-          <Link href="/admin/pisos" className="admin-nav-item">
-            Catálogo
-          </Link>
-          <Link href="/admin/articulos" className="admin-nav-item">
-            Artículos
-          </Link>
-          <Link href="/admin/analytics" className="admin-nav-item">
-            Analytics
-          </Link>
-        </div>
+        <AdminNav active="/admin" />
         <div className="section-head">
           <h2>Leads de propietarios</h2>
           <p>{leads.length} solicitudes recibidas</p>

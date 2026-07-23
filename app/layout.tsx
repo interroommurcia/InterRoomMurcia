@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import { PostHogProvider } from "../components/PostHogProvider";
+import ChatWidget from "../components/ChatWidget";
 import { SITE_URL } from "../lib/site";
 import "./globals.css";
 
@@ -75,6 +76,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
           </footer>
+          <ChatWidget />
         </PostHogProvider>
       </body>
     </html>

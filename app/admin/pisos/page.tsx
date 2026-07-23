@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { getPisos } from "../../../lib/pisos";
 import PisosManager from "./PisosManager";
+import { AdminNav } from "../../../components/AdminNav";
 
 export const dynamic = "force-dynamic";
 
@@ -16,20 +16,7 @@ export default async function AdminPisosPage() {
   return (
     <section className="section admin">
       <div className="wrap">
-        <div className="admin-nav">
-          <Link href="/admin" className="admin-nav-item">
-            Leads
-          </Link>
-          <Link href="/admin/pisos" className="admin-nav-item active">
-            Catálogo
-          </Link>
-          <Link href="/admin/articulos" className="admin-nav-item">
-            Artículos
-          </Link>
-          <Link href="/admin/analytics" className="admin-nav-item">
-            Analytics
-          </Link>
-        </div>
+        <AdminNav active="/admin/pisos" />
         <div className="section-head">
           <h2>Catálogo de pisos</h2>
           <p>{pisos.length} pisos publicados</p>

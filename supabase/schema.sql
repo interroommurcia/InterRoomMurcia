@@ -99,3 +99,27 @@ begin
   end if;
 end;
 $$;
+
+-- Chatbot: conversaciones del widget de la web y base de conocimiento editable.
+-- Sin políticas públicas: solo se accede vía service role desde el servidor
+-- (el widget nunca habla directo con Supabase, siempre pasa por /api/chat).
+create table if not exists public.chat_conversaciones (
+  id uuid primary key default gen_random_uuid(),
+  estado text not null default 'abierta' check (estado in ('abierta', 'escalada', 'cerrada')),
+  motivo_escalado text,
+  nombre text,
+  contacto text,
+  pagina_origen text,
+  mensajes jsonb not null default '[]'::jsonb,
+  leido boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.chat_conversaciones enable row level security;
+
+create table if not exists public.chat_config (
+  id int primary key default 1,
+  knowledge_base text not null default '',
+  updated_at timestamptz not null default now()
+);
+alter table public.chat_config enable row level security;
