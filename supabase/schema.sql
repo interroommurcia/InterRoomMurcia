@@ -210,3 +210,11 @@ alter table public.operacion_documentos enable row level security;
 insert into storage.buckets (id, name, public)
 values ('documentos', 'documentos', false)
 on conflict (id) do nothing;
+
+-- Historial conversacional de Gladis (secretaria de Telegram), por chat_id.
+create table if not exists public.gladis_conversaciones (
+  chat_id text primary key,
+  mensajes jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.gladis_conversaciones enable row level security;
