@@ -195,3 +195,18 @@ create table if not exists public.operacion_gastos (
   created_at timestamptz not null default now()
 );
 alter table public.operacion_gastos enable row level security;
+
+-- Documentos (PDFs) adjuntos a una operación de compraventa. Bucket privado:
+-- solo se lee/escribe con el service role desde el backoffice o el webhook de Telegram.
+create table if not exists public.operacion_documentos (
+  id uuid primary key default gen_random_uuid(),
+  operacion_id uuid not null references public.operaciones_compraventa(id) on delete cascade,
+  nombre text not null,
+  storage_path text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.operacion_documentos enable row level security;
+
+insert into storage.buckets (id, name, public)
+values ('documentos', 'documentos', false)
+on conflict (id) do nothing;

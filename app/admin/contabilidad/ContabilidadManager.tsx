@@ -46,6 +46,12 @@ type Gasto = {
   pagado: boolean;
 };
 
+type Documento = {
+  id: string;
+  nombre: string;
+  created_at: string;
+};
+
 type Balance = {
   comisionBrutaTotal: number;
   beneficioNetoTotal: number;
@@ -134,6 +140,9 @@ export default function ContabilidadManager() {
   const [gastos, setGastos] = useState<Record<string, Gasto[]>>({});
   const [operacionAbierta, setOperacionAbierta] = useState<string | null>(null);
   const [nuevoGasto, setNuevoGasto] = useState({ concepto: "", importe: "" });
+
+  const [documentos, setDocumentos] = useState<Record<string, Documento[]>>({});
+  const [subiendoDocumento, setSubiendoDocumento] = useState(false);
 
   const [nuevaOperacion, setNuevaOperacion] = useState({ cliente_id: "", fecha_cierre: "", precio_venta: "", comision_pct: "3" });
   const [mostrarNuevaOperacion, setMostrarNuevaOperacion] = useState(false);
@@ -282,6 +291,26 @@ export default function ContabilidadManager() {
       const data = await fetch(`/api/admin/operaciones/${operacion.id}/gastos`).then((r) => r.json());
       setGastos((prev) => ({ ...prev, [operacion.id]: Array.isArray(data) ? data : [] }));
     }
+    if (next && !documentos[operacion.id]) {
+      const data = await fetch(`/api/admin/operaciones/${operacion.id}/documentos`).then((r) => r.json());
+      setDocumentos((prev) => ({ ...prev, [operacion.id]: Array.isArray(data) ? data : [] }));
+    }
+  }
+
+  async function subirDocumento(operacionId: string, file: File) {
+    setSubiendoDocumento(true);
+    const form = new FormData();
+    form.append("file", file);
+    await fetch(`/api/admin/operaciones/${operacionId}/documentos`, { method: "POST", body: form });
+    const data = await fetch(`/api/admin/operaciones/${operacionId}/documentos`).then((r) => r.json());
+    setDocumentos((prev) => ({ ...prev, [operacionId]: Array.isArray(data) ? data : [] }));
+    setSubiendoDocumento(false);
+  }
+
+  async function eliminarDocumento(operacionId: string, documentoId: string) {
+    await fetch(`/api/admin/documentos/${documentoId}`, { method: "DELETE" });
+    const data = await fetch(`/api/admin/operaciones/${operacionId}/documentos`).then((r) => r.json());
+    setDocumentos((prev) => ({ ...prev, [operacionId]: Array.isArray(data) ? data : [] }));
   }
 
   async function añadirGasto(operacionId: string, e: React.FormEvent) {
@@ -690,6 +719,33 @@ export default function ContabilidadManager() {
                       </div>
                     ))}
                     {(gastos[op.id] ?? []).length === 0 && <p className="admin-empty">Sin gastos registrados todavía.</p>}
+
+                    <div className="lead-form-row" style={{ marginTop: 16 }}>
+                      <label style={{ flex: 1 }}>
+                        Adjuntar documento (PDF)
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          disabled={subiendoDocumento}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) subirDocumento(op.id, file);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {(documentos[op.id] ?? []).map((doc) => (
+                      <div key={doc.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+                        <a href={`/api/admin/documentos/${doc.id}`} target="_blank" rel="noreferrer">
+                          {doc.nombre}
+                        </a>
+                        <button type="button" className="btn-ghost" onClick={() => eliminarDocumento(op.id, doc.id)}>
+                          Borrar
+                        </button>
+                      </div>
+                    ))}
+                    {(documentos[op.id] ?? []).length === 0 && <p className="admin-empty">Sin documentos adjuntos. Súbelos aquí para poder pedírselos luego al bot de Telegram.</p>}
                   </div>
                 )}
               </div>

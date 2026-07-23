@@ -67,6 +67,16 @@ export type Gasto = {
   created_at: string;
 };
 
+export type Documento = {
+  id: string;
+  operacion_id: string;
+  nombre: string;
+  storage_path: string;
+  created_at: string;
+};
+
+const DOCUMENTOS_BUCKET = "documentos";
+
 export async function listarClientes(): Promise<ClienteConActividad[]> {
   const admin = getSupabaseAdmin();
   const [{ data, error }, { data: ingresosData, error: ingresosError }] = await Promise.all([
@@ -350,6 +360,68 @@ export async function marcarGastoPagado(id: string, pagado: boolean) {
 export async function eliminarGasto(id: string) {
   const admin = getSupabaseAdmin();
   const { error } = await admin.from("operacion_gastos").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function listarDocumentos(operacionId: string): Promise<Documento[]> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("operacion_documentos")
+    .select("*")
+    .eq("operacion_id", operacionId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Documento[];
+}
+
+export async function subirDocumento(operacionId: string, nombre: string, buffer: Buffer, contentType: string): Promise<Documento> {
+  const admin = getSupabaseAdmin();
+  const path = `${operacionId}/${Date.now()}-${nombre}`;
+  const { error: uploadError } = await admin.storage.from(DOCUMENTOS_BUCKET).upload(path, buffer, { contentType });
+  if (uploadError) throw uploadError;
+
+  const { data, error } = await admin
+    .from("operacion_documentos")
+    .insert({ operacion_id: operacionId, nombre, storage_path: path })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Documento;
+}
+
+export async function descargarDocumento(id: string): Promise<{ nombre: string; buffer: Buffer } | null> {
+  const admin = getSupabaseAdmin();
+  const { data: doc, error } = await admin.from("operacion_documentos").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  if (!doc) return null;
+  const { data: file, error: downloadError } = await admin.storage.from(DOCUMENTOS_BUCKET).download(doc.storage_path);
+  if (downloadError) throw downloadError;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return { nombre: doc.nombre, buffer };
+}
+
+export async function buscarDocumentosPorOperacion(busqueda: string): Promise<{ documento: Documento; clienteNombre: string }[]> {
+  const admin = getSupabaseAdmin();
+  const { data: operaciones, error: opError } = await admin.from("operaciones_compraventa").select("id, clientes(nombre)");
+  if (opError) throw opError;
+
+  const termino = busqueda.toLowerCase();
+  const resultados: { documento: Documento; clienteNombre: string }[] = [];
+  for (const op of (operaciones ?? []) as unknown as { id: string; clientes: { nombre: string } | null }[]) {
+    if (!op.clientes || !op.clientes.nombre.toLowerCase().includes(termino)) continue;
+    const documentos = await listarDocumentos(op.id);
+    documentos.forEach((documento) => resultados.push({ documento, clienteNombre: op.clientes!.nombre }));
+  }
+  return resultados;
+}
+
+export async function eliminarDocumento(id: string) {
+  const admin = getSupabaseAdmin();
+  const { data: doc, error: getError } = await admin.from("operacion_documentos").select("*").eq("id", id).maybeSingle();
+  if (getError) throw getError;
+  if (!doc) return;
+  await admin.storage.from(DOCUMENTOS_BUCKET).remove([doc.storage_path]);
+  const { error } = await admin.from("operacion_documentos").delete().eq("id", id);
   if (error) throw error;
 }
 
