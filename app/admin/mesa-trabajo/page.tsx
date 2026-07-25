@@ -16,7 +16,7 @@ export default function MesaTrabajoPage() {
         <AdminNav active="/admin/mesa-trabajo" />
         <div className="section-head">
           <h2>Mesa de trabajo</h2>
-          <p>Tareas, citas y visitas pendientes, con cliente vinculado opcional.</p>
+          <p>Tareas, citas y visitas pendientes, con calendario y cliente vinculado opcional.</p>
         </div>
         <MesaTrabajoManager />
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Tarea = {
   id: string;
@@ -22,16 +22,39 @@ const TIPOS: { value: Tarea["tipo"]; label: string }[] = [
   { value: "visita", label: "Visita" },
 ];
 
+const TIPO_COLOR: Record<Tarea["tipo"], string> = {
+  tarea: "#6b7280",
+  cita: "#b08d57",
+  visita: "#2f855a",
+};
+
+const DIAS_SEMANA = ["L", "M", "X", "J", "V", "S", "D"];
+const MESES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function isoDate(d: Date) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 const NUEVA_TAREA = { tipo: "tarea" as Tarea["tipo"], titulo: "", fecha: "", hora: "", cliente_id: "", notas: "" };
 
 export default function MesaTrabajoManager() {
+  const hoy = useMemo(() => new Date(), []);
   const [tareas, setTareas] = useState<Tarea[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroTipo, setFiltroTipo] = useState<"todas" | Tarea["tipo"]>("todas");
+  const [filtroFecha, setFiltroFecha] = useState<string | null>(null);
   const [verHechas, setVerHechas] = useState(false);
   const [nueva, setNueva] = useState(NUEVA_TAREA);
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [cursor, setCursor] = useState(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
 
   async function cargar() {
     const [t, c] = await Promise.all([
@@ -46,6 +69,50 @@ export default function MesaTrabajoManager() {
   useEffect(() => {
     cargar();
   }, []);
+
+  const tareasPorDia = useMemo(() => {
+    const mapa = new Map<string, Tarea[]>();
+    for (const t of tareas) {
+      if (!t.fecha) continue;
+      const key = t.fecha.slice(0, 10);
+      if (!mapa.has(key)) mapa.set(key, []);
+      mapa.get(key)!.push(t);
+    }
+    return mapa;
+  }, [tareas]);
+
+  const celdas = useMemo(() => {
+    const year = cursor.getFullYear();
+    const month = cursor.getMonth();
+    const primerDia = new Date(year, month, 1);
+    const offset = (primerDia.getDay() + 6) % 7;
+    const diasEnMes = new Date(year, month + 1, 0).getDate();
+    const total = Math.ceil((offset + diasEnMes) / 7) * 7;
+    const out: (Date | null)[] = [];
+    for (let i = 0; i < total; i++) {
+      const dayNum = i - offset + 1;
+      out.push(dayNum >= 1 && dayNum <= diasEnMes ? new Date(year, month, dayNum) : null);
+    }
+    return out;
+  }, [cursor]);
+
+  function cambiarMes(delta: number) {
+    setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + delta, 1));
+  }
+
+  function irHoy() {
+    setCursor(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+  }
+
+  function seleccionarDia(iso: string) {
+    if (filtroFecha === iso) {
+      setFiltroFecha(null);
+      return;
+    }
+    setFiltroFecha(iso);
+    setNueva((n) => ({ ...n, fecha: iso }));
+    setMostrarForm(true);
+  }
 
   async function crearTarea(e: React.FormEvent) {
     e.preventDefault();
@@ -62,7 +129,7 @@ export default function MesaTrabajoManager() {
         notas: nueva.notas || undefined,
       }),
     });
-    setNueva(NUEVA_TAREA);
+    setNueva({ ...NUEVA_TAREA, fecha: filtroFecha ?? "" });
     setMostrarForm(false);
     cargar();
   }
@@ -84,8 +151,11 @@ export default function MesaTrabajoManager() {
   const filtradas = tareas.filter((t) => {
     if (filtroTipo !== "todas" && t.tipo !== filtroTipo) return false;
     if (!verHechas && t.estado === "hecha") return false;
+    if (filtroFecha && (t.fecha?.slice(0, 10) ?? null) !== filtroFecha) return false;
     return true;
   });
+
+  const isoHoy = isoDate(hoy);
 
   if (loading) return <p className="admin-empty">Cargando...</p>;
 
@@ -104,101 +174,171 @@ export default function MesaTrabajoManager() {
         ))}
       </div>
 
-      <div className="articulos-list-section" style={{ marginTop: 20 }}>
-        <div className="section-head">
-          <h2>Pendientes ({filtradas.length})</h2>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 14 }}>
-              <input type="checkbox" checked={verHechas} onChange={(e) => setVerHechas(e.target.checked)} />
-              Ver hechas
-            </label>
-            <button type="button" className="btn-primary" onClick={() => setMostrarForm((v) => !v)}>
-              {mostrarForm ? "Cancelar" : "Nueva anotación"}
-            </button>
+      <div style={{ display: "flex", gap: 24, marginTop: 20, flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 340px", maxWidth: 420 }}>
+          <div className="section-head">
+            <h2 style={{ fontSize: 16 }}>
+              {MESES[cursor.getMonth()]} {cursor.getFullYear()}
+            </h2>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button type="button" className="btn-ghost" onClick={() => cambiarMes(-1)}>‹</button>
+              <button type="button" className="btn-ghost" onClick={irHoy}>Hoy</button>
+              <button type="button" className="btn-ghost" onClick={() => cambiarMes(1)}>›</button>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginTop: 8 }}>
+            {DIAS_SEMANA.map((d) => (
+              <div key={d} style={{ textAlign: "center", fontSize: 11, opacity: 0.6, padding: "2px 0" }}>{d}</div>
+            ))}
+            {celdas.map((d, i) => {
+              if (!d) return <div key={i} />;
+              const iso = isoDate(d);
+              const items = tareasPorDia.get(iso) ?? [];
+              return (
+                <div
+                  key={iso}
+                  onClick={() => seleccionarDia(iso)}
+                  className="pisos-list-item"
+                  style={{
+                    minHeight: 40,
+                    padding: 4,
+                    cursor: "pointer",
+                    border: iso === filtroFecha ? "2px solid var(--accent, #b08d57)" : undefined,
+                    background: iso === isoHoy ? "rgba(176,141,87,0.08)" : undefined,
+                  }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: iso === isoHoy ? 700 : 400 }}>{d.getDate()}</div>
+                  {items.length > 0 && (
+                    <div style={{ display: "flex", gap: 2, marginTop: 2, flexWrap: "wrap" }}>
+                      {items.slice(0, 4).map((t) => (
+                        <span
+                          key={t.id}
+                          title={t.titulo}
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: TIPO_COLOR[t.tipo],
+                            opacity: t.estado === "hecha" ? 0.4 : 1,
+                            display: "inline-block",
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {mostrarForm && (
-          <form className="piso-form" onSubmit={crearTarea}>
-            <div className="lead-form-row">
-              <label>
-                Tipo
-                <select value={nueva.tipo} onChange={(e) => setNueva({ ...nueva, tipo: e.target.value as Tarea["tipo"] })}>
-                  {TIPOS.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
+        <div className="articulos-list-section" style={{ flex: "1 1 340px", marginTop: 0 }}>
+          <div className="section-head">
+            <h2>
+              Pendientes ({filtradas.length})
+              {filtroFecha && (
+                <span style={{ fontSize: 13, fontWeight: 400, opacity: 0.7 }}>
+                  {" "}· {new Date(filtroFecha).toLocaleDateString("es-ES")}{" "}
+                  <button type="button" className="btn-ghost" style={{ padding: "2px 8px" }} onClick={() => setFiltroFecha(null)}>
+                    quitar
+                  </button>
+                </span>
+              )}
+            </h2>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 14 }}>
+                <input type="checkbox" checked={verHechas} onChange={(e) => setVerHechas(e.target.checked)} />
+                Ver hechas
               </label>
-              <label style={{ flex: 1 }}>
-                Título
-                <input required value={nueva.titulo} onChange={(e) => setNueva({ ...nueva, titulo: e.target.value })} placeholder="Ej. Llamar a propietario, visita piso Guadalupe..." />
-              </label>
+              <button type="button" className="btn-primary" onClick={() => setMostrarForm((v) => !v)}>
+                {mostrarForm ? "Cancelar" : "Nueva anotación"}
+              </button>
             </div>
-            <div className="lead-form-row">
-              <label>
-                Fecha
-                <input type="date" value={nueva.fecha} onChange={(e) => setNueva({ ...nueva, fecha: e.target.value })} />
-              </label>
-              <label>
-                Hora
-                <input type="time" value={nueva.hora} onChange={(e) => setNueva({ ...nueva, hora: e.target.value })} />
-              </label>
-              <label>
-                Cliente vinculado
-                <select value={nueva.cliente_id} onChange={(e) => setNueva({ ...nueva, cliente_id: e.target.value })}>
-                  <option value="">Sin vincular</option>
-                  {clientes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre} {c.apellidos}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <label>
-              Notas
-              <input value={nueva.notas} onChange={(e) => setNueva({ ...nueva, notas: e.target.value })} />
-            </label>
-            <div className="lead-form-actions">
-              <button type="submit" className="btn-primary">Guardar</button>
-            </div>
-          </form>
-        )}
+          </div>
 
-        {filtradas.length === 0 ? (
-          <p className="admin-empty">Nada por aquí.</p>
-        ) : (
-          filtradas.map((t) => (
-            <div key={t.id} className="pisos-list-item">
-              <div className="pisos-list-body">
-                <h4>
-                  <span className="editor-badge-hidden">{TIPOS.find((x) => x.value === t.tipo)!.label} · </span>
-                  {t.titulo}
-                </h4>
-                <div className="loc">
-                  {t.fecha ? new Date(t.fecha).toLocaleDateString("es-ES") : "sin fecha"}
-                  {t.hora ? ` · ${t.hora.slice(0, 5)}` : ""} · {t.clienteNombre || "sin cliente"}
-                  {t.notas ? ` · ${t.notas}` : ""}
+          {mostrarForm && (
+            <form className="piso-form" onSubmit={crearTarea}>
+              <div className="lead-form-row">
+                <label>
+                  Tipo
+                  <select value={nueva.tipo} onChange={(e) => setNueva({ ...nueva, tipo: e.target.value as Tarea["tipo"] })}>
+                    {TIPOS.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ flex: 1 }}>
+                  Título
+                  <input required value={nueva.titulo} onChange={(e) => setNueva({ ...nueva, titulo: e.target.value })} placeholder="Ej. Llamar a propietario, visita piso Guadalupe..." />
+                </label>
+              </div>
+              <div className="lead-form-row">
+                <label>
+                  Fecha
+                  <input type="date" value={nueva.fecha} onChange={(e) => setNueva({ ...nueva, fecha: e.target.value })} />
+                </label>
+                <label>
+                  Hora
+                  <input type="time" value={nueva.hora} onChange={(e) => setNueva({ ...nueva, hora: e.target.value })} />
+                </label>
+                <label>
+                  Cliente vinculado
+                  <select value={nueva.cliente_id} onChange={(e) => setNueva({ ...nueva, cliente_id: e.target.value })}>
+                    <option value="">Sin vincular</option>
+                    {clientes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre} {c.apellidos}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <label>
+                Notas
+                <input value={nueva.notas} onChange={(e) => setNueva({ ...nueva, notas: e.target.value })} />
+              </label>
+              <div className="lead-form-actions">
+                <button type="submit" className="btn-primary">Guardar</button>
+              </div>
+            </form>
+          )}
+
+          {filtradas.length === 0 ? (
+            <p className="admin-empty">Nada por aquí.</p>
+          ) : (
+            filtradas.map((t) => (
+              <div key={t.id} className="pisos-list-item">
+                <div className="pisos-list-body">
+                  <h4>
+                    <span className="editor-badge-hidden">{TIPOS.find((x) => x.value === t.tipo)!.label} · </span>
+                    {t.titulo}
+                  </h4>
+                  <div className="loc">
+                    {t.fecha ? new Date(t.fecha).toLocaleDateString("es-ES") : "sin fecha"}
+                    {t.hora ? ` · ${t.hora.slice(0, 5)}` : ""} · {t.clienteNombre || "sin cliente"}
+                    {t.notas ? ` · ${t.notas}` : ""}
+                  </div>
+                </div>
+                <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
+                  <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={t.estado === "hecha"}
+                      onChange={(e) => marcarEstado(t.id, e.target.checked ? "hecha" : "pendiente")}
+                    />
+                    Hecha
+                  </label>
+                  <button type="button" className="btn-ghost" onClick={() => eliminarTarea(t.id)}>
+                    Eliminar
+                  </button>
                 </div>
               </div>
-              <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
-                <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={t.estado === "hecha"}
-                    onChange={(e) => marcarEstado(t.id, e.target.checked ? "hecha" : "pendiente")}
-                  />
-                  Hecha
-                </label>
-                <button type="button" className="btn-ghost" onClick={() => eliminarTarea(t.id)}>
-                  Eliminar
-                </button>
-              </div>
-            </div>
-          ))
-        )}
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
