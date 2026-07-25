@@ -43,6 +43,12 @@ function parseIso(iso: string) {
 
 const NUEVA_TAREA = { tipo: "tarea" as Tarea["tipo"], titulo: "", hora: "", cliente_id: "", notas: "" };
 
+const TIPO_COLOR: Record<Tarea["tipo"], string> = {
+  tarea: "#6b7280",
+  cita: "#b08d57",
+  visita: "#2f855a",
+};
+
 export default function CalendarioManager() {
   const hoy = useMemo(() => new Date(), []);
   const [tareas, setTareas] = useState<Tarea[]>([]);
@@ -90,7 +96,7 @@ export default function CalendarioManager() {
 
   function seleccionarDia(iso: string) {
     setSeleccionado(iso);
-    setMostrarForm(false);
+    setMostrarForm(true);
   }
 
   async function crearTarea(e: React.FormEvent) {
@@ -186,14 +192,15 @@ export default function CalendarioManager() {
               if (!d) return <div key={i} />;
               const iso = isoDate(d);
               const items = tareasPorDia.get(iso) ?? [];
-              const pendientes = items.filter((t) => t.estado === "pendiente").length;
+              const visibles = items.slice(0, 3);
+              const resto = items.length - visibles.length;
               return (
                 <div
                   key={iso}
                   onClick={() => seleccionarDia(iso)}
                   className="pisos-list-item"
                   style={{
-                    minHeight: 64,
+                    minHeight: 84,
                     padding: 8,
                     cursor: "pointer",
                     border: iso === seleccionado ? "2px solid var(--accent, #b08d57)" : undefined,
@@ -201,11 +208,28 @@ export default function CalendarioManager() {
                   }}
                 >
                   <div style={{ fontSize: 13, fontWeight: iso === isoHoy ? 700 : 400 }}>{d.getDate()}</div>
-                  {items.length > 0 && (
-                    <div style={{ fontSize: 11, opacity: 0.8, marginTop: 4 }}>
-                      {pendientes > 0 ? `${pendientes} pendiente${pendientes > 1 ? "s" : ""}` : `${items.length} hecha${items.length > 1 ? "s" : ""}`}
-                    </div>
-                  )}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 4 }}>
+                    {visibles.map((t) => (
+                      <div
+                        key={t.id}
+                        title={t.titulo}
+                        style={{
+                          fontSize: 10.5,
+                          padding: "1px 5px",
+                          borderRadius: 4,
+                          color: "#fff",
+                          background: TIPO_COLOR[t.tipo],
+                          opacity: t.estado === "hecha" ? 0.5 : 1,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {t.hora ? `${t.hora.slice(0, 5)} ` : ""}{t.titulo}
+                      </div>
+                    ))}
+                    {resto > 0 && <div style={{ fontSize: 10.5, opacity: 0.7 }}>+{resto} más</div>}
+                  </div>
                 </div>
               );
             })}
