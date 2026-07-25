@@ -628,3 +628,153 @@ export async function balanceTotal() {
     creditos: { bruto: precioCreditos, neto: netoCreditos },
   };
 }
+
+export type MetricasMes = {
+  mes: number;
+  bruto: number;
+  gastos: number;
+  neto: number;
+  alquileres: number;
+  compraventas: number;
+  creditos: number;
+};
+
+export type MetricasAnuales = {
+  anio: number;
+  meses: MetricasMes[];
+  trimestres: { trimestre: number; bruto: number; gastos: number; neto: number }[];
+  totalAnual: { bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number };
+  anioAnterior: { bruto: number; neto: number } | null;
+  variacion: { brutoPct: number | null; netoPct: number | null };
+  aniosDisponibles: number[];
+};
+
+export async function listarAniosConDatos(): Promise<number[]> {
+  const admin = getSupabaseAdmin();
+  const [a, b, c] = await Promise.all([
+    admin.from("cliente_ingresos").select("mes").order("mes", { ascending: true }).limit(1),
+    admin.from("operaciones_compraventa").select("fecha_cierre").order("fecha_cierre", { ascending: true }).limit(1),
+    admin.from("operaciones_creditos").select("fecha").order("fecha", { ascending: true }).limit(1),
+  ]);
+  const fechas = [a.data?.[0]?.mes, b.data?.[0]?.fecha_cierre, c.data?.[0]?.fecha].filter(Boolean) as string[];
+  const anioActual = new Date().getUTCFullYear();
+  const anioMin = fechas.length ? Math.min(...fechas.map((f) => new Date(f).getUTCFullYear())) : anioActual;
+  const out: number[] = [];
+  for (let y = anioActual; y >= anioMin; y--) out.push(y);
+  return out;
+}
+
+// Desglose mensual/trimestral de un año (bruto, gastos liquidados y neto, por
+// categoría), más el total del año anterior para comparar. Los gastos se
+// imputan al mes en que se liquidaron (fecha_pago), no al de la operación.
+export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
+  await sincronizarTodosLosIngresos();
+  const admin = getSupabaseAdmin();
+
+  const desde = `${anio - 1}-01-01`;
+  const hasta = `${anio + 1}-01-01`;
+
+  const [ingresosRes, operacionesRes, gastosRes, creditosRes, creditoGastosRes] = await Promise.all([
+    admin.from("cliente_ingresos").select("mes, comision_calculada").gte("mes", desde).lt("mes", hasta),
+    admin.from("operaciones_compraventa").select("fecha_cierre, comision_calculada").gte("fecha_cierre", desde).lt("fecha_cierre", hasta),
+    admin.from("operacion_gastos").select("fecha_pago, importe, es_negativo, pagado").eq("pagado", true).gte("fecha_pago", desde).lt("fecha_pago", hasta),
+    admin.from("operaciones_creditos").select("fecha, precio").gte("fecha", desde).lt("fecha", hasta),
+    admin.from("credito_gastos").select("fecha_pago, importe, es_negativo, pagado").eq("pagado", true).gte("fecha_pago", desde).lt("fecha_pago", hasta),
+  ]);
+  if (ingresosRes.error) throw ingresosRes.error;
+  if (operacionesRes.error) throw operacionesRes.error;
+  if (gastosRes.error) throw gastosRes.error;
+  if (creditosRes.error) throw creditosRes.error;
+  if (creditoGastosRes.error) throw creditoGastosRes.error;
+
+  function bucket(anioObjetivo: number): MetricasMes[] {
+    const meses: MetricasMes[] = Array.from({ length: 12 }, (_, i) => ({
+      mes: i + 1,
+      bruto: 0,
+      gastos: 0,
+      neto: 0,
+      alquileres: 0,
+      compraventas: 0,
+      creditos: 0,
+    }));
+
+    for (const r of ingresosRes.data ?? []) {
+      const d = new Date(r.mes as string);
+      if (d.getUTCFullYear() !== anioObjetivo) continue;
+      const m = meses[d.getUTCMonth()];
+      const v = Number(r.comision_calculada);
+      m.alquileres += v;
+      m.bruto += v;
+      m.neto += v;
+    }
+    for (const r of operacionesRes.data ?? []) {
+      const d = new Date(r.fecha_cierre as string);
+      if (d.getUTCFullYear() !== anioObjetivo) continue;
+      const m = meses[d.getUTCMonth()];
+      const v = Number(r.comision_calculada);
+      m.compraventas += v;
+      m.bruto += v;
+      m.neto += v;
+    }
+    for (const r of creditosRes.data ?? []) {
+      const d = new Date(r.fecha as string);
+      if (d.getUTCFullYear() !== anioObjetivo) continue;
+      const m = meses[d.getUTCMonth()];
+      const v = Number(r.precio);
+      m.creditos += v;
+      m.bruto += v;
+      m.neto += v;
+    }
+    for (const r of [...(gastosRes.data ?? []), ...(creditoGastosRes.data ?? [])]) {
+      if (!r.fecha_pago) continue;
+      const d = new Date(r.fecha_pago as string);
+      if (d.getUTCFullYear() !== anioObjetivo) continue;
+      const m = meses[d.getUTCMonth()];
+      const v = Number(r.importe);
+      if (r.es_negativo) m.gastos += v;
+      m.neto += r.es_negativo ? -v : v;
+    }
+    return meses;
+  }
+
+  const meses = bucket(anio);
+  const mesesAnterior = bucket(anio - 1);
+
+  const trimestres = [0, 1, 2, 3].map((q) => {
+    const grupo = meses.slice(q * 3, q * 3 + 3);
+    return {
+      trimestre: q + 1,
+      bruto: grupo.reduce((s, m) => s + m.bruto, 0),
+      gastos: grupo.reduce((s, m) => s + m.gastos, 0),
+      neto: grupo.reduce((s, m) => s + m.neto, 0),
+    };
+  });
+
+  const totalAnual = meses.reduce(
+    (acc, m) => ({
+      bruto: acc.bruto + m.bruto,
+      gastos: acc.gastos + m.gastos,
+      neto: acc.neto + m.neto,
+      alquileres: acc.alquileres + m.alquileres,
+      compraventas: acc.compraventas + m.compraventas,
+      creditos: acc.creditos + m.creditos,
+    }),
+    { bruto: 0, gastos: 0, neto: 0, alquileres: 0, compraventas: 0, creditos: 0 }
+  );
+
+  const totalAnterior = mesesAnterior.reduce((acc, m) => ({ bruto: acc.bruto + m.bruto, neto: acc.neto + m.neto }), { bruto: 0, neto: 0 });
+  const huboAnterior = mesesAnterior.some((m) => m.bruto !== 0 || m.neto !== 0);
+
+  return {
+    anio,
+    meses,
+    trimestres,
+    totalAnual,
+    anioAnterior: huboAnterior ? totalAnterior : null,
+    variacion: {
+      brutoPct: huboAnterior && totalAnterior.bruto !== 0 ? ((totalAnual.bruto - totalAnterior.bruto) / Math.abs(totalAnterior.bruto)) * 100 : null,
+      netoPct: huboAnterior && totalAnterior.neto !== 0 ? ((totalAnual.neto - totalAnterior.neto) / Math.abs(totalAnterior.neto)) * 100 : null,
+    },
+    aniosDisponibles: await listarAniosConDatos(),
+  };
+}

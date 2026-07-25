@@ -71,10 +71,30 @@ type Balance = {
   creditos: { bruto: number; neto: number };
 };
 
+type MetricasMes = { mes: number; bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number };
+
+type Metricas = {
+  anio: number;
+  meses: MetricasMes[];
+  trimestres: { trimestre: number; bruto: number; gastos: number; neto: number }[];
+  totalAnual: { bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number };
+  anioAnterior: { bruto: number; neto: number } | null;
+  variacion: { brutoPct: number | null; netoPct: number | null };
+  aniosDisponibles: number[];
+};
+
+const NOMBRES_MES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
 const EUR = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
 
 function fmt(n: number) {
   return EUR.format(n || 0);
+}
+
+function fmtPct(n: number | null) {
+  if (n === null) return "—";
+  const signo = n > 0 ? "+" : "";
+  return `${signo}${n.toFixed(1)}%`;
 }
 
 const ACTIVAR_ALQUILER = { cliente_id: "", mensualidad: "", comision_pct: "15" };
@@ -84,11 +104,15 @@ function añoActual(mes: string) {
 }
 
 export default function ContabilidadManager() {
-  const [tab, setTab] = useState<"creditos" | "alquileres" | "compraventas">("creditos");
+  const [tab, setTab] = useState<"metricas" | "creditos" | "alquileres" | "compraventas">("creditos");
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [operaciones, setOperaciones] = useState<Operacion[]>([]);
   const [balance, setBalance] = useState<Balance | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [metricasAnio, setMetricasAnio] = useState(new Date().getFullYear());
+  const [metricas, setMetricas] = useState<Metricas | null>(null);
+  const [cargandoMetricas, setCargandoMetricas] = useState(false);
 
   const [creditos, setCreditos] = useState<Credito[]>([]);
   const [nuevaOperacionCredito, setNuevaOperacionCredito] = useState({ cliente_id: "", fecha: "", precio: "" });
@@ -135,6 +159,16 @@ export default function ContabilidadManager() {
   useEffect(() => {
     cargarTodo();
   }, []);
+
+  useEffect(() => {
+    if (tab !== "metricas") return;
+    if (metricas && metricas.anio === metricasAnio) return;
+    setCargandoMetricas(true);
+    fetch(`/api/admin/contabilidad/metricas?anio=${metricasAnio}`)
+      .then((r) => r.json())
+      .then((data) => setMetricas(data?.anio !== undefined ? data : null))
+      .finally(() => setCargandoMetricas(false));
+  }, [tab, metricasAnio, metricas]);
 
   async function crearOperacionCredito(e: React.FormEvent) {
     e.preventDefault();
@@ -396,6 +430,9 @@ export default function ContabilidadManager() {
       )}
 
       <div className="contabilidad-tabs">
+        <button type="button" className={`contabilidad-tab${tab === "metricas" ? " active" : ""}`} onClick={() => setTab("metricas")}>
+          Métricas
+        </button>
         <button type="button" className={`contabilidad-tab${tab === "creditos" ? " active" : ""}`} onClick={() => setTab("creditos")}>
           Compra de Créditos
         </button>
@@ -406,6 +443,106 @@ export default function ContabilidadManager() {
           Compraventas
         </button>
       </div>
+
+      {tab === "metricas" && (
+        <div className="articulos-list-section" style={{ marginTop: 20 }}>
+          <div className="section-head">
+            <h2>Métricas {metricasAnio}</h2>
+            <label>
+              Año
+              <select value={metricasAnio} onChange={(e) => setMetricasAnio(Number(e.target.value))} style={{ marginLeft: 8 }}>
+                {(metricas?.aniosDisponibles ?? [new Date().getFullYear()]).map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {cargandoMetricas || !metricas ? (
+            <p className="admin-empty">Cargando métricas...</p>
+          ) : (
+            <>
+              <div className="analytics-grid">
+                <div className="analytics-card">
+                  <h3>Facturación bruta {metricasAnio}</h3>
+                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.bruto)}</div>
+                  <p>
+                    Alquileres {fmt(metricas.totalAnual.alquileres)} · Compraventas {fmt(metricas.totalAnual.compraventas)} · Créditos {fmt(metricas.totalAnual.creditos)}
+                  </p>
+                </div>
+                <div className="analytics-card">
+                  <h3>Gastos liquidados {metricasAnio}</h3>
+                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.gastos)}</div>
+                  <p>Imputados al mes en que se pagaron</p>
+                </div>
+                <div className="analytics-card">
+                  <h3>Beneficio neto {metricasAnio}</h3>
+                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.neto)}</div>
+                  <p>
+                    {metricas.anioAnterior
+                      ? `vs ${metricasAnio - 1}: bruto ${fmtPct(metricas.variacion.brutoPct)} · neto ${fmtPct(metricas.variacion.netoPct)}`
+                      : `Sin datos de ${metricasAnio - 1} para comparar`}
+                  </p>
+                </div>
+              </div>
+
+              <h3 style={{ marginTop: 24 }}>Por trimestre (para IVA/IRPF trimestral)</h3>
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Trimestre</th>
+                      <th>Bruto</th>
+                      <th>Gastos</th>
+                      <th>Neto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metricas.trimestres.map((t) => (
+                      <tr key={t.trimestre}>
+                        <td>T{t.trimestre}</td>
+                        <td>{fmt(t.bruto)}</td>
+                        <td>{fmt(t.gastos)}</td>
+                        <td>{fmt(t.neto)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <h3 style={{ marginTop: 24 }}>Por mes</h3>
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Mes</th>
+                      <th>Alquileres</th>
+                      <th>Compraventas</th>
+                      <th>Créditos</th>
+                      <th>Bruto</th>
+                      <th>Gastos</th>
+                      <th>Neto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metricas.meses.map((m) => (
+                      <tr key={m.mes}>
+                        <td>{NOMBRES_MES[m.mes - 1]}</td>
+                        <td>{fmt(m.alquileres)}</td>
+                        <td>{fmt(m.compraventas)}</td>
+                        <td>{fmt(m.creditos)}</td>
+                        <td>{fmt(m.bruto)}</td>
+                        <td>{fmt(m.gastos)}</td>
+                        <td>{fmt(m.neto)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {tab === "creditos" && (
         <div className="articulos-list-section" style={{ marginTop: 20 }}>

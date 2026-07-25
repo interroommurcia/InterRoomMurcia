@@ -32,6 +32,22 @@ export async function listarTareas(): Promise<TareaConCliente[]> {
   }));
 }
 
+export async function listarTareasEntreFechas(desde: string, hasta: string): Promise<TareaConCliente[]> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("mesa_trabajo")
+    .select("*, clientes(nombre, apellidos)")
+    .gte("fecha", desde)
+    .lte("fecha", hasta)
+    .order("fecha", { ascending: true })
+    .order("hora", { ascending: true, nullsFirst: false });
+  if (error) throw error;
+  return ((data ?? []) as unknown as (Tarea & { clientes: { nombre: string; apellidos: string | null } | null })[]).map((r) => ({
+    ...r,
+    clienteNombre: r.clientes ? `${r.clientes.nombre} ${r.clientes.apellidos ?? ""}`.trim() : null,
+  }));
+}
+
 export async function crearTarea(input: {
   tipo: TipoTarea;
   titulo: string;

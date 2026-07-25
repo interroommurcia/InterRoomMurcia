@@ -18,6 +18,7 @@ import { calcularPendientes, formatearPendientes } from "./secretaria";
 import { telegramSendDocument } from "./telegram";
 import { listarConversaciones, getKnowledgeBase, buildSystemPrompt } from "./chat";
 import { catalogSnapshot } from "./pisos";
+import { crearTarea, listarTareasEntreFechas, type TipoTarea } from "./mesaTrabajo";
 
 const MAX_HISTORIAL = 20;
 const MAX_TURNOS_HERRAMIENTA = 5;
@@ -37,6 +38,8 @@ Guía de uso de herramientas:
 - Cuando muestres el desglose de una operación, preséntalo como un asiento contable: primero el bruto (comisión), luego cada movimiento con su signo (+ suma, - resta) y si está liquidado o pendiente, y termina con el neto. No mezcles bruto y neto en una sola cifra sin aclararlo.
 - Si preguntan qué se ha hablado con algún cliente en el chat de la web, o quieren revisar conversaciones escaladas, usa buscar_chats.
 - Si preguntan "qué respondería Rommi" (el chatbot de la web) ante algo, usa consultar_rommi — simula su respuesta real con el mismo catálogo y base de conocimiento que usa en la web.
+- Si te piden anotar/agendar una tarea, cita o visita ("apúntame", "recuérdame", "queda con..."), usa anotar_agenda. Calcula tú la fecha exacta en formato YYYY-MM-DD a partir de la fecha de hoy (indicada más abajo) si dicen "mañana", "el viernes", etc.
+- Si preguntan qué hay en la agenda (hoy, esta semana, un día o rango concreto), usa consultar_agenda con fechas en formato YYYY-MM-DD, calculadas a partir de la fecha de hoy.
 - Si ninguna herramienta resuelve la pregunta, dilo con claridad en vez de inventar una respuesta.`;
 
 const TOOLS: Anthropic.Tool[] = [
@@ -133,6 +136,34 @@ const TOOLS: Anthropic.Tool[] = [
       type: "object",
       properties: { pregunta: { type: "string", description: "La pregunta tal como se la haría un usuario a Rommi en la web" } },
       required: ["pregunta"],
+    },
+  },
+  {
+    name: "anotar_agenda",
+    description: "Crea una anotación en la mesa de trabajo/calendario: una tarea, cita o visita, con fecha y hora opcionales y cliente vinculado opcional.",
+    input_schema: {
+      type: "object",
+      properties: {
+        tipo: { type: "string", enum: ["tarea", "cita", "visita"], description: "Tipo de anotación" },
+        titulo: { type: "string", description: "Título breve de la anotación" },
+        fecha: { type: "string", description: 'Fecha en formato "YYYY-MM-DD", calculada a partir de hoy si es relativa' },
+        hora: { type: "string", description: 'Hora en formato "HH:MM", opcional' },
+        cliente: { type: "string", description: "Nombre del cliente a vincular, opcional" },
+        notas: { type: "string", description: "Notas adicionales, opcional" },
+      },
+      required: ["tipo", "titulo"],
+    },
+  },
+  {
+    name: "consultar_agenda",
+    description: "Devuelve las tareas, citas y visitas anotadas entre dos fechas (formato YYYY-MM-DD). Para un solo día, usa la misma fecha en desde y hasta.",
+    input_schema: {
+      type: "object",
+      properties: {
+        desde: { type: "string", description: 'Fecha inicial "YYYY-MM-DD"' },
+        hasta: { type: "string", description: 'Fecha final "YYYY-MM-DD"' },
+      },
+      required: ["desde", "hasta"],
     },
   },
 ];
@@ -315,6 +346,37 @@ Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.co
       .trim();
     return texto || "(Rommi no generó respuesta)";
   }
+  if (nombre === "anotar_agenda") {
+    const tipo = String(input.tipo ?? "tarea") as TipoTarea;
+    const titulo = String(input.titulo ?? "").trim();
+    if (!titulo) return "Falta el título de la anotación.";
+    let cliente_id: string | undefined;
+    const nombreCliente = String(input.cliente ?? "").trim();
+    if (nombreCliente) {
+      const clientes = await listarClientes();
+      const encontrado = clientes.find((c) => `${c.nombre} ${c.apellidos ?? ""}`.toLowerCase().includes(nombreCliente.toLowerCase()));
+      cliente_id = encontrado?.id;
+    }
+    const tarea = await crearTarea({
+      tipo,
+      titulo,
+      fecha: input.fecha ? String(input.fecha) : undefined,
+      hora: input.hora ? String(input.hora) : undefined,
+      cliente_id,
+      notas: input.notas ? String(input.notas) : undefined,
+    });
+    return `Anotado: ${tipo} "${titulo}"${tarea.fecha ? ` el ${tarea.fecha}` : ""}${tarea.hora ? ` a las ${tarea.hora}` : ""}${nombreCliente && !cliente_id ? " (cliente no encontrado, se guardó sin vincular)" : ""}.`;
+  }
+  if (nombre === "consultar_agenda") {
+    const desde = String(input.desde ?? "").trim();
+    const hasta = String(input.hasta ?? "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || !/^\d{4}-\d{2}-\d{2}$/.test(hasta)) return 'Formato de fecha inválido, usa "YYYY-MM-DD".';
+    const tareas = await listarTareasEntreFechas(desde, hasta);
+    if (!tareas.length) return `Sin nada anotado entre ${desde} y ${hasta}.`;
+    return tareas
+      .map((t) => `- [${t.tipo}] ${t.fecha}${t.hora ? ` ${t.hora.slice(0, 5)}` : ""} · ${t.titulo}${t.clienteNombre ? ` · ${t.clienteNombre}` : ""} · ${t.estado}`)
+      .join("\n");
+  }
   return "Herramienta desconocida.";
 }
 
@@ -327,12 +389,15 @@ export async function responderGladis(chatId: string, mensajeUsuario: string): P
   const messages: Anthropic.MessageParam[] = historial.map((t) => ({ role: t.role, content: t.text }));
   messages.push({ role: "user", content: mensajeUsuario });
 
+  const hoy = new Date().toISOString().slice(0, 10);
+  const systemConFecha = `${SYSTEM}\n\nHoy es ${hoy} (formato YYYY-MM-DD).`;
+
   let respuestaFinal = "";
   for (let i = 0; i < MAX_TURNOS_HERRAMIENTA; i++) {
     const res = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 800,
-      system: SYSTEM,
+      system: systemConFecha,
       tools: TOOLS,
       messages,
     });
