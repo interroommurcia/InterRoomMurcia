@@ -220,3 +220,64 @@ create table if not exists public.gladis_conversaciones (
   updated_at timestamptz not null default now()
 );
 alter table public.gladis_conversaciones enable row level security;
+
+-- Nuevo tipo de cliente: "creditos" (compradores de créditos, sección propia
+-- en Contabilidad, análoga a compraventas pero sin comisión, solo precio).
+alter table public.clientes drop constraint if exists clientes_tipo_check;
+alter table public.clientes add constraint clientes_tipo_check
+  check (tipo in ('propietario', 'estudiante', 'comprador', 'creditos'));
+
+-- ============================================================
+-- COMPRA DE CRÉDITOS: operación directa (sin comisión), con su
+-- propio ledger de movimientos con signo y documentos adjuntos,
+-- igual patrón que operaciones_compraventa / operacion_gastos.
+-- ============================================================
+create table if not exists public.operaciones_creditos (
+  id uuid primary key default gen_random_uuid(),
+  cliente_id uuid not null references public.clientes(id) on delete cascade,
+  fecha date not null,
+  precio numeric not null,
+  notas text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.operaciones_creditos enable row level security;
+
+create table if not exists public.credito_gastos (
+  id uuid primary key default gen_random_uuid(),
+  operacion_id uuid not null references public.operaciones_creditos(id) on delete cascade,
+  concepto text not null,
+  importe numeric not null,
+  es_negativo boolean not null default true,
+  pagado boolean not null default false,
+  fecha_pago date,
+  created_at timestamptz not null default now()
+);
+alter table public.credito_gastos enable row level security;
+
+create table if not exists public.credito_documentos (
+  id uuid primary key default gen_random_uuid(),
+  operacion_id uuid not null references public.operaciones_creditos(id) on delete cascade,
+  nombre text not null,
+  storage_path text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.credito_documentos enable row level security;
+
+-- ============================================================
+-- MESA DE TRABAJO: tareas, citas y visitas sueltas, con cliente
+-- opcional vinculado.
+-- ============================================================
+create table if not exists public.mesa_trabajo (
+  id uuid primary key default gen_random_uuid(),
+  tipo text not null default 'tarea' check (tipo in ('tarea', 'cita', 'visita')),
+  titulo text not null,
+  fecha date,
+  hora time,
+  cliente_id uuid references public.clientes(id) on delete set null,
+  estado text not null default 'pendiente' check (estado in ('pendiente', 'hecha')),
+  notas text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.mesa_trabajo enable row level security;

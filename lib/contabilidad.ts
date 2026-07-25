@@ -6,7 +6,7 @@ function calcularComision(base: number, pct: number) {
   return Math.round(base * (pct / 100) * (1 + IVA) * 100) / 100;
 }
 
-export type TipoCliente = "propietario" | "estudiante" | "comprador";
+export type TipoCliente = "propietario" | "estudiante" | "comprador" | "creditos";
 export type OperacionCliente = "alquiler" | "venta" | null;
 export type OrigenCliente = "manual" | "lead" | "autocompletado";
 
@@ -83,6 +83,16 @@ export type Documento = {
   nombre: string;
   storage_path: string;
   created_at: string;
+};
+
+export type OperacionCredito = {
+  id: string;
+  cliente_id: string;
+  fecha: string;
+  precio: number;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 const DOCUMENTOS_BUCKET = "documentos";
@@ -468,26 +478,153 @@ export async function eliminarDocumento(id: string) {
   if (error) throw error;
 }
 
+export async function listarOperacionesCreditos(): Promise<OperacionCredito[]> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin.from("operaciones_creditos").select("*").order("fecha", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as OperacionCredito[];
+}
+
+export async function crearOperacionCredito(input: {
+  cliente_id: string;
+  fecha: string;
+  precio: number;
+  notas?: string;
+}): Promise<OperacionCredito> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("operaciones_creditos")
+    .insert({ cliente_id: input.cliente_id, fecha: input.fecha, precio: input.precio, notas: input.notas || null })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as OperacionCredito;
+}
+
+export async function eliminarOperacionCredito(id: string) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("operaciones_creditos").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function listarCreditoGastos(operacionId: string): Promise<Gasto[]> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("credito_gastos")
+    .select("*")
+    .eq("operacion_id", operacionId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Gasto[];
+}
+
+export async function añadirCreditoGasto(operacionId: string, concepto: string, importe: number, esNegativo = true) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin
+    .from("credito_gastos")
+    .insert({ operacion_id: operacionId, concepto, importe, es_negativo: esNegativo });
+  if (error) throw error;
+}
+
+export async function marcarCreditoGastoPagado(id: string, pagado: boolean) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin
+    .from("credito_gastos")
+    .update({ pagado, fecha_pago: pagado ? new Date().toISOString().slice(0, 10) : null })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function eliminarCreditoGasto(id: string) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("credito_gastos").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function listarCreditoDocumentos(operacionId: string): Promise<Documento[]> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("credito_documentos")
+    .select("*")
+    .eq("operacion_id", operacionId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Documento[];
+}
+
+export async function subirCreditoDocumento(operacionId: string, nombre: string, buffer: Buffer, contentType: string): Promise<Documento> {
+  const admin = getSupabaseAdmin();
+  const path = `creditos/${operacionId}/${Date.now()}-${nombre}`;
+  const { error: uploadError } = await admin.storage.from(DOCUMENTOS_BUCKET).upload(path, buffer, { contentType });
+  if (uploadError) throw uploadError;
+
+  const { data, error } = await admin
+    .from("credito_documentos")
+    .insert({ operacion_id: operacionId, nombre, storage_path: path })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Documento;
+}
+
+export async function descargarCreditoDocumento(id: string): Promise<{ nombre: string; buffer: Buffer } | null> {
+  const admin = getSupabaseAdmin();
+  const { data: doc, error } = await admin.from("credito_documentos").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  if (!doc) return null;
+  const { data: file, error: downloadError } = await admin.storage.from(DOCUMENTOS_BUCKET).download(doc.storage_path);
+  if (downloadError) throw downloadError;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return { nombre: doc.nombre, buffer };
+}
+
+export async function eliminarCreditoDocumento(id: string) {
+  const admin = getSupabaseAdmin();
+  const { data: doc, error: getError } = await admin.from("credito_documentos").select("*").eq("id", id).maybeSingle();
+  if (getError) throw getError;
+  if (!doc) return;
+  await admin.storage.from(DOCUMENTOS_BUCKET).remove([doc.storage_path]);
+  const { error } = await admin.from("credito_documentos").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export async function balanceTotal() {
   await sincronizarTodosLosIngresos();
   const admin = getSupabaseAdmin();
-  const [ingresosRes, operacionesRes, gastosRes] = await Promise.all([
+  const [ingresosRes, operacionesRes, gastosRes, creditosRes, creditoGastosRes] = await Promise.all([
     admin.from("cliente_ingresos").select("comision_calculada"),
     admin.from("operaciones_compraventa").select("comision_calculada"),
-    admin.from("operacion_gastos").select("importe"),
+    admin.from("operacion_gastos").select("importe, es_negativo, pagado"),
+    admin.from("operaciones_creditos").select("precio"),
+    admin.from("credito_gastos").select("importe, es_negativo, pagado"),
   ]);
   if (ingresosRes.error) throw ingresosRes.error;
   if (operacionesRes.error) throw operacionesRes.error;
   if (gastosRes.error) throw gastosRes.error;
+  if (creditosRes.error) throw creditosRes.error;
+  if (creditoGastosRes.error) throw creditoGastosRes.error;
 
   const comisionAlquileres = (ingresosRes.data ?? []).reduce((s, r) => s + Number(r.comision_calculada), 0);
   const comisionCompraventas = (operacionesRes.data ?? []).reduce((s, r) => s + Number(r.comision_calculada), 0);
-  const totalGastos = (gastosRes.data ?? []).reduce((s, r) => s + Number(r.importe), 0);
+
+  type Movimiento = { importe: number; es_negativo: boolean; pagado: boolean };
+  const pagados = (rows: Movimiento[]) => rows.filter((r) => r.pagado);
+  const movimientoNeto = (rows: Movimiento[]) =>
+    pagados(rows).reduce((s, r) => s + (r.es_negativo ? -Number(r.importe) : Number(r.importe)), 0);
+  const gastosPagados = (rows: Movimiento[]) =>
+    pagados(rows).filter((r) => r.es_negativo).reduce((s, r) => s + Number(r.importe), 0);
+
+  const totalGastos = gastosPagados((gastosRes.data ?? []) as Movimiento[]);
+  const netoCompraventas = comisionCompraventas + movimientoNeto((gastosRes.data ?? []) as Movimiento[]);
+
+  const precioCreditos = (creditosRes.data ?? []).reduce((s, r) => s + Number(r.precio), 0);
+  const netoCreditos = precioCreditos + movimientoNeto((creditoGastosRes.data ?? []) as Movimiento[]);
 
   return {
-    comisionBrutaTotal: comisionAlquileres + comisionCompraventas,
-    beneficioNetoTotal: comisionAlquileres + (comisionCompraventas - totalGastos),
+    comisionBrutaTotal: comisionAlquileres + comisionCompraventas + precioCreditos,
+    beneficioNetoTotal: comisionAlquileres + netoCompraventas + netoCreditos,
     alquileres: { comisionBruta: comisionAlquileres },
-    compraventas: { comisionBruta: comisionCompraventas, gastos: totalGastos, neto: comisionCompraventas - totalGastos },
+    compraventas: { comisionBruta: comisionCompraventas, gastos: totalGastos, neto: netoCompraventas },
+    creditos: { bruto: precioCreditos, neto: netoCreditos },
   };
 }

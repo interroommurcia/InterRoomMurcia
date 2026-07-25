@@ -3,10 +3,12 @@ import Link from "next/link";
 const ITEMS = [
   { href: "/admin", label: "Leads" },
   { href: "/admin/pisos", label: "Catálogo" },
+  { href: "/admin/clientes", label: "Clientes" },
   { href: "/admin/articulos", label: "Artículos" },
   { href: "/admin/analytics", label: "Analytics" },
   { href: "/admin/chats", label: "Chats" },
   { href: "/admin/contabilidad", label: "Contabilidad" },
+  { href: "/admin/mesa-trabajo", label: "Mesa de trabajo" },
 ] as const;
 
 export function AdminNav({ active }: { active: (typeof ITEMS)[number]["href"] }) {
