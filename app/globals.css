@@ -2019,3 +2019,19 @@ h1 em {
 .article-related h2 {
   margin-bottom: 20px;
 }
+.article-section-cta {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 8px 14px;
+  background: var(--orange-light);
+  color: var(--orange-dark);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.article-section-cta:hover {
+  background: var(--orange);
+  color: var(--paper);
+}

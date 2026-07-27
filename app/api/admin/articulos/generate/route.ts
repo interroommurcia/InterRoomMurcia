@@ -31,7 +31,7 @@ ${material ? `MATERIAL DE REFERENCIA:\n${material}\n\n` : ""}Devuelve ÚNICAMENT
       "h2": "Subtítulo de sección con keyword secundaria",
       "content": "Contenido en párrafos cortos separados por doble salto de línea. Máximo 3 líneas por párrafo en mobile.",
       "highlight": "Dato clave, estadística o cita para destacar visualmente (puede ser null)",
-      "imagePrompt": "Photorealistic professional photography prompt in English for this section, student housing / Spain apartment theme, no text, no people faces, natural lighting"
+      "imagePrompt": "Photorealistic professional photography prompt in English for this section. Anchor it in a REAL Murcia or Cartagena location relevant to the section content (Guadalupe residential street, La Ñora village, Espinardo university campus buildings, La Merced historic quarter of Murcia, Cartagena old town near the university, Murcia cathedral surroundings, Segura riverside, palm-lined avenues typical of the Region of Murcia). Mediterranean warm sunlight, terracotta and ochre tones, no text, no logos, no visible faces."
     }
   ],
   "cta": "Texto del Call to Action principal para InterRoom Murcia",
@@ -41,7 +41,7 @@ ${material ? `MATERIAL DE REFERENCIA:\n${material}\n\n` : ""}Devuelve ÚNICAMENT
       "answer": "Respuesta concisa, útil y con mención natural a InterRoom Murcia cuando aplique"
     }
   ],
-  "heroImagePrompt": "Stunning photorealistic image prompt in English for the hero, related to the article topic, student apartment or Spanish city theme, natural lighting, no text, no logos, no people faces, ultra high quality"
+  "heroImagePrompt": "Stunning photorealistic hero image prompt in English. MUST be anchored in a REAL, iconic location of Murcia or Cartagena that fits the article (Murcia cathedral square, Cartagena Roman theatre, UCAM Guadalupe campus, UMU Espinardo campus, UPCT Cartagena buildings, Segura river promenade, palm-lined Murcia streets, Mediterranean rooftops). Warm golden-hour Mediterranean light, terracotta and ochre palette, ultra high quality 8K, no text, no logos, no visible faces."
 }
 
 Requisitos ESTRICTOS: exactamente 4 secciones H2 (ni más ni menos), exactamente 5 preguntas FAQ (ni más ni menos), menciona "InterRoom Murcia" al menos 3 veces. Cada sección: content máximo 120 palabras, párrafos de 2-3 líneas. imagePrompt breve (máximo 20 palabras). Respuestas FAQ máximo 60 palabras. Sé conciso.`;

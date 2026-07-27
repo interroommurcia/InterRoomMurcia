@@ -7,7 +7,7 @@ async function generateImageGemini(prompt: string): Promise<Buffer | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
-  const styledPrompt = `${prompt}. Style: ultra-realistic professional photography, 8K, natural lighting, no watermarks, no text overlays, no logos, no people`;
+  const styledPrompt = `${prompt}. Style: ultra-realistic professional photography of the Region of Murcia (Spain), 8K, warm Mediterranean golden-hour light, terracotta and ochre palette, palm trees and Levantine architecture when appropriate, no watermarks, no text overlays, no logos, no people`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`,
