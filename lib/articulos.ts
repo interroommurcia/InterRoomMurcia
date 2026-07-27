@@ -116,3 +116,25 @@ export async function getArticuloPorSlug(slug: string): Promise<Articulo | null>
   if (error) throw error;
   return data ? mapArticulo(data) : null;
 }
+
+export async function getArticulosRelacionados(slugActual: string, limite = 3): Promise<ArticuloResumen[]> {
+  const { data, error } = await supabase
+    .from("articulos")
+    .select("id, slug, meta_title, meta_description, h1, keyword, hero_image_thumb, created_at")
+    .eq("estado", "publicado")
+    .eq("mostrar_en_listado", true)
+    .neq("slug", slugActual)
+    .order("created_at", { ascending: false })
+    .limit(limite);
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    metaTitle: row.meta_title,
+    metaDescription: row.meta_description,
+    h1: row.h1,
+    keyword: row.keyword,
+    heroImageThumb: row.hero_image_thumb,
+    createdAt: row.created_at,
+  }));
+}

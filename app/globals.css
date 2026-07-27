@@ -1987,3 +1987,35 @@ h1 em {
 .chat-transcript .chat-widget-msg {
   max-width: 100%;
 }
+
+/* Blog: enlaces internos, breadcrumb y relacionados */
+.article-breadcrumb {
+  font-size: 0.78rem;
+  opacity: 0.6;
+  margin-bottom: 10px;
+}
+.article-breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+}
+.article-breadcrumb a:hover {
+  color: var(--orange-dark);
+  text-decoration: underline;
+}
+.article-inline-link {
+  color: var(--orange-dark);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.article-inline-link:hover {
+  color: var(--orange);
+}
+.article-related {
+  margin-top: 60px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(26, 26, 26, 0.08);
+}
+.article-related h2 {
+  margin-bottom: 20px;
+}
