@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 const ITEMS = [
-  { href: "/admin", label: "Leads" },
+  { href: "/admin", label: "Home" },
+  { href: "/admin/leads", label: "Leads" },
   { href: "/admin/pisos", label: "Catálogo" },
   { href: "/admin/clientes", label: "Clientes" },
   { href: "/admin/articulos", label: "Artículos" },
