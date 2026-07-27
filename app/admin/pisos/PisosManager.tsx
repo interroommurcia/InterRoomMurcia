@@ -16,6 +16,26 @@ export default function PisosManager({ pisos }: { pisos: Piso[] }) {
   const [editing, setEditing] = useState<Piso | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [copiado, setCopiado] = useState<string | null>(null);
+
+  function urlPublica(piso: Piso) {
+    return `${window.location.origin}/habitaciones/${piso.zona}/${piso.slug}`;
+  }
+
+  async function handleCopiar(piso: Piso) {
+    try {
+      await navigator.clipboard.writeText(urlPublica(piso));
+      setCopiado(piso.id);
+      setTimeout(() => setCopiado((v) => (v === piso.id ? null : v)), 1500);
+    } catch {
+      setError("No se pudo copiar el enlace.");
+    }
+  }
+
+  function handleWhatsapp(piso: Piso) {
+    const texto = `Hola, échale un vistazo a esta habitación: ${piso.titulo} (${piso.barrio}) por ${piso.precioMes}€/mes. Info y fotos: ${urlPublica(piso)}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
+  }
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -116,6 +136,12 @@ export default function PisosManager({ pisos }: { pisos: Piso[] }) {
                   </div>
                 </div>
                 <div className="pisos-list-actions">
+                  <button type="button" className="btn-ghost" onClick={() => handleCopiar(piso)}>
+                    {copiado === piso.id ? "✓ Copiado" : "Copiar link"}
+                  </button>
+                  <button type="button" className="btn-ghost" onClick={() => handleWhatsapp(piso)}>
+                    WhatsApp
+                  </button>
                   <button type="button" className="btn-ghost" onClick={() => setEditing(piso)}>
                     Editar
                   </button>
