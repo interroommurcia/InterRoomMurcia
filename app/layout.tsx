@@ -22,6 +22,22 @@ export const metadata: Metadata = {
   verification: {
     google: ["JdK4Tje4IR5mI8-CDMOYJfzlHRK19M2NnWyvWU2BDhE", "qGUypLyIprjg4UEDWQW1Uy0XPBv9bUSOi8GEXbIL1SA"],
   },
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/icon.svg", type: "image/svg+xml" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "InterRoom",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport = {
+  themeColor: "#ea6a12",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
