@@ -76,12 +76,76 @@ type MetricasMes = { mes: number; bruto: number; gastos: number; neto: number; a
 type Metricas = {
   anio: number;
   meses: MetricasMes[];
+  mesesAnterior: MetricasMes[];
   trimestres: { trimestre: number; bruto: number; gastos: number; neto: number }[];
   totalAnual: { bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number };
   anioAnterior: { bruto: number; neto: number } | null;
   variacion: { brutoPct: number | null; netoPct: number | null };
   aniosDisponibles: number[];
 };
+
+const NOMBRES_MES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+function porcentaje(parte: number, total: number) {
+  if (!total) return 0;
+  return (parte / total) * 100;
+}
+
+function variacionPct(actual: number, anterior: number): number | null {
+  if (!anterior) return null;
+  return ((actual - anterior) / Math.abs(anterior)) * 100;
+}
+
+function GraficoEvolucion({ meses }: { meses: MetricasMes[] }) {
+  const W = 720;
+  const H = 220;
+  const PAD_L = 40;
+  const PAD_B = 28;
+  const PAD_T = 12;
+  const PAD_R = 12;
+  const chartW = W - PAD_L - PAD_R;
+  const chartH = H - PAD_T - PAD_B;
+  const max = Math.max(1, ...meses.map((m) => m.bruto));
+  const barW = chartW / 12;
+  const barPad = 6;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: "100%", height: "auto", display: "block" }} role="img" aria-label="Evolución mensual apilada">
+      {[0.25, 0.5, 0.75, 1].map((f) => {
+        const y = PAD_T + chartH * (1 - f);
+        return <line key={f} x1={PAD_L} y1={y} x2={W - PAD_R} y2={y} stroke="#eee" strokeWidth={1} />;
+      })}
+      {[0.25, 0.5, 0.75, 1].map((f) => {
+        const y = PAD_T + chartH * (1 - f);
+        return (
+          <text key={`t${f}`} x={PAD_L - 6} y={y + 3} fontSize={9} textAnchor="end" fill="#999">
+            {EUR.format(max * f).replace(/,\d{2}\s?€$/, "€")}
+          </text>
+        );
+      })}
+      {meses.map((m, i) => {
+        const x = PAD_L + i * barW + barPad / 2;
+        const w = barW - barPad;
+        const hA = (m.alquileres / max) * chartH;
+        const hC = (m.compraventas / max) * chartH;
+        const hK = (m.creditos / max) * chartH;
+        const yA = PAD_T + chartH - hA;
+        const yC = yA - hC;
+        const yK = yC - hK;
+        return (
+          <g key={m.mes}>
+            {hA > 0 && <rect x={x} y={yA} width={w} height={hA} fill="#3b82f6" rx={2} />}
+            {hC > 0 && <rect x={x} y={yC} width={w} height={hC} fill="#10b981" rx={2} />}
+            {hK > 0 && <rect x={x} y={yK} width={w} height={hK} fill="#f59e0b" rx={2} />}
+            <text x={x + w / 2} y={H - PAD_B + 14} fontSize={10} textAnchor="middle" fill="#666">
+              {NOMBRES_MES_CORTO[i]}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
 
 const NOMBRES_MES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
@@ -462,31 +526,72 @@ export default function ContabilidadManager() {
             <p className="admin-empty">Cargando métricas...</p>
           ) : (
             <>
+              {/* Cards por línea de negocio */}
               <div className="analytics-grid">
-                <div className="analytics-card">
-                  <h3>Facturación bruta {metricasAnio}</h3>
-                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.bruto)}</div>
+                <div className="analytics-card" style={{ borderLeft: "3px solid #3b82f6" }}>
+                  <h3>Gestión de alquileres</h3>
+                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.alquileres)}</div>
                   <p>
-                    Alquileres {fmt(metricas.totalAnual.alquileres)} · Compraventas {fmt(metricas.totalAnual.compraventas)} · Créditos {fmt(metricas.totalAnual.creditos)}
+                    {porcentaje(metricas.totalAnual.alquileres, metricas.totalAnual.bruto).toFixed(1)}% del total ·{" "}
+                    {fmtPct(variacionPct(metricas.totalAnual.alquileres, metricas.mesesAnterior.reduce((s, m) => s + m.alquileres, 0)))} vs {metricasAnio - 1}
                   </p>
                 </div>
-                <div className="analytics-card">
-                  <h3>Gastos liquidados {metricasAnio}</h3>
-                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.gastos)}</div>
-                  <p>Imputados al mes en que se pagaron</p>
-                </div>
-                <div className="analytics-card">
-                  <h3>Beneficio neto {metricasAnio}</h3>
-                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.neto)}</div>
+                <div className="analytics-card" style={{ borderLeft: "3px solid #10b981" }}>
+                  <h3>Compraventas</h3>
+                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.compraventas)}</div>
                   <p>
-                    {metricas.anioAnterior
-                      ? `vs ${metricasAnio - 1}: bruto ${fmtPct(metricas.variacion.brutoPct)} · neto ${fmtPct(metricas.variacion.netoPct)}`
-                      : `Sin datos de ${metricasAnio - 1} para comparar`}
+                    {porcentaje(metricas.totalAnual.compraventas, metricas.totalAnual.bruto).toFixed(1)}% del total ·{" "}
+                    {fmtPct(variacionPct(metricas.totalAnual.compraventas, metricas.mesesAnterior.reduce((s, m) => s + m.compraventas, 0)))} vs {metricasAnio - 1}
+                  </p>
+                </div>
+                <div className="analytics-card" style={{ borderLeft: "3px solid #f59e0b" }}>
+                  <h3>Créditos</h3>
+                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.creditos)}</div>
+                  <p>
+                    {porcentaje(metricas.totalAnual.creditos, metricas.totalAnual.bruto).toFixed(1)}% del total ·{" "}
+                    {fmtPct(variacionPct(metricas.totalAnual.creditos, metricas.mesesAnterior.reduce((s, m) => s + m.creditos, 0)))} vs {metricasAnio - 1}
                   </p>
                 </div>
               </div>
 
-              <h3 style={{ marginTop: 24 }}>Por trimestre (para IVA/IRPF trimestral)</h3>
+              {/* Cards totales */}
+              <div className="analytics-grid" style={{ marginTop: 12 }}>
+                <div className="analytics-card">
+                  <h3>Facturación bruta</h3>
+                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.bruto)}</div>
+                  <p>
+                    {metricas.anioAnterior ? `${fmtPct(metricas.variacion.brutoPct)} vs ${metricasAnio - 1}` : `Sin datos de ${metricasAnio - 1}`}
+                  </p>
+                </div>
+                <div className="analytics-card">
+                  <h3>Gastos liquidados</h3>
+                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.gastos)}</div>
+                  <p>Imputados al mes en que se pagaron</p>
+                </div>
+                <div className="analytics-card">
+                  <h3>Beneficio neto</h3>
+                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.neto)}</div>
+                  <p>
+                    {metricas.anioAnterior ? `${fmtPct(metricas.variacion.netoPct)} vs ${metricasAnio - 1}` : `Sin datos de ${metricasAnio - 1}`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Gráfico de evolución mensual */}
+              <div className="articulos-list-section" style={{ marginTop: 24, padding: 16, background: "#fafafa", borderRadius: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 12 }}>
+                  <h3 style={{ margin: 0 }}>Evolución mensual (bruto)</h3>
+                  <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
+                    <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#3b82f6", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Alquileres</span>
+                    <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#10b981", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Compraventas</span>
+                    <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#f59e0b", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Créditos</span>
+                  </div>
+                </div>
+                <GraficoEvolucion meses={metricas.meses} />
+              </div>
+
+              {/* Trimestres */}
+              <h3 style={{ marginTop: 24 }}>Por trimestre</h3>
               <div className="admin-table-wrap">
                 <table className="admin-table">
                   <thead>
@@ -510,7 +615,8 @@ export default function ContabilidadManager() {
                 </table>
               </div>
 
-              <h3 style={{ marginTop: 24 }}>Por mes</h3>
+              {/* Mensual con comparativa */}
+              <h3 style={{ marginTop: 24 }}>Por mes (con comparativa vs {metricasAnio - 1})</h3>
               <div className="admin-table-wrap">
                 <table className="admin-table">
                   <thead>
@@ -520,22 +626,28 @@ export default function ContabilidadManager() {
                       <th>Compraventas</th>
                       <th>Créditos</th>
                       <th>Bruto</th>
-                      <th>Gastos</th>
+                      <th>Bruto {metricasAnio - 1}</th>
+                      <th>Δ</th>
                       <th>Neto</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {metricas.meses.map((m) => (
-                      <tr key={m.mes}>
-                        <td>{NOMBRES_MES[m.mes - 1]}</td>
-                        <td>{fmt(m.alquileres)}</td>
-                        <td>{fmt(m.compraventas)}</td>
-                        <td>{fmt(m.creditos)}</td>
-                        <td>{fmt(m.bruto)}</td>
-                        <td>{fmt(m.gastos)}</td>
-                        <td>{fmt(m.neto)}</td>
-                      </tr>
-                    ))}
+                    {metricas.meses.map((m) => {
+                      const prev = metricas.mesesAnterior[m.mes - 1];
+                      const delta = variacionPct(m.bruto, prev?.bruto ?? 0);
+                      return (
+                        <tr key={m.mes}>
+                          <td>{NOMBRES_MES[m.mes - 1]}</td>
+                          <td>{fmt(m.alquileres)}</td>
+                          <td>{fmt(m.compraventas)}</td>
+                          <td>{fmt(m.creditos)}</td>
+                          <td><strong>{fmt(m.bruto)}</strong></td>
+                          <td style={{ color: "#999" }}>{fmt(prev?.bruto ?? 0)}</td>
+                          <td style={{ color: delta === null ? "#999" : delta >= 0 ? "#10b981" : "#ef4444", fontWeight: 600 }}>{fmtPct(delta)}</td>
+                          <td>{fmt(m.neto)}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

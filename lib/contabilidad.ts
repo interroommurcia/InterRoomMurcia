@@ -642,6 +642,7 @@ export type MetricasMes = {
 export type MetricasAnuales = {
   anio: number;
   meses: MetricasMes[];
+  mesesAnterior: MetricasMes[];
   trimestres: { trimestre: number; bruto: number; gastos: number; neto: number }[];
   totalAnual: { bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number };
   anioAnterior: { bruto: number; neto: number } | null;
@@ -768,6 +769,7 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
   return {
     anio,
     meses,
+    mesesAnterior,
     trimestres,
     totalAnual,
     anioAnterior: huboAnterior ? totalAnterior : null,
