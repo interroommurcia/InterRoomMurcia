@@ -40,7 +40,14 @@ Guía de uso de herramientas:
 - Si preguntan "qué respondería Rommi" (el chatbot de la web) ante algo, usa consultar_rommi — simula su respuesta real con el mismo catálogo y base de conocimiento que usa en la web.
 - Si te piden anotar/agendar una tarea, cita o visita ("apúntame", "recuérdame", "queda con..."), usa anotar_agenda. Calcula tú la fecha exacta en formato YYYY-MM-DD a partir de la fecha de hoy (indicada más abajo) si dicen "mañana", "el viernes", etc.
 - Si preguntan qué hay en la agenda (hoy, esta semana, un día o rango concreto), usa consultar_agenda con fechas en formato YYYY-MM-DD, calculadas a partir de la fecha de hoy.
-- Si ninguna herramienta resuelve la pregunta, dilo con claridad en vez de inventar una respuesta.`;
+- Si ninguna herramienta resuelve la pregunta, dilo con claridad en vez de inventar una respuesta.
+
+REGLA CRÍTICA — confirmación antes de modificar:
+Antes de ejecutar CUALQUIER herramienta que cree, modifique, envíe o elimine datos (anotar_agenda, enviar_documento y todas las futuras herramientas de escritura), NUNCA la llames directamente en el primer turno. En su lugar:
+1. Resume en una frase exactamente qué vas a hacer con los datos concretos (tipo, título, fecha, cliente, importe, destinatario…).
+2. Pregunta explícitamente: "¿Confirmas?" o "¿Lo hago?" y espera respuesta.
+3. Solo cuando el usuario responda con confirmación clara ("sí", "confirma", "hazlo", "adelante", "ok"), ejecuta la herramienta.
+Si la respuesta es ambigua o cancela, no ejecutes nada y pide aclaración. Las herramientas de solo lectura (buscar, listar, consultar, detalle…) NO requieren confirmación, úsalas directamente.`;
 
 const TOOLS: Anthropic.Tool[] = [
   {
