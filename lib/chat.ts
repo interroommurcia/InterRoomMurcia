@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "./supabaseAdmin";
+import { telegramSendMessage } from "./telegram";
 
 export type ChatMensaje = { role: "user" | "assistant"; text: string; at: string };
 export type ChatEstado = "abierta" | "escalada" | "cerrada";
@@ -103,4 +104,38 @@ export async function setKnowledgeBase(text: string) {
     .from("chat_config")
     .upsert({ id: 1, knowledge_base: text, updated_at: new Date().toISOString() });
   if (error) throw error;
+}
+
+export async function avisarEscaladoRommi(conv: {
+  id: string;
+  nombre: string | null;
+  contacto: string | null;
+  motivo_escalado: string | null;
+  pagina_origen: string | null;
+  mensajes: ChatMensaje[];
+}) {
+  const chatIds = (process.env.TELEGRAM_CHAT_ID ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  if (!chatIds.length) return;
+
+  const ultimos = conv.mensajes.slice(-4)
+    .map((m) => `${m.role === "user" ? "👤" : "🤖"} ${m.text.slice(0, 200)}`)
+    .join("\n");
+
+  const texto = [
+    "🔔 Nuevo lead escalado en Rommi",
+    `Nombre: ${conv.nombre ?? "—"}`,
+    `Contacto: ${conv.contacto ?? "—"}`,
+    `Motivo: ${conv.motivo_escalado ?? "—"}`,
+    `Página: ${conv.pagina_origen ?? "—"}`,
+    "",
+    "Últimos mensajes:",
+    ultimos,
+    "",
+    `Ver: /admin/chats#${conv.id}`,
+  ].join("\n");
+
+  await Promise.all(chatIds.map((id) => telegramSendMessage(id, texto).catch((e) => console.error("[rommi/notify]", id, e))));
 }

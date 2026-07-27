@@ -7,6 +7,7 @@ import {
   guardarMensajes,
   getKnowledgeBase,
   buildSystemPrompt,
+  avisarEscaladoRommi,
   type ChatMensaje,
 } from "../../../lib/chat";
 
@@ -98,6 +99,17 @@ export async function POST(req: NextRequest) {
         ];
         const clasificacion = await clasificarConversacion(anthropic, mensajesFinales);
         await guardarMensajes(conversacion.id, mensajesFinales, clasificacion);
+
+        if (clasificacion.escalar && conversacion.estado !== "escalada") {
+          avisarEscaladoRommi({
+            id: conversacion.id,
+            nombre: clasificacion.nombre ?? conversacion.nombre,
+            contacto: clasificacion.contacto ?? conversacion.contacto,
+            motivo_escalado: clasificacion.motivo,
+            pagina_origen: conversacion.pagina_origen,
+            mensajes: mensajesFinales,
+          }).catch((e) => console.error("[chat/escalado-notify]", e));
+        }
 
         controller.close();
       } catch (err: unknown) {
