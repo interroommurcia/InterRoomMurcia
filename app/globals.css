@@ -2035,3 +2035,49 @@ h1 em {
   background: var(--orange);
   color: var(--paper);
 }
+
+/* Revisor IA del editor */
+.editor-revision {
+  background: var(--paper-dim);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(234, 106, 18, 0.2);
+}
+.editor-revision-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.editor-revision-score {
+  font-size: 1.4rem;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 8px;
+  color: white;
+}
+.editor-revision-score[data-nivel="alto"] { background: #10b981; }
+.editor-revision-score[data-nivel="medio"] { background: #f59e0b; }
+.editor-revision-score[data-nivel="bajo"] { background: #dc2626; }
+.editor-revision-criterios {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.editor-revision-criterio {
+  font-size: 0.82rem;
+}
+.editor-revision-criterio span {
+  opacity: 0.7;
+}
+.editor-revision-riesgos,
+.editor-revision-sugerencias {
+  font-size: 0.85rem;
+  margin-top: 8px;
+}
+.editor-revision-riesgos ul,
+.editor-revision-sugerencias ol {
+  margin: 4px 0 0 20px;
+}

@@ -47,7 +47,46 @@ export function ArticleEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState<string | null>(null);
+  const [revisando, setRevisando] = useState(false);
+  const [revision, setRevision] = useState<null | {
+    puntuacion_global: number;
+    criterios: Record<string, { nota: number; motivo: string }>;
+    riesgos: string[];
+    sugerencias_top3: string[];
+  }>(null);
   const heroInputRef = useRef<HTMLInputElement>(null);
+
+  async function revisar() {
+    setRevisando(true);
+    setError("");
+    setRevision(null);
+    try {
+      const res = await fetch("/api/admin/articulos/revisar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          h1: art.h1,
+          meta_title: art.meta_title,
+          meta_description: art.meta_description,
+          intro: art.intro,
+          sections: art.sections,
+          cta: art.cta,
+          faq: art.faq,
+          keyword: art.keyword,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        setError(d.error || `Error ${res.status} revisando`);
+      } else {
+        setRevision(d);
+      }
+    } catch (err: unknown) {
+      setError("Error de red: " + (err instanceof Error ? err.message : "desconocido"));
+    } finally {
+      setRevisando(false);
+    }
+  }
 
   function setField<K extends keyof EditableArticle>(key: K, val: EditableArticle[K]) {
     setArt((a) => ({ ...a, [key]: val }));
@@ -163,6 +202,9 @@ export function ArticleEditor({
           <span className="editor-title">Editar artículo</span>
           <div className="editor-header-actions">
             {error && <span className="editor-error">{error}</span>}
+            <button type="button" className="btn-ghost" onClick={revisar} disabled={revisando || saving}>
+              {revisando ? "Revisando…" : "Revisar con IA"}
+            </button>
             <button type="button" className="btn-ghost" onClick={onClose}>
               Cancelar
             </button>
@@ -173,6 +215,35 @@ export function ArticleEditor({
         </div>
 
         <div className="editor-body">
+          {revision && (
+            <div className="editor-revision">
+              <div className="editor-revision-head">
+                <span className="editor-revision-score" data-nivel={revision.puntuacion_global >= 8 ? "alto" : revision.puntuacion_global >= 5 ? "medio" : "bajo"}>
+                  {revision.puntuacion_global.toFixed(1)}/10
+                </span>
+                <span>Revisión IA</span>
+                <button type="button" className="editor-remove" onClick={() => setRevision(null)}>×</button>
+              </div>
+              <div className="editor-revision-criterios">
+                {Object.entries(revision.criterios).map(([k, v]) => (
+                  <div key={k} className="editor-revision-criterio">
+                    <b>{v.nota}/10</b> {k.replace(/_/g, " ")} — <span>{v.motivo}</span>
+                  </div>
+                ))}
+              </div>
+              {revision.riesgos.length > 0 && (
+                <div className="editor-revision-riesgos">
+                  <b>Riesgos:</b>
+                  <ul>{revision.riesgos.map((r, i) => <li key={i}>{r}</li>)}</ul>
+                </div>
+              )}
+              <div className="editor-revision-sugerencias">
+                <b>Top 3 mejoras:</b>
+                <ol>{revision.sugerencias_top3.map((s, i) => <li key={i}>{s}</li>)}</ol>
+              </div>
+            </div>
+          )}
+
           <label className="editor-checkbox">
             <input
               type="checkbox"
