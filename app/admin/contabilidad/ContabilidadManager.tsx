@@ -51,7 +51,43 @@ type Gasto = {
   importe: number;
   es_negativo: boolean;
   pagado: boolean;
+  categoria?: string;
 };
+
+type ClienteGasto = {
+  id: string;
+  cliente_id: string;
+  concepto: string;
+  importe: number;
+  categoria: string;
+  es_recurrente: boolean;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  pagado: boolean;
+  fecha_pago: string | null;
+  notas: string | null;
+};
+
+const CATEGORIAS_GASTO: { value: string; label: string }[] = [
+  { value: "propietario", label: "Renta al propietario" },
+  { value: "comunidad", label: "Comunidad" },
+  { value: "ibi", label: "IBI" },
+  { value: "seguro", label: "Seguro" },
+  { value: "suministros", label: "Suministros" },
+  { value: "mantenimiento", label: "Mantenimiento" },
+  { value: "obra", label: "Obra" },
+  { value: "reforma", label: "Reforma" },
+  { value: "notaria", label: "Notaría" },
+  { value: "registro", label: "Registro" },
+  { value: "impuestos", label: "Impuestos" },
+  { value: "comision", label: "Comisión" },
+  { value: "otros", label: "Otros" },
+];
+
+function labelCategoria(v: string | undefined) {
+  const found = CATEGORIAS_GASTO.find((c) => c.value === v);
+  return found ? found.label : "Otros";
+}
 
 function netoDeOperacion(comisionCalculada: number, gastos: Gasto[]) {
   return comisionCalculada + gastos.filter((g) => g.pagado).reduce((s, g) => s + (g.es_negativo ? -g.importe : g.importe), 0);
@@ -66,7 +102,7 @@ type Documento = {
 type Balance = {
   comisionBrutaTotal: number;
   beneficioNetoTotal: number;
-  alquileres: { comisionBruta: number };
+  alquileres: { comisionBruta: number; gastos?: number; neto?: number };
   compraventas: { comisionBruta: number; gastos: number; neto: number };
   creditos: { bruto: number; neto: number };
 };
@@ -184,7 +220,7 @@ export default function ContabilidadManager() {
   const [creditoGastos, setCreditoGastos] = useState<Record<string, Gasto[]>>({});
   const [creditoDocumentos, setCreditoDocumentos] = useState<Record<string, Documento[]>>({});
   const [creditoAbierto, setCreditoAbierto] = useState<string | null>(null);
-  const [nuevoGastoCredito, setNuevoGastoCredito] = useState({ concepto: "", importe: "", esNegativo: true });
+  const [nuevoGastoCredito, setNuevoGastoCredito] = useState({ concepto: "", importe: "", esNegativo: true, categoria: "otros" });
   const [subiendoDocumentoCredito, setSubiendoDocumentoCredito] = useState(false);
 
   const [activarAlquiler, setActivarAlquiler] = useState(ACTIVAR_ALQUILER);
@@ -195,10 +231,21 @@ export default function ContabilidadManager() {
   const [nuevoIngreso, setNuevoIngreso] = useState({ mes: "", ingresoBruto: "" });
   const [mostrarAjusteManual, setMostrarAjusteManual] = useState(false);
   const [mensualidadInput, setMensualidadInput] = useState("");
+  const [clienteGastos, setClienteGastos] = useState<Record<string, ClienteGasto[]>>({});
+  const [mostrarNuevoGastoCliente, setMostrarNuevoGastoCliente] = useState(false);
+  const [nuevoGastoCliente, setNuevoGastoCliente] = useState({
+    concepto: "",
+    importe: "",
+    categoria: "propietario",
+    esRecurrente: true,
+    fechaInicio: new Date().toISOString().slice(0, 10),
+    fechaPago: "",
+    pagado: false,
+  });
 
   const [gastos, setGastos] = useState<Record<string, Gasto[]>>({});
   const [operacionAbierta, setOperacionAbierta] = useState<string | null>(null);
-  const [nuevoGasto, setNuevoGasto] = useState({ concepto: "", importe: "", esNegativo: true });
+  const [nuevoGasto, setNuevoGasto] = useState({ concepto: "", importe: "", esNegativo: true, categoria: "otros" });
 
   const [documentos, setDocumentos] = useState<Record<string, Documento[]>>({});
   const [subiendoDocumento, setSubiendoDocumento] = useState(false);
@@ -275,9 +322,9 @@ export default function ContabilidadManager() {
     await fetch(`/api/admin/creditos/${operacionId}/gastos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ concepto: nuevoGastoCredito.concepto, importe: Number(nuevoGastoCredito.importe), es_negativo: nuevoGastoCredito.esNegativo }),
+      body: JSON.stringify({ concepto: nuevoGastoCredito.concepto, importe: Number(nuevoGastoCredito.importe), es_negativo: nuevoGastoCredito.esNegativo, categoria: nuevoGastoCredito.categoria }),
     });
-    setNuevoGastoCredito({ concepto: "", importe: "", esNegativo: true });
+    setNuevoGastoCredito({ concepto: "", importe: "", esNegativo: true, categoria: "otros" });
     const data = await fetch(`/api/admin/creditos/${operacionId}/gastos`).then((r) => r.json());
     setCreditoGastos((prev) => ({ ...prev, [operacionId]: Array.isArray(data) ? data : [] }));
     cargarTodo();
@@ -335,11 +382,73 @@ export default function ContabilidadManager() {
     const next = clienteAbierto === cliente.id ? null : cliente.id;
     setClienteAbierto(next);
     setMostrarAjusteManual(false);
+    setMostrarNuevoGastoCliente(false);
     if (next) {
       setMensualidadInput(String(cliente.mensualidad ?? 0));
-      const data = await fetch(`/api/admin/clientes/${cliente.id}/ingresos`).then((r) => r.json());
-      setIngresos((prev) => ({ ...prev, [cliente.id]: Array.isArray(data) ? data : [] }));
+      const [ings, gs] = await Promise.all([
+        fetch(`/api/admin/clientes/${cliente.id}/ingresos`).then((r) => r.json()),
+        fetch(`/api/admin/clientes/${cliente.id}/gastos`).then((r) => r.json()),
+      ]);
+      setIngresos((prev) => ({ ...prev, [cliente.id]: Array.isArray(ings) ? ings : [] }));
+      setClienteGastos((prev) => ({ ...prev, [cliente.id]: Array.isArray(gs) ? gs : [] }));
     }
+  }
+
+  async function refrescarClienteGastos(clienteId: string) {
+    const data = await fetch(`/api/admin/clientes/${clienteId}/gastos`).then((r) => r.json());
+    setClienteGastos((prev) => ({ ...prev, [clienteId]: Array.isArray(data) ? data : [] }));
+  }
+
+  async function crearGastoCliente(clienteId: string, e: React.FormEvent) {
+    e.preventDefault();
+    const g = nuevoGastoCliente;
+    if (!g.concepto.trim() || !Number(g.importe)) return;
+    await fetch(`/api/admin/clientes/${clienteId}/gastos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        concepto: g.concepto.trim(),
+        importe: Number(g.importe),
+        categoria: g.categoria,
+        esRecurrente: g.esRecurrente,
+        fechaInicio: g.esRecurrente ? g.fechaInicio : null,
+        fechaPago: !g.esRecurrente && g.pagado ? g.fechaPago || new Date().toISOString().slice(0, 10) : null,
+        pagado: !g.esRecurrente ? g.pagado : true,
+      }),
+    });
+    setNuevoGastoCliente({ concepto: "", importe: "", categoria: "propietario", esRecurrente: true, fechaInicio: new Date().toISOString().slice(0, 10), fechaPago: "", pagado: false });
+    setMostrarNuevoGastoCliente(false);
+    await refrescarClienteGastos(clienteId);
+    cargarTodo();
+  }
+
+  async function toggleGastoClientePagado(clienteId: string, gastoId: string, pagado: boolean) {
+    await fetch(`/api/admin/cliente-gastos/${gastoId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pagado }),
+    });
+    await refrescarClienteGastos(clienteId);
+    cargarTodo();
+  }
+
+  async function terminarGastoClienteRecurrente(clienteId: string, gastoId: string) {
+    const fecha = prompt("Fecha de fin del gasto recurrente (YYYY-MM-DD)", new Date().toISOString().slice(0, 10));
+    if (!fecha) return;
+    await fetch(`/api/admin/cliente-gastos/${gastoId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fechaFin: fecha }),
+    });
+    await refrescarClienteGastos(clienteId);
+    cargarTodo();
+  }
+
+  async function eliminarGastoCliente(clienteId: string, gastoId: string) {
+    if (!confirm("¿Borrar este gasto?")) return;
+    await fetch(`/api/admin/cliente-gastos/${gastoId}`, { method: "DELETE" });
+    await refrescarClienteGastos(clienteId);
+    cargarTodo();
   }
 
   async function actualizarMensualidad(clienteId: string) {
@@ -442,9 +551,9 @@ export default function ContabilidadManager() {
     await fetch(`/api/admin/operaciones/${operacionId}/gastos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ concepto: nuevoGasto.concepto, importe: Number(nuevoGasto.importe), es_negativo: nuevoGasto.esNegativo }),
+      body: JSON.stringify({ concepto: nuevoGasto.concepto, importe: Number(nuevoGasto.importe), es_negativo: nuevoGasto.esNegativo, categoria: nuevoGasto.categoria }),
     });
-    setNuevoGasto({ concepto: "", importe: "", esNegativo: true });
+    setNuevoGasto({ concepto: "", importe: "", esNegativo: true, categoria: "otros" });
     const data = await fetch(`/api/admin/operaciones/${operacionId}/gastos`).then((r) => r.json());
     setGastos((prev) => ({ ...prev, [operacionId]: Array.isArray(data) ? data : [] }));
     cargarTodo();
@@ -725,6 +834,12 @@ export default function ContabilidadManager() {
                         Importe (€)
                         <input type="number" min={0} required value={nuevoGastoCredito.importe} onChange={(e) => setNuevoGastoCredito({ ...nuevoGastoCredito, importe: e.target.value })} />
                       </label>
+                      <label>
+                        Categoría
+                        <select value={nuevoGastoCredito.categoria} onChange={(e) => setNuevoGastoCredito({ ...nuevoGastoCredito, categoria: e.target.value })}>
+                          {CATEGORIAS_GASTO.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                        </select>
+                      </label>
                       <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
                         <input type="checkbox" checked={nuevoGastoCredito.esNegativo} onChange={(e) => setNuevoGastoCredito({ ...nuevoGastoCredito, esNegativo: e.target.checked })} />
                         Resta del neto (gasto)
@@ -736,7 +851,7 @@ export default function ContabilidadManager() {
                     </p>
                     {(creditoGastos[cr.id] ?? []).map((g) => (
                       <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                        <span>{g.concepto} — {g.es_negativo ? "-" : "+"}{fmt(g.importe)}</span>
+                        <span>{g.concepto} — {g.es_negativo ? "-" : "+"}{fmt(g.importe)} · <span style={{ opacity: 0.6 }}>{labelCategoria(g.categoria)}</span></span>
                         <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
                             <input type="checkbox" checked={g.pagado} onChange={(e) => toggleGastoCreditoPagado(cr.id, g.id, e.target.checked)} />
@@ -898,6 +1013,131 @@ export default function ContabilidadManager() {
                         <button type="submit" className="btn-primary">Guardar mes</button>
                       </form>
                     )}
+
+                    {(() => {
+                      const gs = clienteGastos[cliente.id] ?? [];
+                      const ings = ingresos[cliente.id] ?? [];
+                      const año = new Date().getUTCFullYear();
+                      const brutoAño = ings.filter((i) => añoActual(i.mes) === año).reduce((s, i) => s + i.comision_calculada, 0);
+                      const gastoRecurrenteMes = gs.filter((g) => g.es_recurrente && (!g.fecha_fin || g.fecha_fin >= new Date().toISOString().slice(0, 10))).reduce((s, g) => s + g.importe, 0);
+                      const mesesTranscurridos = new Date().getUTCMonth() + 1;
+                      const gastoAcumulado = gastoRecurrenteMes * mesesTranscurridos + gs.filter((g) => !g.es_recurrente && g.pagado && g.fecha_pago && g.fecha_pago.startsWith(String(año))).reduce((s, g) => s + g.importe, 0);
+                      const netoAño = brutoAño - gastoAcumulado;
+                      const meses = Math.max(mesesTranscurridos, 1);
+                      const recurrentes = gs.filter((g) => g.es_recurrente);
+                      const puntuales = gs.filter((g) => !g.es_recurrente);
+                      return (
+                        <>
+                          <div className="pnl-card">
+                            <div><b>{fmt(brutoAño)}</b><span>Bruto {año}</span></div>
+                            <div><b>{fmt(gastoAcumulado)}</b><span>Gastos {año}</span></div>
+                            <div className={netoAño >= 0 ? "pnl-pos" : "pnl-neg"}><b>{fmt(netoAño)}</b><span>Neto {año}</span></div>
+                            <div><b>{fmt(netoAño / meses)}</b><span>Neto/mes</span></div>
+                            <div><b>{fmt(gastoRecurrenteMes)}</b><span>Gasto recurrente/mes</span></div>
+                          </div>
+
+                          <div className="section-head" style={{ marginTop: 12 }}>
+                            <h4 style={{ margin: 0 }}>Partidas presupuestarias</h4>
+                            <button type="button" className="btn-ghost" onClick={() => setMostrarNuevoGastoCliente((v) => !v)}>
+                              {mostrarNuevoGastoCliente ? "Cancelar" : "+ Añadir partida"}
+                            </button>
+                          </div>
+
+                          {mostrarNuevoGastoCliente && (
+                            <form className="piso-form" onSubmit={(e) => crearGastoCliente(cliente.id, e)}>
+                              <div className="lead-form-row">
+                                <label>
+                                  Concepto
+                                  <input required value={nuevoGastoCliente.concepto} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, concepto: e.target.value })} placeholder="Renta al propietario" />
+                                </label>
+                                <label>
+                                  Importe (€)
+                                  <input type="number" min={0} step="0.01" required value={nuevoGastoCliente.importe} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, importe: e.target.value })} />
+                                </label>
+                                <label>
+                                  Categoría
+                                  <select value={nuevoGastoCliente.categoria} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, categoria: e.target.value })}>
+                                    {CATEGORIAS_GASTO.map((c) => (
+                                      <option key={c.value} value={c.value}>{c.label}</option>
+                                    ))}
+                                  </select>
+                                </label>
+                              </div>
+                              <div className="lead-form-row">
+                                <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  <input type="checkbox" checked={nuevoGastoCliente.esRecurrente} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, esRecurrente: e.target.checked })} />
+                                  Recurrente (todos los meses)
+                                </label>
+                                {nuevoGastoCliente.esRecurrente ? (
+                                  <label>
+                                    Desde
+                                    <input type="date" value={nuevoGastoCliente.fechaInicio} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, fechaInicio: e.target.value })} />
+                                  </label>
+                                ) : (
+                                  <>
+                                    <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                      <input type="checkbox" checked={nuevoGastoCliente.pagado} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, pagado: e.target.checked })} />
+                                      Ya pagado
+                                    </label>
+                                    <label>
+                                      Fecha pago
+                                      <input type="date" value={nuevoGastoCliente.fechaPago} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, fechaPago: e.target.value })} />
+                                    </label>
+                                  </>
+                                )}
+                              </div>
+                              <div className="lead-form-actions">
+                                <button type="submit" className="btn-primary">Guardar partida</button>
+                              </div>
+                            </form>
+                          )}
+
+                          {recurrentes.length > 0 && (
+                            <>
+                              <p className="loc" style={{ marginTop: 10, marginBottom: 4 }}><b>Recurrentes mensuales</b></p>
+                              {recurrentes.map((g) => (
+                                <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+                                  <span>
+                                    <b>{fmt(g.importe)}/mes</b> · {g.concepto} · <span style={{ opacity: 0.6 }}>{labelCategoria(g.categoria)}</span>
+                                    {g.fecha_inicio && <span style={{ opacity: 0.5, marginLeft: 8 }}>desde {g.fecha_inicio}</span>}
+                                    {g.fecha_fin && <span style={{ opacity: 0.5, marginLeft: 8 }}>hasta {g.fecha_fin}</span>}
+                                  </span>
+                                  <span style={{ display: "flex", gap: 8 }}>
+                                    {!g.fecha_fin && (
+                                      <button type="button" className="btn-ghost" onClick={() => terminarGastoClienteRecurrente(cliente.id, g.id)}>Finalizar</button>
+                                    )}
+                                    <button type="button" className="btn-ghost" onClick={() => eliminarGastoCliente(cliente.id, g.id)}>Borrar</button>
+                                  </span>
+                                </div>
+                              ))}
+                            </>
+                          )}
+
+                          {puntuales.length > 0 && (
+                            <>
+                              <p className="loc" style={{ marginTop: 10, marginBottom: 4 }}><b>Puntuales</b></p>
+                              {puntuales.map((g) => (
+                                <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+                                  <span>
+                                    <b>{fmt(g.importe)}</b> · {g.concepto} · <span style={{ opacity: 0.6 }}>{labelCategoria(g.categoria)}</span>
+                                    {g.fecha_pago && <span style={{ opacity: 0.5, marginLeft: 8 }}>{g.fecha_pago}</span>}
+                                  </span>
+                                  <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                    <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                                      <input type="checkbox" checked={g.pagado} onChange={(e) => toggleGastoClientePagado(cliente.id, g.id, e.target.checked)} />
+                                      Pagado
+                                    </label>
+                                    <button type="button" className="btn-ghost" onClick={() => eliminarGastoCliente(cliente.id, g.id)}>Borrar</button>
+                                  </span>
+                                </div>
+                              ))}
+                            </>
+                          )}
+
+                          {gs.length === 0 && <p className="admin-empty" style={{ marginTop: 8 }}>Sin partidas presupuestarias. Añade la renta al propietario, comunidad, IBI, etc.</p>}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -979,6 +1219,12 @@ export default function ContabilidadManager() {
                         Importe (€)
                         <input type="number" min={0} required value={nuevoGasto.importe} onChange={(e) => setNuevoGasto({ ...nuevoGasto, importe: e.target.value })} />
                       </label>
+                      <label>
+                        Categoría
+                        <select value={nuevoGasto.categoria} onChange={(e) => setNuevoGasto({ ...nuevoGasto, categoria: e.target.value })}>
+                          {CATEGORIAS_GASTO.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                        </select>
+                      </label>
                       <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
                         <input type="checkbox" checked={nuevoGasto.esNegativo} onChange={(e) => setNuevoGasto({ ...nuevoGasto, esNegativo: e.target.checked })} />
                         Resta del neto (gasto)
@@ -990,7 +1236,7 @@ export default function ContabilidadManager() {
                     </p>
                     {(gastos[op.id] ?? []).map((g) => (
                       <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                        <span>{g.concepto} — {g.es_negativo ? "-" : "+"}{fmt(g.importe)}</span>
+                        <span>{g.concepto} — {g.es_negativo ? "-" : "+"}{fmt(g.importe)} · <span style={{ opacity: 0.6 }}>{labelCategoria(g.categoria)}</span></span>
                         <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
                             <input type="checkbox" checked={g.pagado} onChange={(e) => toggleGastoPagado(op.id, g.id, e.target.checked)} />

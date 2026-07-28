@@ -281,3 +281,32 @@ create table if not exists public.mesa_trabajo (
   updated_at timestamptz not null default now()
 );
 alter table public.mesa_trabajo enable row level security;
+
+-- ============================================================
+-- GASTOS DE ALQUILER: puntuales y recurrentes por cliente.
+-- Puntuales: se contabilizan cuando pagado=true en fecha_pago.
+-- Recurrentes: activos entre fecha_inicio y fecha_fin (o indefinido).
+-- ============================================================
+create table if not exists public.cliente_gasto (
+  id uuid primary key default gen_random_uuid(),
+  cliente_id uuid not null references public.clientes(id) on delete cascade,
+  concepto text not null,
+  importe numeric not null,
+  categoria text not null default 'otros',
+  es_recurrente boolean not null default false,
+  fecha_inicio date,
+  fecha_fin date,
+  pagado boolean not null default false,
+  fecha_pago date,
+  notas text,
+  created_at timestamptz not null default now()
+);
+alter table public.cliente_gasto enable row level security;
+create index if not exists cliente_gasto_cliente_idx on public.cliente_gasto(cliente_id);
+create index if not exists cliente_gasto_fecha_pago_idx on public.cliente_gasto(fecha_pago) where pagado = true;
+create index if not exists cliente_gasto_recurrente_idx on public.cliente_gasto(es_recurrente, fecha_inicio, fecha_fin);
+
+-- Categorización opcional de gastos de compraventa y créditos, para poder
+-- desglosar en las métricas y comparar rentabilidades por tipo de partida.
+alter table public.operacion_gastos add column if not exists categoria text not null default 'otros';
+alter table public.credito_gastos add column if not exists categoria text not null default 'otros';

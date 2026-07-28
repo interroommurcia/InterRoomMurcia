@@ -57,14 +57,61 @@ export type OperacionCompraventa = {
   updated_at: string;
 };
 
+export type CategoriaGasto =
+  | "obra"
+  | "reforma"
+  | "notaria"
+  | "registro"
+  | "impuestos"
+  | "ibi"
+  | "comunidad"
+  | "seguro"
+  | "mantenimiento"
+  | "propietario"
+  | "comision"
+  | "suministros"
+  | "otros";
+
+export const CATEGORIAS_GASTO: { value: CategoriaGasto; label: string }[] = [
+  { value: "propietario", label: "Renta al propietario" },
+  { value: "comunidad", label: "Comunidad" },
+  { value: "ibi", label: "IBI" },
+  { value: "seguro", label: "Seguro" },
+  { value: "suministros", label: "Suministros" },
+  { value: "mantenimiento", label: "Mantenimiento" },
+  { value: "obra", label: "Obra" },
+  { value: "reforma", label: "Reforma" },
+  { value: "notaria", label: "Notaría" },
+  { value: "registro", label: "Registro" },
+  { value: "impuestos", label: "Impuestos" },
+  { value: "comision", label: "Comisión" },
+  { value: "otros", label: "Otros" },
+];
+
 export type Gasto = {
   id: string;
   operacion_id: string;
   concepto: string;
   importe: number;
+  categoria: CategoriaGasto;
   es_negativo: boolean;
   pagado: boolean;
   fecha_pago: string | null;
+  created_at: string;
+};
+
+export type ClienteGasto = {
+  id: string;
+  cliente_id: string;
+  concepto: string;
+  importe: number;
+  categoria: CategoriaGasto;
+  es_recurrente: boolean;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  pagado: boolean;
+  fecha_pago: string | null;
+  notas: string | null;
   created_at: string;
 };
 
@@ -312,6 +359,107 @@ export async function marcarIngresoCobrado(id: string, cobrado: boolean) {
   if (error) throw error;
 }
 
+// ============================================================
+// Gastos por cliente (recurrentes y puntuales) para alquileres.
+// ============================================================
+
+export async function listarClienteGastos(clienteId: string): Promise<ClienteGasto[]> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("cliente_gasto")
+    .select("*")
+    .eq("cliente_id", clienteId)
+    .order("es_recurrente", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ClienteGasto[];
+}
+
+export async function crearClienteGasto(input: {
+  cliente_id: string;
+  concepto: string;
+  importe: number;
+  categoria: CategoriaGasto;
+  es_recurrente: boolean;
+  fecha_inicio?: string | null;
+  fecha_fin?: string | null;
+  fecha_pago?: string | null;
+  pagado?: boolean;
+  notas?: string | null;
+}): Promise<ClienteGasto> {
+  const admin = getSupabaseAdmin();
+  const row: Record<string, unknown> = {
+    cliente_id: input.cliente_id,
+    concepto: input.concepto,
+    importe: input.importe,
+    categoria: input.categoria,
+    es_recurrente: input.es_recurrente,
+    notas: input.notas ?? null,
+  };
+  if (input.es_recurrente) {
+    row.fecha_inicio = input.fecha_inicio ?? new Date().toISOString().slice(0, 10);
+    row.fecha_fin = input.fecha_fin ?? null;
+    row.pagado = true;
+  } else {
+    row.pagado = input.pagado ?? false;
+    row.fecha_pago = input.pagado ? input.fecha_pago ?? new Date().toISOString().slice(0, 10) : null;
+  }
+  const { data, error } = await admin.from("cliente_gasto").insert(row).select().single();
+  if (error) throw error;
+  return data as ClienteGasto;
+}
+
+export async function marcarClienteGastoPagado(id: string, pagado: boolean) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin
+    .from("cliente_gasto")
+    .update({ pagado, fecha_pago: pagado ? new Date().toISOString().slice(0, 10) : null })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function terminarClienteGastoRecurrente(id: string, fechaFin: string) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("cliente_gasto").update({ fecha_fin: fechaFin }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function eliminarClienteGasto(id: string) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("cliente_gasto").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// Devuelve el gasto total imputado a un mes concreto: puntuales pagados en ese
+// mes + prorrata de cada recurrente activo en ese mes.
+function primerDia(mes: string) {
+  return mes.length === 7 ? `${mes}-01` : mes.slice(0, 10);
+}
+
+export function gastoDelMes(gastos: ClienteGasto[], mes: string): number {
+  const dia1 = primerDia(mes);
+  let total = 0;
+  for (const g of gastos) {
+    if (g.es_recurrente) {
+      const inicio = g.fecha_inicio ?? null;
+      const fin = g.fecha_fin ?? null;
+      if (inicio && inicio > dia1) continue;
+      if (fin && fin < dia1) continue;
+      total += Number(g.importe);
+    } else if (g.pagado && g.fecha_pago && g.fecha_pago.slice(0, 7) === mes.slice(0, 7)) {
+      total += Number(g.importe);
+    }
+  }
+  return total;
+}
+
+export function gastoTotalCliente(gastos: ClienteGasto[]): number {
+  return gastos.reduce((s, g) => {
+    if (g.es_recurrente || g.pagado) return s + Number(g.importe);
+    return s;
+  }, 0);
+}
+
 export async function listarOperaciones(): Promise<OperacionCompraventa[]> {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin.from("operaciones_compraventa").select("*").order("fecha_cierre", { ascending: false });
@@ -393,11 +541,17 @@ export async function listarGastos(operacionId: string): Promise<Gasto[]> {
   return (data ?? []) as Gasto[];
 }
 
-export async function añadirGasto(operacionId: string, concepto: string, importe: number, esNegativo = true) {
+export async function añadirGasto(operacionId: string, concepto: string, importe: number, esNegativo = true, categoria: CategoriaGasto = "otros") {
   const admin = getSupabaseAdmin();
   const { error } = await admin
     .from("operacion_gastos")
-    .insert({ operacion_id: operacionId, concepto, importe, es_negativo: esNegativo });
+    .insert({ operacion_id: operacionId, concepto, importe, es_negativo: esNegativo, categoria });
+  if (error) throw error;
+}
+
+export async function actualizarCategoriaGasto(id: string, categoria: CategoriaGasto) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("operacion_gastos").update({ categoria }).eq("id", id);
   if (error) throw error;
 }
 
@@ -518,11 +672,17 @@ export async function listarCreditoGastos(operacionId: string): Promise<Gasto[]>
   return (data ?? []) as Gasto[];
 }
 
-export async function añadirCreditoGasto(operacionId: string, concepto: string, importe: number, esNegativo = true) {
+export async function añadirCreditoGasto(operacionId: string, concepto: string, importe: number, esNegativo = true, categoria: CategoriaGasto = "otros") {
   const admin = getSupabaseAdmin();
   const { error } = await admin
     .from("credito_gastos")
-    .insert({ operacion_id: operacionId, concepto, importe, es_negativo: esNegativo });
+    .insert({ operacion_id: operacionId, concepto, importe, es_negativo: esNegativo, categoria });
+  if (error) throw error;
+}
+
+export async function actualizarCategoriaCreditoGasto(id: string, categoria: CategoriaGasto) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("credito_gastos").update({ categoria }).eq("id", id);
   if (error) throw error;
 }
 
@@ -591,18 +751,20 @@ export async function eliminarCreditoDocumento(id: string) {
 export async function balanceTotal() {
   await sincronizarTodosLosIngresos();
   const admin = getSupabaseAdmin();
-  const [ingresosRes, operacionesRes, gastosRes, creditosRes, creditoGastosRes] = await Promise.all([
+  const [ingresosRes, operacionesRes, gastosRes, creditosRes, creditoGastosRes, clienteGastosRes] = await Promise.all([
     admin.from("cliente_ingresos").select("comision_calculada"),
     admin.from("operaciones_compraventa").select("comision_calculada"),
     admin.from("operacion_gastos").select("importe, es_negativo, pagado"),
     admin.from("operaciones_creditos").select("precio"),
     admin.from("credito_gastos").select("importe, es_negativo, pagado"),
+    admin.from("cliente_gasto").select("importe, es_recurrente, pagado, fecha_inicio, fecha_fin"),
   ]);
   if (ingresosRes.error) throw ingresosRes.error;
   if (operacionesRes.error) throw operacionesRes.error;
   if (gastosRes.error) throw gastosRes.error;
   if (creditosRes.error) throw creditosRes.error;
   if (creditoGastosRes.error) throw creditoGastosRes.error;
+  if (clienteGastosRes.error) console.warn("[balance/cliente_gasto]", clienteGastosRes.error.message);
 
   const comisionAlquileres = (ingresosRes.data ?? []).reduce((s, r) => s + Number(r.comision_calculada), 0);
   const comisionCompraventas = (operacionesRes.data ?? []).reduce((s, r) => s + Number(r.comision_calculada), 0);
@@ -614,17 +776,34 @@ export async function balanceTotal() {
   const gastosPagados = (rows: Movimiento[]) =>
     pagados(rows).filter((r) => r.es_negativo).reduce((s, r) => s + Number(r.importe), 0);
 
-  const totalGastos = gastosPagados((gastosRes.data ?? []) as Movimiento[]);
+  const totalGastosCompraventas = gastosPagados((gastosRes.data ?? []) as Movimiento[]);
   const netoCompraventas = comisionCompraventas + movimientoNeto((gastosRes.data ?? []) as Movimiento[]);
 
   const precioCreditos = (creditosRes.data ?? []).reduce((s, r) => s + Number(r.precio), 0);
   const netoCreditos = precioCreditos + movimientoNeto((creditoGastosRes.data ?? []) as Movimiento[]);
 
+  // Gastos de alquiler acumulados desde su fecha_inicio hasta hoy (recurrentes)
+  // + puntuales pagados. Rough approximation: cada recurrente cuenta N meses
+  // completos desde su inicio hasta min(hoy, fecha_fin).
+  const hoy = new Date();
+  const totalGastosAlquileres = (clienteGastosRes.data ?? []).reduce((s, r) => {
+    if (r.es_recurrente) {
+      const inicio = r.fecha_inicio ? new Date(r.fecha_inicio as string) : hoy;
+      const fin = r.fecha_fin ? new Date(r.fecha_fin as string) : hoy;
+      const hasta = fin < hoy ? fin : hoy;
+      if (hasta < inicio) return s;
+      const meses = (hasta.getUTCFullYear() - inicio.getUTCFullYear()) * 12 + (hasta.getUTCMonth() - inicio.getUTCMonth()) + 1;
+      return s + Number(r.importe) * Math.max(meses, 0);
+    }
+    return r.pagado ? s + Number(r.importe) : s;
+  }, 0);
+  const netoAlquileres = comisionAlquileres - totalGastosAlquileres;
+
   return {
     comisionBrutaTotal: comisionAlquileres + comisionCompraventas + precioCreditos,
-    beneficioNetoTotal: comisionAlquileres + netoCompraventas + netoCreditos,
-    alquileres: { comisionBruta: comisionAlquileres },
-    compraventas: { comisionBruta: comisionCompraventas, gastos: totalGastos, neto: netoCompraventas },
+    beneficioNetoTotal: netoAlquileres + netoCompraventas + netoCreditos,
+    alquileres: { comisionBruta: comisionAlquileres, gastos: totalGastosAlquileres, neto: netoAlquileres },
+    compraventas: { comisionBruta: comisionCompraventas, gastos: totalGastosCompraventas, neto: netoCompraventas },
     creditos: { bruto: precioCreditos, neto: netoCreditos },
   };
 }
@@ -675,18 +854,20 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
   const desde = `${anio - 1}-01-01`;
   const hasta = `${anio + 1}-01-01`;
 
-  const [ingresosRes, operacionesRes, gastosRes, creditosRes, creditoGastosRes] = await Promise.all([
+  const [ingresosRes, operacionesRes, gastosRes, creditosRes, creditoGastosRes, clienteGastosRes] = await Promise.all([
     admin.from("cliente_ingresos").select("mes, comision_calculada").gte("mes", desde).lt("mes", hasta),
     admin.from("operaciones_compraventa").select("fecha_cierre, comision_calculada").gte("fecha_cierre", desde).lt("fecha_cierre", hasta),
     admin.from("operacion_gastos").select("fecha_pago, importe, es_negativo, pagado").eq("pagado", true).gte("fecha_pago", desde).lt("fecha_pago", hasta),
     admin.from("operaciones_creditos").select("fecha, precio").gte("fecha", desde).lt("fecha", hasta),
     admin.from("credito_gastos").select("fecha_pago, importe, es_negativo, pagado").eq("pagado", true).gte("fecha_pago", desde).lt("fecha_pago", hasta),
+    admin.from("cliente_gasto").select("importe, categoria, es_recurrente, fecha_inicio, fecha_fin, pagado, fecha_pago"),
   ]);
   if (ingresosRes.error) throw ingresosRes.error;
   if (operacionesRes.error) throw operacionesRes.error;
   if (gastosRes.error) throw gastosRes.error;
   if (creditosRes.error) throw creditosRes.error;
   if (creditoGastosRes.error) throw creditoGastosRes.error;
+  if (clienteGastosRes.error) console.warn("[metricas/cliente_gasto]", clienteGastosRes.error.message);
 
   function bucket(anioObjetivo: number): MetricasMes[] {
     const meses: MetricasMes[] = Array.from({ length: 12 }, (_, i) => ({
@@ -734,6 +915,29 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
       const v = Number(r.importe);
       if (r.es_negativo) m.gastos += v;
       m.neto += r.es_negativo ? -v : v;
+    }
+    // Gastos de alquiler: recurrentes se prorratean por cada mes activo dentro
+    // del año; puntuales se imputan a su fecha_pago si están marcados pagados.
+    for (const r of clienteGastosRes.data ?? []) {
+      const importe = Number(r.importe);
+      if (r.es_recurrente) {
+        const inicio = r.fecha_inicio ? new Date(r.fecha_inicio as string) : new Date(anioObjetivo, 0, 1);
+        const fin = r.fecha_fin ? new Date(r.fecha_fin as string) : new Date(anioObjetivo, 11, 31);
+        for (let i = 0; i < 12; i++) {
+          const primerDiaMes = new Date(Date.UTC(anioObjetivo, i, 1));
+          const ultimoDiaMes = new Date(Date.UTC(anioObjetivo, i + 1, 0));
+          if (inicio > ultimoDiaMes) continue;
+          if (fin < primerDiaMes) continue;
+          meses[i].gastos += importe;
+          meses[i].neto -= importe;
+        }
+      } else if (r.pagado && r.fecha_pago) {
+        const d = new Date(r.fecha_pago as string);
+        if (d.getUTCFullYear() !== anioObjetivo) continue;
+        const m = meses[d.getUTCMonth()];
+        m.gastos += importe;
+        m.neto -= importe;
+      }
     }
     return meses;
   }

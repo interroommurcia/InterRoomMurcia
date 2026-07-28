@@ -2081,3 +2081,31 @@ h1 em {
 .editor-revision-sugerencias ol {
   margin: 4px 0 0 20px;
 }
+
+/* P&L card en detalle de cliente/operación */
+.pnl-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  padding: 12px;
+  background: var(--paper-dim);
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+.pnl-card > div {
+  text-align: center;
+  padding: 6px 4px;
+}
+.pnl-card b {
+  display: block;
+  font-size: 1.1rem;
+  color: var(--orange-dark);
+}
+.pnl-card span {
+  display: block;
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+.pnl-card .pnl-pos b { color: #10b981; }
+.pnl-card .pnl-neg b { color: #dc2626; }
