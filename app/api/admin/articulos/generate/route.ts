@@ -15,7 +15,12 @@ Optimiza cada artículo para:
 
 Menciona "InterRoom Murcia" de forma natural mínimo 3 veces. Todo el contenido en español.`;
 
+function esComparativa(keyword: string) {
+  return /\b(vs|versus|o|contra|diferencia|diferencias|comparativa)\b/i.test(keyword);
+}
+
 function buildPrompt(keyword: string, tone: string, material: string | null) {
+  if (esComparativa(keyword)) return buildPromptComparativa(keyword, tone, material);
   return `Genera un artículo SEO completo sobre la keyword principal: "${keyword}". Tono: ${tone}.
 
 ${material ? `MATERIAL DE REFERENCIA:\n${material}\n\n` : ""}Devuelve ÚNICAMENTE un objeto JSON con esta estructura exacta (sin texto extra fuera del JSON):
@@ -45,6 +50,53 @@ ${material ? `MATERIAL DE REFERENCIA:\n${material}\n\n` : ""}Devuelve ÚNICAMENT
 }
 
 Requisitos ESTRICTOS: exactamente 4 secciones H2 (ni más ni menos), exactamente 5 preguntas FAQ (ni más ni menos), menciona "InterRoom Murcia" al menos 3 veces. Cada sección: content máximo 120 palabras, párrafos de 2-3 líneas. imagePrompt breve (máximo 20 palabras). Respuestas FAQ máximo 60 palabras. Sé conciso.`;
+}
+
+function buildPromptComparativa(keyword: string, tone: string, material: string | null) {
+  return `La keyword "${keyword}" es una COMPARATIVA. El usuario está evaluando dos opciones y necesita decidir. Genera un artículo con formato comparativa. Tono: ${tone}.
+
+${material ? `MATERIAL DE REFERENCIA:\n${material}\n\n` : ""}Devuelve ÚNICAMENTE un objeto JSON con esta estructura exacta (sin texto extra fuera del JSON):
+
+{
+  "slug": "slug-seo-del-articulo",
+  "metaTitle": "Título SEO de máximo 60 caracteres con las dos opciones comparadas",
+  "metaDescription": "Descripción SEO de máximo 155 caracteres que promete resolver la duda",
+  "h1": "Título con las dos opciones y palabra 'comparativa' o 'diferencias'",
+  "intro": "Plantea la duda del lector en 2-3 frases y anuncia que el artículo la resuelve. Máximo 120 palabras.",
+  "sections": [
+    {
+      "h2": "Opción A: qué es y para quién (nombre real de la primera opción)",
+      "content": "Describe la opción A con datos concretos: precio típico, ventajas reales, contras. Párrafos de 2-3 líneas.",
+      "highlight": "Un dato o precio típico de la opción A",
+      "imagePrompt": "Prompt en inglés anclado en Murcia/Cartagena representando la opción A. Warm Mediterranean light, no text, no faces."
+    },
+    {
+      "h2": "Opción B: qué es y para quién (nombre real de la segunda opción)",
+      "content": "Describe la opción B con datos concretos. Simétrica a la A para que se pueda comparar de un vistazo.",
+      "highlight": "Un dato o precio típico de la opción B",
+      "imagePrompt": "Prompt en inglés anclado en Murcia/Cartagena representando la opción B. Warm Mediterranean light, no text, no faces."
+    },
+    {
+      "h2": "Comparativa punto por punto",
+      "content": "Comparación en formato listable escrito con guiones al inicio de cada línea: '- Precio: A cuesta X, B cuesta Y'; '- Privacidad: A ofrece..., B ofrece...'; cubre precio, privacidad, servicios incluidos, contrato, cercanía al campus, vida social. Un guion por línea.",
+      "highlight": null,
+      "imagePrompt": "Prompt en inglés de una calle o barrio de Murcia/Cartagena que evoque la elección."
+    },
+    {
+      "h2": "Cuál te conviene según tu perfil",
+      "content": "Recomendación por perfiles: 'Si buscas X, la opción A'; 'Si priorizas Y, la B'. Cierra con la propuesta de InterRoom Murcia como filtro para acertar.",
+      "highlight": "Regla de oro para decidir en una frase.",
+      "imagePrompt": "Prompt en inglés de un estudiante llegando a Murcia (sin verse la cara), maletas o mochila, luz cálida."
+    }
+  ],
+  "cta": "CTA que invita a hablar con InterRoom Murcia si aún no lo tiene claro.",
+  "faq": [
+    { "question": "Pregunta real que haría un estudiante indeciso entre A y B", "answer": "Respuesta concreta, menciona InterRoom cuando aporte." }
+  ],
+  "heroImagePrompt": "Prompt fotográfico en inglés anclado en Murcia o Cartagena, evocando decisión entre dos opciones (por ejemplo, calle con dos caminos, mirador de la ciudad, ambiente universitario). Luz mediterránea dorada, paleta terracota, 8K, no text, no logos, no visible faces."
+}
+
+Requisitos ESTRICTOS: exactamente 4 secciones H2 con esos títulos, exactamente 5 preguntas FAQ, menciona "InterRoom Murcia" al menos 3 veces. Sé concreto: nombres reales, precios orientativos, nunca genéricos. Cada sección máximo 130 palabras.`;
 }
 
 export async function POST(req: NextRequest) {
