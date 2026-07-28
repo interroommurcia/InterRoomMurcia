@@ -451,6 +451,17 @@ export default function ContabilidadManager() {
     cargarTodo();
   }
 
+  async function borrarAlquiler(clienteId: string) {
+    if (!confirm("Esto pondrá la mensualidad a 0 y borrará todos los meses de ingresos registrados. El cliente se mantiene en Clientes. ¿Continuar?")) return;
+    await fetch(`/api/admin/clientes/${clienteId}/ingresos`, { method: "DELETE" });
+    await fetch(`/api/admin/clientes/${clienteId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mensualidad: 0 }),
+    });
+    cargarTodo();
+  }
+
   async function actualizarMensualidad(clienteId: string) {
     await fetch(`/api/admin/clientes/${clienteId}`, {
       method: "PATCH",
@@ -950,6 +961,11 @@ export default function ContabilidadManager() {
                   <div className="loc">
                     {cliente.telefono || "sin teléfono"} · {cliente.zona_interes || "sin zona"} · mensualidad {fmt(cliente.mensualidad)}
                   </div>
+                </div>
+                <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
+                  <button type="button" className="btn-ghost" onClick={() => borrarAlquiler(cliente.id)}>
+                    Borrar alquiler
+                  </button>
                 </div>
 
                 {clienteAbierto === cliente.id && (

@@ -350,6 +350,12 @@ export async function eliminarIngreso(id: string) {
   if (error) throw error;
 }
 
+export async function eliminarTodosLosIngresos(clienteId: string) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("cliente_ingresos").delete().eq("cliente_id", clienteId);
+  if (error) throw error;
+}
+
 export async function marcarIngresoCobrado(id: string, cobrado: boolean) {
   const admin = getSupabaseAdmin();
   const { error } = await admin
