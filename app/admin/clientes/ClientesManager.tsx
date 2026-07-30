@@ -10,11 +10,13 @@ type Cliente = {
   telefono: string | null;
   email: string | null;
   tipo: "propietario" | "estudiante" | "comprador" | "creditos";
+  tipo_secundario: "propietario" | "estudiante" | "comprador" | "creditos" | null;
   zona_interes: string | null;
   operacion: "alquiler" | "venta" | null;
   origen: "manual" | "lead" | "autocompletado";
   datos_completados: boolean;
   token: string;
+  notas: string | null;
   created_at: string;
 };
 
@@ -71,8 +73,10 @@ const NUEVO_CLIENTE = {
   telefonoNumero: "",
   email: "",
   tipo: "propietario" as Cliente["tipo"],
+  tipo_secundario: "" as "" | Cliente["tipo"],
   zona_interes: "",
   operacion: "alquiler" as NonNullable<Cliente["operacion"]>,
+  notas: "",
 };
 
 export default function ClientesManager() {
@@ -83,6 +87,8 @@ export default function ClientesManager() {
   const [nuevoCliente, setNuevoCliente] = useState(NUEVO_CLIENTE);
   const [mostrarNuevoCliente, setMostrarNuevoCliente] = useState(false);
   const [copiado, setCopiado] = useState<string | null>(null);
+  const [editando, setEditando] = useState<string | null>(null);
+  const [edicion, setEdicion] = useState<{ tipo_secundario: "" | Cliente["tipo"]; notas: string }>({ tipo_secundario: "", notas: "" });
 
   async function cargar() {
     const data = await fetch("/api/admin/clientes").then((r) => r.json());
@@ -112,8 +118,10 @@ export default function ClientesManager() {
         telefono,
         email: nuevoCliente.email,
         tipo: nuevoCliente.tipo,
+        tipo_secundario: nuevoCliente.tipo_secundario || null,
         zona_interes: nuevoCliente.zona_interes,
         operacion: nuevoCliente.operacion,
+        notas: nuevoCliente.notas || null,
       }),
     });
     setNuevoCliente({ ...NUEVO_CLIENTE, tipo: tab });
@@ -126,6 +134,28 @@ export default function ClientesManager() {
     cargar();
   }
 
+  function abrirEdicion(c: Cliente) {
+    if (editando === c.id) {
+      setEditando(null);
+      return;
+    }
+    setEditando(c.id);
+    setEdicion({ tipo_secundario: c.tipo_secundario ?? "", notas: c.notas ?? "" });
+  }
+
+  async function guardarEdicion(id: string) {
+    await fetch(`/api/admin/clientes/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipo_secundario: edicion.tipo_secundario || null,
+        notas: edicion.notas || null,
+      }),
+    });
+    setEditando(null);
+    cargar();
+  }
+
   function copiarEnlace(token: string) {
     const url = `${SITE_URL}/completar-datos/${token}`;
     navigator.clipboard.writeText(url).then(() => {
@@ -134,7 +164,7 @@ export default function ClientesManager() {
     });
   }
 
-  const clientesDelTab = clientes.filter((c) => c.tipo === tab);
+  const clientesDelTab = clientes.filter((c) => c.tipo === tab || c.tipo_secundario === tab);
   const clientesFiltrados = clientesDelTab.filter((c) => {
     const q = busqueda.trim().toLowerCase();
     if (!q) return true;
@@ -163,7 +193,7 @@ export default function ClientesManager() {
               setMostrarNuevoCliente(false);
             }}
           >
-            {t.label} ({clientes.filter((c) => c.tipo === t.value).length})
+            {t.label} ({clientes.filter((c) => c.tipo === t.value || c.tipo_secundario === t.value).length})
           </button>
         ))}
       </div>
@@ -239,6 +269,21 @@ export default function ClientesManager() {
                   <option value="venta">Compraventa</option>
                 </select>
               </label>
+              <label>
+                Rol secundario (opcional)
+                <select value={nuevoCliente.tipo_secundario} onChange={(e) => setNuevoCliente({ ...nuevoCliente, tipo_secundario: e.target.value as "" | Cliente["tipo"] })}>
+                  <option value="">— ninguno —</option>
+                  {TIPOS.filter((t) => t.value !== nuevoCliente.tipo).map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="lead-form-row">
+              <label style={{ flex: 1 }}>
+                Notas
+                <textarea rows={3} value={nuevoCliente.notas} onChange={(e) => setNuevoCliente({ ...nuevoCliente, notas: e.target.value })} placeholder="Observaciones internas sobre el cliente..." />
+              </label>
             </div>
             <div className="lead-form-actions">
               <button type="submit" className="btn-primary">
@@ -256,13 +301,18 @@ export default function ClientesManager() {
               <div className="pisos-list-body">
                 <h4>
                   {cliente.nombre} {cliente.apellidos}
+                  {cliente.tipo_secundario && <span className="editor-badge-hidden"> · también {labelTipo(cliente.tipo_secundario)}</span>}
                   {!cliente.datos_completados && cliente.origen !== "manual" && <span className="editor-badge-hidden"> · pendiente de rellenar</span>}
                 </h4>
                 <div className="loc">
                   {cliente.telefono || "sin teléfono"} · {cliente.email || "sin email"} · {cliente.zona_interes || "sin zona"} · {cliente.operacion || "—"}
                 </div>
+                {cliente.notas && <div className="loc" style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>📝 {cliente.notas}</div>}
               </div>
               <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
+                <button type="button" className="btn-ghost" onClick={() => abrirEdicion(cliente)}>
+                  {editando === cliente.id ? "Cerrar" : "Editar rol / notas"}
+                </button>
                 <button type="button" className="btn-ghost" onClick={() => copiarEnlace(cliente.token)}>
                   {copiado === cliente.token ? "Enlace copiado" : "Copiar enlace de autorrelleno"}
                 </button>
@@ -270,6 +320,30 @@ export default function ClientesManager() {
                   Eliminar
                 </button>
               </div>
+              {editando === cliente.id && (
+                <div className="chat-transcript">
+                  <div className="lead-form-row">
+                    <label style={{ flex: 1 }}>
+                      Rol secundario (opcional)
+                      <select value={edicion.tipo_secundario} onChange={(e) => setEdicion({ ...edicion, tipo_secundario: e.target.value as "" | Cliente["tipo"] })}>
+                        <option value="">— ninguno —</option>
+                        {TIPOS.filter((t) => t.value !== cliente.tipo).map((t) => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="lead-form-row">
+                    <label style={{ flex: 1 }}>
+                      Notas
+                      <textarea rows={3} value={edicion.notas} onChange={(e) => setEdicion({ ...edicion, notas: e.target.value })} />
+                    </label>
+                  </div>
+                  <div className="lead-form-actions">
+                    <button type="button" className="btn-primary" onClick={() => guardarEdicion(cliente.id)}>Guardar</button>
+                  </div>
+                </div>
+              )}
             </div>
           ))
         )}

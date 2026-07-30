@@ -266,6 +266,8 @@ export default function ContabilidadManager() {
 
   const [nuevaOperacion, setNuevaOperacion] = useState({ cliente_id: "", fecha_cierre: "", precio_venta: "", comision_pct: "3" });
   const [mostrarNuevaOperacion, setMostrarNuevaOperacion] = useState(false);
+  const [editandoOp, setEditandoOp] = useState<string | null>(null);
+  const [edicionOp, setEdicionOp] = useState({ comision_calculada: "", comision_pct: "", precio_venta: "" });
 
   async function cargarTodo() {
     const [c, o, cr, b, gf] = await Promise.all([
@@ -575,6 +577,36 @@ export default function ContabilidadManager() {
 
   async function eliminarOperacion(id: string) {
     await fetch(`/api/admin/operaciones/${id}`, { method: "DELETE" });
+    cargarTodo();
+  }
+
+  function abrirEdicionOp(op: Operacion) {
+    if (editandoOp === op.id) {
+      setEditandoOp(null);
+      return;
+    }
+    setEditandoOp(op.id);
+    setEdicionOp({
+      comision_calculada: String(op.comision_calculada ?? ""),
+      comision_pct: String(op.comision_pct ?? ""),
+      precio_venta: String(op.precio_venta ?? ""),
+    });
+  }
+
+  async function guardarEdicionOp(id: string, modo: "manual" | "recalcular") {
+    const body: Record<string, number> = {};
+    if (modo === "manual") {
+      body.comision_calculada = Number(edicionOp.comision_calculada);
+    } else {
+      body.precio_venta = Number(edicionOp.precio_venta);
+      body.comision_pct = Number(edicionOp.comision_pct);
+    }
+    await fetch(`/api/admin/operaciones/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setEditandoOp(null);
     cargarTodo();
   }
 
@@ -1370,10 +1402,37 @@ export default function ContabilidadManager() {
                   )}
                 </div>
                 <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
+                  <button type="button" className="btn-ghost" onClick={() => abrirEdicionOp(op)}>
+                    {editandoOp === op.id ? "Cerrar edición" : "Editar bruto"}
+                  </button>
                   <button type="button" className="btn-ghost" onClick={() => eliminarOperacion(op.id)}>
                     Eliminar operación
                   </button>
                 </div>
+
+                {editandoOp === op.id && (
+                  <div className="chat-transcript">
+                    <p className="admin-empty" style={{ marginTop: 0 }}>Edita el bruto directamente, o recalcúlalo cambiando precio y %.</p>
+                    <div className="lead-form-row">
+                      <label>
+                        Bruto (comisión) €
+                        <input type="number" min={0} step="0.01" value={edicionOp.comision_calculada} onChange={(e) => setEdicionOp({ ...edicionOp, comision_calculada: e.target.value })} />
+                      </label>
+                      <button type="button" className="btn-primary" onClick={() => guardarEdicionOp(op.id, "manual")}>Guardar bruto</button>
+                    </div>
+                    <div className="lead-form-row">
+                      <label>
+                        Precio de venta €
+                        <input type="number" min={0} value={edicionOp.precio_venta} onChange={(e) => setEdicionOp({ ...edicionOp, precio_venta: e.target.value })} />
+                      </label>
+                      <label>
+                        % Comisión
+                        <input type="number" min={0} step="0.1" value={edicionOp.comision_pct} onChange={(e) => setEdicionOp({ ...edicionOp, comision_pct: e.target.value })} />
+                      </label>
+                      <button type="button" className="btn-ghost" onClick={() => guardarEdicionOp(op.id, "recalcular")}>Recalcular bruto</button>
+                    </div>
+                  </div>
+                )}
 
                 {operacionAbierta === op.id && (
                   <div className="chat-transcript">

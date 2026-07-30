@@ -17,6 +17,7 @@ export type Cliente = {
   telefono: string | null;
   email: string | null;
   tipo: TipoCliente;
+  tipo_secundario: TipoCliente | null;
   zona_interes: string | null;
   operacion: OperacionCliente;
   origen: OrigenCliente;
@@ -176,6 +177,7 @@ export async function crearCliente(input: {
   telefono?: string;
   email?: string;
   tipo: TipoCliente;
+  tipo_secundario?: TipoCliente | null;
   zona_interes?: string;
   operacion?: OperacionCliente;
   origen?: OrigenCliente;
@@ -193,6 +195,7 @@ export async function crearCliente(input: {
       telefono: input.telefono || null,
       email: input.email || null,
       tipo: input.tipo,
+      tipo_secundario: input.tipo_secundario ?? null,
       zona_interes: input.zona_interes || null,
       operacion: input.operacion || null,
       origen: input.origen || "manual",
@@ -215,6 +218,7 @@ export async function actualizarCliente(
     telefono: string | null;
     email: string | null;
     tipo: TipoCliente;
+    tipo_secundario: TipoCliente | null;
     zona_interes: string | null;
     operacion: OperacionCliente;
     notas: string | null;
@@ -471,6 +475,30 @@ export async function crearOperacion(input: {
     .single();
   if (error) throw error;
   return data as OperacionCompraventa;
+}
+
+export async function actualizarOperacion(
+  id: string,
+  patch: Partial<{ precio_venta: number; comision_pct: number; comision_calculada: number; fecha_cierre: string; notas: string | null }>
+) {
+  const admin = getSupabaseAdmin();
+  const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.fecha_cierre !== undefined) update.fecha_cierre = patch.fecha_cierre;
+  if (patch.notas !== undefined) update.notas = patch.notas;
+  if (patch.precio_venta !== undefined) update.precio_venta = patch.precio_venta;
+  if (patch.comision_pct !== undefined) update.comision_pct = patch.comision_pct;
+  // Si viene comision_calculada explícita, la respetamos (override manual).
+  // Si no, y hay precio o pct nuevos, recalculamos con lo actual + patch.
+  if (patch.comision_calculada !== undefined) {
+    update.comision_calculada = patch.comision_calculada;
+  } else if (patch.precio_venta !== undefined || patch.comision_pct !== undefined) {
+    const { data: actual } = await admin.from("operaciones_compraventa").select("precio_venta, comision_pct").eq("id", id).maybeSingle();
+    const precio = patch.precio_venta ?? Number(actual?.precio_venta ?? 0);
+    const pct = patch.comision_pct ?? Number(actual?.comision_pct ?? 0);
+    update.comision_calculada = calcularComision(precio, pct);
+  }
+  const { error } = await admin.from("operaciones_compraventa").update(update).eq("id", id);
+  if (error) throw error;
 }
 
 export async function eliminarOperacion(id: string) {

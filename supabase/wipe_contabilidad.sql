@@ -1,20 +1,30 @@
--- WIPE COMPLETO DE CONTABILIDAD
--- Ejecutar en Supabase SQL Editor. Respeta orden por FKs.
--- Después: vaciar bucket 'documentos' desde Storage UI (o con el bloque comentado abajo).
+-- WIPE COMPLETO DE CONTABILIDAD (tolerante: salta tablas que no existan)
+-- Ejecutar en Supabase SQL Editor.
 
-begin;
+do $$
+declare
+  t text;
+  tablas text[] := array[
+    'cliente_ingresos',
+    'cliente_gasto',
+    'operacion_gastos',
+    'operacion_documentos',
+    'operaciones_compraventa',
+    'credito_gastos',
+    'credito_documentos',
+    'operaciones_creditos',
+    'clientes'
+  ];
+begin
+  foreach t in array tablas loop
+    if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = t) then
+      execute format('delete from %I', t);
+      raise notice 'Vaciada: %', t;
+    else
+      raise notice 'Saltada (no existe): %', t;
+    end if;
+  end loop;
+end $$;
 
-delete from cliente_ingresos;
-delete from cliente_gasto;
-delete from operacion_gastos;
-delete from operacion_documentos;
-delete from operaciones_compraventa;
-delete from credito_gastos;
-delete from credito_documentos;
-delete from operaciones_creditos;
-delete from clientes;
-
-commit;
-
--- Bucket storage: descomentar si quieres vaciarlo por SQL en vez de UI.
+-- Bucket storage: descomentar para vaciar por SQL en vez de UI.
 -- delete from storage.objects where bucket_id = 'documentos';
