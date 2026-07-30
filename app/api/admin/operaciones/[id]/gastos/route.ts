@@ -21,6 +21,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     await añadirGasto(params.id, body.concepto, importe, body?.es_negativo !== false, (body?.categoria || "otros") as CategoriaGasto);
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Error desconocido" }, { status: 500 });
+    const msg = e instanceof Error ? e.message : typeof e === "object" && e && "message" in e ? String((e as { message: unknown }).message) : JSON.stringify(e);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
