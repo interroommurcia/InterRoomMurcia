@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
       concepto: String(body.concepto),
       importe_mensual: Number(body.importe_mensual),
       categoria: body.categoria,
+      tipo: body.tipo === "impuesto" ? "impuesto" : "fijo",
       fecha_inicio: body.fecha_inicio,
       notas: body.notas,
     });

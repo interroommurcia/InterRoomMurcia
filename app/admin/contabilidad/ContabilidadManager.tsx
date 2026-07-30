@@ -105,17 +105,21 @@ type Balance = {
   alquileres: { comisionBruta: number; gastos?: number; neto?: number };
   compraventas: { comisionBruta: number; gastos: number; neto: number };
   creditos: { bruto: number; neto: number };
-  gastosFijos?: { mensual: number; anualizado: number; acumulado: number; pctSobreBruto: number; pctSobreNetoOperativo: number };
+  gastosFijos?: {
+    mensual: number; anualizado: number; acumulado: number; pctSobreBruto: number; pctSobreNetoOperativo: number;
+    fijos?: { mensual: number; anualizado: number; acumulado: number; pctSobreNetoOperativo: number };
+    impuestos?: { trimestral: number; mensualEquiv: number; anualizado: number; acumulado: number; pctSobreNetoOperativo: number };
+  };
 };
 
-type MetricasMes = { mes: number; bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number; gastosFijos: number };
+type MetricasMes = { mes: number; bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number; gastosFijos: number; fijos: number; impuestos: number };
 
 type Metricas = {
   anio: number;
   meses: MetricasMes[];
   mesesAnterior: MetricasMes[];
   trimestres: { trimestre: number; bruto: number; gastos: number; neto: number }[];
-  totalAnual: { bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number; gastosFijos: number; netoTrasFijos: number; pctFijosSobreBruto: number; pctFijosSobreNeto: number };
+  totalAnual: { bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number; gastosFijos: number; fijos: number; impuestos: number; netoTrasFijos: number; pctFijosSobreBruto: number; pctFijosSobreNeto: number; pctImpuestosSobreBruto: number; pctImpuestosSobreNeto: number };
   anioAnterior: { bruto: number; neto: number } | null;
   variacion: { brutoPct: number | null; netoPct: number | null };
   aniosDisponibles: number[];
@@ -126,6 +130,7 @@ type GastoFijo = {
   concepto: string;
   importe_mensual: number;
   categoria: string;
+  tipo: "fijo" | "impuesto";
   fecha_inicio: string;
   fecha_fin: string | null;
   notas: string | null;
@@ -215,10 +220,10 @@ function añoActual(mes: string) {
 }
 
 export default function ContabilidadManager() {
-  const [tab, setTab] = useState<"metricas" | "creditos" | "alquileres" | "compraventas" | "fijos">("creditos");
+  const [tab, setTab] = useState<"metricas" | "creditos" | "alquileres" | "compraventas" | "gastos">("creditos");
   const [gastosFijos, setGastosFijos] = useState<GastoFijo[]>([]);
   const [mostrarNuevoFijo, setMostrarNuevoFijo] = useState(false);
-  const [nuevoFijo, setNuevoFijo] = useState({ concepto: "", importe_mensual: "", categoria: "otros", fecha_inicio: new Date().toISOString().slice(0, 10) });
+  const [nuevoFijo, setNuevoFijo] = useState({ concepto: "", importe_mensual: "", categoria: "otros", tipo: "fijo" as "fijo" | "impuesto", fecha_inicio: new Date().toISOString().slice(0, 10) });
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [operaciones, setOperaciones] = useState<Operacion[]>([]);
   const [balance, setBalance] = useState<Balance | null>(null);
@@ -295,10 +300,11 @@ export default function ContabilidadManager() {
         concepto: nuevoFijo.concepto,
         importe_mensual: Number(nuevoFijo.importe_mensual),
         categoria: nuevoFijo.categoria,
+        tipo: nuevoFijo.tipo,
         fecha_inicio: nuevoFijo.fecha_inicio,
       }),
     });
-    setNuevoFijo({ concepto: "", importe_mensual: "", categoria: "otros", fecha_inicio: new Date().toISOString().slice(0, 10) });
+    setNuevoFijo({ concepto: "", importe_mensual: "", categoria: "otros", tipo: "fijo", fecha_inicio: new Date().toISOString().slice(0, 10) });
     setMostrarNuevoFijo(false);
     cargarTodo();
   }
@@ -693,13 +699,23 @@ export default function ContabilidadManager() {
             <div className="analytics-stat-value">{fmt(balance.beneficioNetoTotal)}</div>
             <p>Compraventas netas {fmt(balance.compraventas.neto)} (gastos {fmt(balance.compraventas.gastos)}) · Créditos netos {fmt(balance.creditos.neto)}</p>
           </div>
-          {balance.gastosFijos && (
+          {balance.gastosFijos?.fijos && (
             <div className="analytics-card" style={{ borderLeft: "3px solid #ef4444" }}>
               <h3>Gastos fijos empresa</h3>
-              <div className="analytics-stat-value">{fmt(balance.gastosFijos.mensual)}/mes</div>
+              <div className="analytics-stat-value">{fmt(balance.gastosFijos.fijos.mensual)}/mes</div>
               <p>
-                Anualizado {fmt(balance.gastosFijos.anualizado)} · Acumulado {fmt(balance.gastosFijos.acumulado)} ·{" "}
-                {balance.gastosFijos.pctSobreNetoOperativo.toFixed(1)}% del beneficio operativo
+                Anualizado {fmt(balance.gastosFijos.fijos.anualizado)} · Acumulado {fmt(balance.gastosFijos.fijos.acumulado)} ·{" "}
+                {balance.gastosFijos.fijos.pctSobreNetoOperativo.toFixed(1)}% del beneficio operativo
+              </p>
+            </div>
+          )}
+          {balance.gastosFijos?.impuestos && (
+            <div className="analytics-card" style={{ borderLeft: "3px solid #f59e0b" }}>
+              <h3>Impuestos trimestre</h3>
+              <div className="analytics-stat-value">{fmt(balance.gastosFijos.impuestos.trimestral)}/trim</div>
+              <p>
+                Media {fmt(balance.gastosFijos.impuestos.mensualEquiv)}/mes · Anual {fmt(balance.gastosFijos.impuestos.anualizado)} · Acumulado {fmt(balance.gastosFijos.impuestos.acumulado)} ·{" "}
+                {balance.gastosFijos.impuestos.pctSobreNetoOperativo.toFixed(1)}% del beneficio operativo
               </p>
             </div>
           )}
@@ -719,8 +735,8 @@ export default function ContabilidadManager() {
         <button type="button" className={`contabilidad-tab${tab === "compraventas" ? " active" : ""}`} onClick={() => setTab("compraventas")}>
           Compraventas
         </button>
-        <button type="button" className={`contabilidad-tab${tab === "fijos" ? " active" : ""}`} onClick={() => setTab("fijos")}>
-          Gastos fijos
+        <button type="button" className={`contabilidad-tab${tab === "gastos" ? " active" : ""}`} onClick={() => setTab("gastos")}>
+          Gastos
         </button>
       </div>
 
@@ -796,13 +812,18 @@ export default function ContabilidadManager() {
               <div className="analytics-grid" style={{ marginTop: 12 }}>
                 <div className="analytics-card" style={{ borderLeft: "3px solid #ef4444" }}>
                   <h3>Gastos fijos {metricasAnio}</h3>
-                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.gastosFijos)}</div>
+                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.fijos)}</div>
                   <p>{metricas.totalAnual.pctFijosSobreBruto.toFixed(1)}% del bruto · {metricas.totalAnual.pctFijosSobreNeto.toFixed(1)}% del beneficio operativo</p>
                 </div>
+                <div className="analytics-card" style={{ borderLeft: "3px solid #f59e0b" }}>
+                  <h3>Impuestos {metricasAnio}</h3>
+                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.impuestos)}</div>
+                  <p>{metricas.totalAnual.pctImpuestosSobreBruto.toFixed(1)}% del bruto · {metricas.totalAnual.pctImpuestosSobreNeto.toFixed(1)}% del beneficio operativo</p>
+                </div>
                 <div className="analytics-card" style={{ borderLeft: "3px solid #059669" }}>
-                  <h3>Beneficio tras fijos</h3>
+                  <h3>Beneficio tras fijos + impuestos</h3>
                   <div className="analytics-stat-value">{fmt(metricas.totalAnual.netoTrasFijos)}</div>
-                  <p>Neto operativo {fmt(metricas.totalAnual.neto)} − fijos {fmt(metricas.totalAnual.gastosFijos)}</p>
+                  <p>Neto operativo {fmt(metricas.totalAnual.neto)} − fijos {fmt(metricas.totalAnual.fijos)} − impuestos {fmt(metricas.totalAnual.impuestos)}</p>
                 </div>
               </div>
 
@@ -1264,27 +1285,34 @@ export default function ContabilidadManager() {
         </div>
       )}
 
-      {tab === "fijos" && (
+      {tab === "gastos" && (
         <div className="articulos-list-section" style={{ marginTop: 20 }}>
           <div className="section-head">
-            <h2>Gastos fijos ({gastosFijos.filter((g) => !g.fecha_fin).length} activos)</h2>
+            <h2>Gastos ({gastosFijos.filter((g) => !g.fecha_fin).length} activos)</h2>
             <button type="button" className="btn-primary" onClick={() => setMostrarNuevoFijo((v) => !v)}>
-              {mostrarNuevoFijo ? "Cancelar" : "Nuevo gasto fijo"}
+              {mostrarNuevoFijo ? "Cancelar" : "Nuevo gasto"}
             </button>
           </div>
           <p className="admin-empty" style={{ margin: "0 0 12px" }}>
-            Suscripciones, hosting, herramientas, salarios fijos... Se prorratean por cada mes activo y se restan del beneficio en Métricas.
+            Gastos fijos mensuales (suscripciones, hosting...) e impuestos trimestrales. Ambos se prorratean por mes activo y se restan del beneficio en Métricas.
           </p>
 
           {mostrarNuevoFijo && (
             <form className="piso-form" onSubmit={crearGastoFijo}>
               <div className="lead-form-row">
                 <label>
-                  Concepto
-                  <input required value={nuevoFijo.concepto} onChange={(e) => setNuevoFijo({ ...nuevoFijo, concepto: e.target.value })} placeholder="Vercel Pro, Anthropic, hosting..." />
+                  Tipo
+                  <select value={nuevoFijo.tipo} onChange={(e) => setNuevoFijo({ ...nuevoFijo, tipo: e.target.value as "fijo" | "impuesto" })}>
+                    <option value="fijo">Gasto fijo (mensual)</option>
+                    <option value="impuesto">Impuesto trimestre</option>
+                  </select>
                 </label>
                 <label>
-                  Importe mensual (€)
+                  Concepto
+                  <input required value={nuevoFijo.concepto} onChange={(e) => setNuevoFijo({ ...nuevoFijo, concepto: e.target.value })} placeholder={nuevoFijo.tipo === "impuesto" ? "IVA Q1, IRPF Q2..." : "Vercel Pro, Anthropic..."} />
+                </label>
+                <label>
+                  {nuevoFijo.tipo === "impuesto" ? "Importe trimestral (€)" : "Importe mensual (€)"}
                   <input type="number" min={0} step="0.01" required value={nuevoFijo.importe_mensual} onChange={(e) => setNuevoFijo({ ...nuevoFijo, importe_mensual: e.target.value })} />
                 </label>
                 <label>
@@ -1295,6 +1323,9 @@ export default function ContabilidadManager() {
                     <option value="marketing">Marketing / Ads</option>
                     <option value="salarios">Salarios / Freelance</option>
                     <option value="oficina">Oficina</option>
+                    <option value="iva">IVA</option>
+                    <option value="irpf">IRPF</option>
+                    <option value="sociedades">Impuesto sociedades</option>
                     <option value="otros">Otros</option>
                   </select>
                 </label>
@@ -1310,36 +1341,47 @@ export default function ContabilidadManager() {
           )}
 
           {gastosFijos.length === 0 ? (
-            <p className="admin-empty">Aún no hay gastos fijos registrados.</p>
+            <p className="admin-empty">Aún no hay gastos registrados.</p>
           ) : (
             <>
               {(() => {
                 const activos = gastosFijos.filter((g) => !g.fecha_fin);
-                const totalMes = activos.reduce((s, g) => s + Number(g.importe_mensual), 0);
+                const fijosAct = activos.filter((g) => (g.tipo ?? "fijo") === "fijo");
+                const impAct = activos.filter((g) => g.tipo === "impuesto");
+                const totalFijoMes = fijosAct.reduce((s, g) => s + Number(g.importe_mensual), 0);
+                const totalImpTrim = impAct.reduce((s, g) => s + Number(g.importe_mensual), 0);
                 return (
                   <div className="pnl-card" style={{ marginBottom: 12 }}>
-                    <div><b>{fmt(totalMes)}</b><span>Total /mes</span></div>
-                    <div><b>{fmt(totalMes * 12)}</b><span>Anualizado</span></div>
+                    <div><b>{fmt(totalFijoMes)}</b><span>Fijos /mes</span></div>
+                    <div><b>{fmt(totalImpTrim)}</b><span>Impuestos /trim</span></div>
+                    <div><b>{fmt(totalFijoMes * 12 + totalImpTrim * 4)}</b><span>Anualizado total</span></div>
                     <div><b>{activos.length}</b><span>Activos</span></div>
-                    <div><b>{gastosFijos.filter((g) => g.fecha_fin).length}</b><span>Finalizados</span></div>
                   </div>
                 );
               })()}
-              {gastosFijos.map((g) => (
-                <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                  <span>
-                    <b>{fmt(g.importe_mensual)}/mes</b> · {g.concepto} · <span style={{ opacity: 0.6 }}>{g.categoria}</span>
-                    <span style={{ opacity: 0.5, marginLeft: 8 }}>desde {g.fecha_inicio}</span>
-                    {g.fecha_fin && <span style={{ opacity: 0.5, marginLeft: 8 }}>hasta {g.fecha_fin}</span>}
-                  </span>
-                  <span style={{ display: "flex", gap: 8 }}>
-                    {!g.fecha_fin && (
-                      <button type="button" className="btn-ghost" onClick={() => terminarGastoFijo(g.id)}>Finalizar</button>
-                    )}
-                    <button type="button" className="btn-ghost" onClick={() => eliminarGastoFijo(g.id)}>Borrar</button>
-                  </span>
-                </div>
-              ))}
+              {gastosFijos.map((g) => {
+                const esImpuesto = g.tipo === "impuesto";
+                return (
+                  <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+                    <span>
+                      <b>{fmt(g.importe_mensual)}{esImpuesto ? "/trim" : "/mes"}</b>
+                      {esImpuesto && <span style={{ opacity: 0.5, marginLeft: 6 }}>(≈{fmt(g.importe_mensual / 3)}/mes)</span>}
+                      {" · "}{g.concepto} · <span style={{ opacity: 0.6 }}>{g.categoria}</span>
+                      <span style={{ marginLeft: 8, padding: "2px 6px", borderRadius: 4, background: esImpuesto ? "#fef3c7" : "#dbeafe", fontSize: 11 }}>
+                        {esImpuesto ? "Impuesto trimestre" : "Gasto fijo"}
+                      </span>
+                      <span style={{ opacity: 0.5, marginLeft: 8 }}>desde {g.fecha_inicio}</span>
+                      {g.fecha_fin && <span style={{ opacity: 0.5, marginLeft: 8 }}>hasta {g.fecha_fin}</span>}
+                    </span>
+                    <span style={{ display: "flex", gap: 8 }}>
+                      {!g.fecha_fin && (
+                        <button type="button" className="btn-ghost" onClick={() => terminarGastoFijo(g.id)}>Finalizar</button>
+                      )}
+                      <button type="button" className="btn-ghost" onClick={() => eliminarGastoFijo(g.id)}>Borrar</button>
+                    </span>
+                  </div>
+                );
+              })}
             </>
           )}
         </div>

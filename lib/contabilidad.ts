@@ -725,16 +725,26 @@ export async function eliminarCreditoDocumento(id: string) {
   if (error) throw error;
 }
 
+export type TipoGastoRecurrente = "fijo" | "impuesto";
+
 export type GastoFijo = {
   id: string;
   concepto: string;
   importe_mensual: number;
   categoria: string;
+  tipo: TipoGastoRecurrente;
   fecha_inicio: string;
   fecha_fin: string | null;
   notas: string | null;
   created_at: string;
 };
+
+// Importe trimestral se guarda tal cual en importe_mensual; para prorratear en
+// métricas mensuales dividimos por 3 (media). Los fijos se computan tal cual.
+function equivMensual(g: Pick<GastoFijo, "importe_mensual" | "tipo">): number {
+  const importe = Number(g.importe_mensual);
+  return g.tipo === "impuesto" ? importe / 3 : importe;
+}
 
 export async function listarGastosFijos(): Promise<GastoFijo[]> {
   const admin = getSupabaseAdmin();
@@ -747,6 +757,7 @@ export async function crearGastoFijo(input: {
   concepto: string;
   importe_mensual: number;
   categoria?: string;
+  tipo?: TipoGastoRecurrente;
   fecha_inicio?: string;
   notas?: string;
 }): Promise<GastoFijo> {
@@ -757,6 +768,7 @@ export async function crearGastoFijo(input: {
       concepto: input.concepto,
       importe_mensual: input.importe_mensual,
       categoria: input.categoria || "otros",
+      tipo: input.tipo || "fijo",
       fecha_inicio: input.fecha_inicio || new Date().toISOString().slice(0, 10),
       notas: input.notas || null,
     })
@@ -789,6 +801,7 @@ function gastoFijoActivoEnMes(g: GastoFijo, primerDiaMes: Date, ultimoDiaMes: Da
 }
 
 // Coste acumulado desde fecha_inicio de cada gasto hasta hoy (o fecha_fin).
+// Para impuestos trimestrales usamos la media mensual (importe/3).
 function acumuladoGastosFijos(gastos: GastoFijo[]): number {
   const hoy = new Date();
   return gastos.reduce((s, g) => {
@@ -797,7 +810,7 @@ function acumuladoGastosFijos(gastos: GastoFijo[]): number {
     const hasta = fin < hoy ? fin : hoy;
     if (hasta < inicio) return s;
     const meses = (hasta.getUTCFullYear() - inicio.getUTCFullYear()) * 12 + (hasta.getUTCMonth() - inicio.getUTCMonth()) + 1;
-    return s + Number(g.importe_mensual) * Math.max(meses, 0);
+    return s + equivMensual(g) * Math.max(meses, 0);
   }, 0);
 }
 
@@ -810,7 +823,7 @@ export async function balanceTotal() {
     admin.from("operaciones_creditos").select("precio"),
     admin.from("credito_gastos").select("importe, es_negativo, pagado"),
     admin.from("cliente_gasto").select("importe, es_recurrente, pagado, fecha_inicio, fecha_fin"),
-    admin.from("gastos_fijos").select("importe_mensual, fecha_inicio, fecha_fin"),
+    admin.from("gastos_fijos").select("importe_mensual, tipo, fecha_inicio, fecha_fin"),
   ]);
   if (ingresosRes.error) throw ingresosRes.error;
   if (operacionesRes.error) throw operacionesRes.error;
@@ -853,11 +866,17 @@ export async function balanceTotal() {
   }, 0);
   const netoAlquileres = comisionAlquileres - totalGastosAlquileres;
 
-  const gastosFijos = (gastosFijosRes.data ?? []) as unknown as GastoFijo[];
-  const gastoFijoMensual = gastosFijos
-    .filter((g) => !g.fecha_fin || new Date(g.fecha_fin) >= hoy)
-    .reduce((s, g) => s + Number(g.importe_mensual), 0);
-  const gastoFijoAcumulado = acumuladoGastosFijos(gastosFijos);
+  const gastosFijosRaw = (gastosFijosRes.data ?? []) as unknown as GastoFijo[];
+  const activos = gastosFijosRaw.filter((g) => !g.fecha_fin || new Date(g.fecha_fin) >= hoy);
+  const fijos = gastosFijosRaw.filter((g) => (g.tipo ?? "fijo") === "fijo");
+  const impuestos = gastosFijosRaw.filter((g) => g.tipo === "impuesto");
+  const fijoMensual = activos.filter((g) => (g.tipo ?? "fijo") === "fijo").reduce((s, g) => s + Number(g.importe_mensual), 0);
+  const impuestoTrimestral = activos.filter((g) => g.tipo === "impuesto").reduce((s, g) => s + Number(g.importe_mensual), 0);
+  const impuestoMensualEquiv = impuestoTrimestral / 3;
+  const gastoFijoMensual = fijoMensual + impuestoMensualEquiv;
+  const gastoFijoAcumulado = acumuladoGastosFijos(gastosFijosRaw);
+  const acumuladoFijos = acumuladoGastosFijos(fijos);
+  const acumuladoImpuestos = acumuladoGastosFijos(impuestos);
 
   const beneficioNetoOperativo = netoAlquileres + netoCompraventas + netoCreditos;
   const beneficioNetoFinal = beneficioNetoOperativo - gastoFijoAcumulado;
@@ -876,6 +895,19 @@ export async function balanceTotal() {
         ? (gastoFijoAcumulado / (comisionAlquileres + comisionCompraventas + precioCreditos)) * 100
         : 0,
       pctSobreNetoOperativo: beneficioNetoOperativo > 0 ? (gastoFijoAcumulado / beneficioNetoOperativo) * 100 : 0,
+      fijos: {
+        mensual: fijoMensual,
+        anualizado: fijoMensual * 12,
+        acumulado: acumuladoFijos,
+        pctSobreNetoOperativo: beneficioNetoOperativo > 0 ? (acumuladoFijos / beneficioNetoOperativo) * 100 : 0,
+      },
+      impuestos: {
+        trimestral: impuestoTrimestral,
+        mensualEquiv: impuestoMensualEquiv,
+        anualizado: impuestoTrimestral * 4,
+        acumulado: acumuladoImpuestos,
+        pctSobreNetoOperativo: beneficioNetoOperativo > 0 ? (acumuladoImpuestos / beneficioNetoOperativo) * 100 : 0,
+      },
     },
   };
 }
@@ -889,6 +921,8 @@ export type MetricasMes = {
   compraventas: number;
   creditos: number;
   gastosFijos: number;
+  fijos: number;
+  impuestos: number;
 };
 
 export type MetricasAnuales = {
@@ -904,9 +938,13 @@ export type MetricasAnuales = {
     compraventas: number;
     creditos: number;
     gastosFijos: number;
+    fijos: number;
+    impuestos: number;
     netoTrasFijos: number;
     pctFijosSobreBruto: number;
     pctFijosSobreNeto: number;
+    pctImpuestosSobreBruto: number;
+    pctImpuestosSobreNeto: number;
   };
   anioAnterior: { bruto: number; neto: number } | null;
   variacion: { brutoPct: number | null; netoPct: number | null };
@@ -944,7 +982,7 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
     admin.from("operaciones_creditos").select("fecha, precio").gte("fecha", desde).lt("fecha", hasta),
     admin.from("credito_gastos").select("fecha_pago, importe, es_negativo, pagado").eq("pagado", true).gte("fecha_pago", desde).lt("fecha_pago", hasta),
     admin.from("cliente_gasto").select("importe, categoria, es_recurrente, fecha_inicio, fecha_fin, pagado, fecha_pago"),
-    admin.from("gastos_fijos").select("importe_mensual, fecha_inicio, fecha_fin"),
+    admin.from("gastos_fijos").select("importe_mensual, tipo, fecha_inicio, fecha_fin"),
   ]);
   if (ingresosRes.error) throw ingresosRes.error;
   if (operacionesRes.error) throw operacionesRes.error;
@@ -964,6 +1002,8 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
       compraventas: 0,
       creditos: 0,
       gastosFijos: 0,
+      fijos: 0,
+      impuestos: 0,
     }));
 
     for (const r of ingresosRes.data ?? []) {
@@ -1025,17 +1065,20 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
         m.neto -= importe;
       }
     }
-    // Gastos fijos: prorrata mensual mientras estén activos.
+    // Gastos fijos e impuestos: prorrata mensual mientras estén activos.
+    // Impuestos trimestrales se dividen por 3 para tener media mensual.
     for (const g of (gastosFijosRes.data ?? []) as unknown as GastoFijo[]) {
       const inicio = new Date(g.fecha_inicio);
       const fin = g.fecha_fin ? new Date(g.fecha_fin) : null;
-      const importe = Number(g.importe_mensual);
+      const importe = equivMensual(g);
       for (let i = 0; i < 12; i++) {
         const primerDiaMes = new Date(Date.UTC(anioObjetivo, i, 1));
         const ultimoDiaMes = new Date(Date.UTC(anioObjetivo, i + 1, 0));
         if (inicio > ultimoDiaMes) continue;
         if (fin && fin < primerDiaMes) continue;
         meses[i].gastosFijos += importe;
+        if ((g.tipo ?? "fijo") === "impuesto") meses[i].impuestos += importe;
+        else meses[i].fijos += importe;
       }
     }
     return meses;
@@ -1063,14 +1106,18 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
       compraventas: acc.compraventas + m.compraventas,
       creditos: acc.creditos + m.creditos,
       gastosFijos: acc.gastosFijos + m.gastosFijos,
+      fijos: acc.fijos + m.fijos,
+      impuestos: acc.impuestos + m.impuestos,
     }),
-    { bruto: 0, gastos: 0, neto: 0, alquileres: 0, compraventas: 0, creditos: 0, gastosFijos: 0 }
+    { bruto: 0, gastos: 0, neto: 0, alquileres: 0, compraventas: 0, creditos: 0, gastosFijos: 0, fijos: 0, impuestos: 0 }
   );
   const totalAnual = {
     ...totalBase,
     netoTrasFijos: totalBase.neto - totalBase.gastosFijos,
-    pctFijosSobreBruto: totalBase.bruto > 0 ? (totalBase.gastosFijos / totalBase.bruto) * 100 : 0,
-    pctFijosSobreNeto: totalBase.neto > 0 ? (totalBase.gastosFijos / totalBase.neto) * 100 : 0,
+    pctFijosSobreBruto: totalBase.bruto > 0 ? (totalBase.fijos / totalBase.bruto) * 100 : 0,
+    pctFijosSobreNeto: totalBase.neto > 0 ? (totalBase.fijos / totalBase.neto) * 100 : 0,
+    pctImpuestosSobreBruto: totalBase.bruto > 0 ? (totalBase.impuestos / totalBase.bruto) * 100 : 0,
+    pctImpuestosSobreNeto: totalBase.neto > 0 ? (totalBase.impuestos / totalBase.neto) * 100 : 0,
   };
 
   const totalAnterior = mesesAnterior.reduce((acc, m) => ({ bruto: acc.bruto + m.bruto, neto: acc.neto + m.neto }), { bruto: 0, neto: 0 });
