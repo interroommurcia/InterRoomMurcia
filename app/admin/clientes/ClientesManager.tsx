@@ -297,31 +297,33 @@ export default function ClientesManager() {
           <p className="admin-empty">{clientesDelTab.length === 0 ? "Todavía no hay clientes en esta sección." : "Sin resultados para esa búsqueda."}</p>
         ) : (
           clientesFiltrados.map((cliente) => (
-            <div key={cliente.id} className="pisos-list-item">
-              <div className="pisos-list-body">
-                <h4>
-                  {cliente.nombre} {cliente.apellidos}
-                  {cliente.tipo_secundario && <span className="editor-badge-hidden"> · también {labelTipo(cliente.tipo_secundario)}</span>}
-                  {!cliente.datos_completados && cliente.origen !== "manual" && <span className="editor-badge-hidden"> · pendiente de rellenar</span>}
-                </h4>
-                <div className="loc">
-                  {cliente.telefono || "sin teléfono"} · {cliente.email || "sin email"} · {cliente.zona_interes || "sin zona"} · {cliente.operacion || "—"}
+            <div key={cliente.id} style={{ display: "flex", flexDirection: "column", border: "1px solid var(--color-border, #e5e7eb)", borderRadius: 12, marginBottom: 12, background: "#fff" }}>
+              <div className="pisos-list-item" style={{ marginBottom: 0, border: "none", borderRadius: 0 }}>
+                <div className="pisos-list-body">
+                  <h4>
+                    {cliente.nombre} {cliente.apellidos}
+                    {cliente.tipo_secundario && <span className="editor-badge-hidden"> · también {labelTipo(cliente.tipo_secundario)}</span>}
+                    {!cliente.datos_completados && cliente.origen !== "manual" && <span className="editor-badge-hidden"> · pendiente de rellenar</span>}
+                  </h4>
+                  <div className="loc">
+                    {cliente.telefono || "sin teléfono"} · {cliente.email || "sin email"} · {cliente.zona_interes || "sin zona"} · {cliente.operacion || "—"}
+                  </div>
+                  {cliente.notas && <div className="loc" style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>📝 {cliente.notas}</div>}
                 </div>
-                {cliente.notas && <div className="loc" style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>📝 {cliente.notas}</div>}
-              </div>
-              <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
-                <button type="button" className="btn-ghost" onClick={() => abrirEdicion(cliente)}>
-                  {editando === cliente.id ? "Cerrar" : "Editar rol / notas"}
-                </button>
-                <button type="button" className="btn-ghost" onClick={() => copiarEnlace(cliente.token)}>
-                  {copiado === cliente.token ? "Enlace copiado" : "Copiar enlace de autorrelleno"}
-                </button>
-                <button type="button" className="btn-ghost" onClick={() => eliminarCliente(cliente.id)}>
-                  Eliminar
-                </button>
+                <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
+                  <button type="button" className="btn-ghost" onClick={() => abrirEdicion(cliente)}>
+                    {editando === cliente.id ? "Cerrar" : "Editar rol / notas"}
+                  </button>
+                  <button type="button" className="btn-ghost" onClick={() => copiarEnlace(cliente.token)}>
+                    {copiado === cliente.token ? "Enlace copiado" : "Copiar enlace de autorrelleno"}
+                  </button>
+                  <button type="button" className="btn-ghost" onClick={() => eliminarCliente(cliente.id)}>
+                    Eliminar
+                  </button>
+                </div>
               </div>
               {editando === cliente.id && (
-                <div className="chat-transcript">
+                <div style={{ borderTop: "1px solid var(--color-border, #e5e7eb)", padding: 16 }}>
                   <div className="lead-form-row">
                     <label style={{ flex: 1 }}>
                       Rol secundario (opcional)
