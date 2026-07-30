@@ -105,19 +105,30 @@ type Balance = {
   alquileres: { comisionBruta: number; gastos?: number; neto?: number };
   compraventas: { comisionBruta: number; gastos: number; neto: number };
   creditos: { bruto: number; neto: number };
+  gastosFijos?: { mensual: number; anualizado: number; acumulado: number; pctSobreBruto: number; pctSobreNetoOperativo: number };
 };
 
-type MetricasMes = { mes: number; bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number };
+type MetricasMes = { mes: number; bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number; gastosFijos: number };
 
 type Metricas = {
   anio: number;
   meses: MetricasMes[];
   mesesAnterior: MetricasMes[];
   trimestres: { trimestre: number; bruto: number; gastos: number; neto: number }[];
-  totalAnual: { bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number };
+  totalAnual: { bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number; gastosFijos: number; netoTrasFijos: number; pctFijosSobreBruto: number; pctFijosSobreNeto: number };
   anioAnterior: { bruto: number; neto: number } | null;
   variacion: { brutoPct: number | null; netoPct: number | null };
   aniosDisponibles: number[];
+};
+
+type GastoFijo = {
+  id: string;
+  concepto: string;
+  importe_mensual: number;
+  categoria: string;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  notas: string | null;
 };
 
 const NOMBRES_MES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -204,7 +215,10 @@ function añoActual(mes: string) {
 }
 
 export default function ContabilidadManager() {
-  const [tab, setTab] = useState<"metricas" | "creditos" | "alquileres" | "compraventas">("creditos");
+  const [tab, setTab] = useState<"metricas" | "creditos" | "alquileres" | "compraventas" | "fijos">("creditos");
+  const [gastosFijos, setGastosFijos] = useState<GastoFijo[]>([]);
+  const [mostrarNuevoFijo, setMostrarNuevoFijo] = useState(false);
+  const [nuevoFijo, setNuevoFijo] = useState({ concepto: "", importe_mensual: "", categoria: "otros", fecha_inicio: new Date().toISOString().slice(0, 10) });
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [operaciones, setOperaciones] = useState<Operacion[]>([]);
   const [balance, setBalance] = useState<Balance | null>(null);
@@ -220,7 +234,7 @@ export default function ContabilidadManager() {
   const [creditoGastos, setCreditoGastos] = useState<Record<string, Gasto[]>>({});
   const [creditoDocumentos, setCreditoDocumentos] = useState<Record<string, Documento[]>>({});
   const [creditoAbierto, setCreditoAbierto] = useState<string | null>(null);
-  const [nuevoGastoCredito, setNuevoGastoCredito] = useState({ concepto: "", importe: "", esNegativo: true, categoria: "otros" });
+  const [nuevoGastoCredito, setNuevoGastoCredito] = useState({ concepto: "", importe: "", categoria: "otros" });
   const [subiendoDocumentoCredito, setSubiendoDocumentoCredito] = useState(false);
 
   const [activarAlquiler, setActivarAlquiler] = useState(ACTIVAR_ALQUILER);
@@ -245,7 +259,7 @@ export default function ContabilidadManager() {
 
   const [gastos, setGastos] = useState<Record<string, Gasto[]>>({});
   const [operacionAbierta, setOperacionAbierta] = useState<string | null>(null);
-  const [nuevoGasto, setNuevoGasto] = useState({ concepto: "", importe: "", esNegativo: true, categoria: "otros" });
+  const [nuevoGasto, setNuevoGasto] = useState({ concepto: "", importe: "", categoria: "otros" });
 
   const [documentos, setDocumentos] = useState<Record<string, Documento[]>>({});
   const [subiendoDocumento, setSubiendoDocumento] = useState(false);
@@ -254,17 +268,54 @@ export default function ContabilidadManager() {
   const [mostrarNuevaOperacion, setMostrarNuevaOperacion] = useState(false);
 
   async function cargarTodo() {
-    const [c, o, cr, b] = await Promise.all([
+    const [c, o, cr, b, gf] = await Promise.all([
       fetch("/api/admin/clientes").then((r) => r.json()),
       fetch("/api/admin/operaciones").then((r) => r.json()),
       fetch("/api/admin/creditos").then((r) => r.json()),
       fetch("/api/admin/contabilidad/balance").then((r) => r.json()),
+      fetch("/api/admin/gastos-fijos").then((r) => r.json()),
     ]);
     setClientes(Array.isArray(c) ? c : []);
     setOperaciones(Array.isArray(o) ? o : []);
     setCreditos(Array.isArray(cr) ? cr : []);
     setBalance(b?.comisionBrutaTotal !== undefined ? b : null);
+    setGastosFijos(Array.isArray(gf) ? gf : []);
     setLoading(false);
+  }
+
+  async function crearGastoFijo(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nuevoFijo.concepto || !nuevoFijo.importe_mensual) return;
+    await fetch("/api/admin/gastos-fijos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        concepto: nuevoFijo.concepto,
+        importe_mensual: Number(nuevoFijo.importe_mensual),
+        categoria: nuevoFijo.categoria,
+        fecha_inicio: nuevoFijo.fecha_inicio,
+      }),
+    });
+    setNuevoFijo({ concepto: "", importe_mensual: "", categoria: "otros", fecha_inicio: new Date().toISOString().slice(0, 10) });
+    setMostrarNuevoFijo(false);
+    cargarTodo();
+  }
+
+  async function terminarGastoFijo(id: string) {
+    const fecha = prompt("Fecha de fin (YYYY-MM-DD)", new Date().toISOString().slice(0, 10));
+    if (!fecha) return;
+    await fetch(`/api/admin/gastos-fijos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fecha_fin: fecha }),
+    });
+    cargarTodo();
+  }
+
+  async function eliminarGastoFijo(id: string) {
+    if (!confirm("¿Borrar este gasto fijo?")) return;
+    await fetch(`/api/admin/gastos-fijos/${id}`, { method: "DELETE" });
+    cargarTodo();
   }
 
   useEffect(() => {
@@ -322,9 +373,9 @@ export default function ContabilidadManager() {
     await fetch(`/api/admin/creditos/${operacionId}/gastos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ concepto: nuevoGastoCredito.concepto, importe: Number(nuevoGastoCredito.importe), es_negativo: nuevoGastoCredito.esNegativo, categoria: nuevoGastoCredito.categoria }),
+      body: JSON.stringify({ concepto: nuevoGastoCredito.concepto, importe: Number(nuevoGastoCredito.importe), es_negativo: true, categoria: nuevoGastoCredito.categoria }),
     });
-    setNuevoGastoCredito({ concepto: "", importe: "", esNegativo: true, categoria: "otros" });
+    setNuevoGastoCredito({ concepto: "", importe: "", categoria: "otros" });
     const data = await fetch(`/api/admin/creditos/${operacionId}/gastos`).then((r) => r.json());
     setCreditoGastos((prev) => ({ ...prev, [operacionId]: Array.isArray(data) ? data : [] }));
     cargarTodo();
@@ -562,9 +613,9 @@ export default function ContabilidadManager() {
     await fetch(`/api/admin/operaciones/${operacionId}/gastos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ concepto: nuevoGasto.concepto, importe: Number(nuevoGasto.importe), es_negativo: nuevoGasto.esNegativo, categoria: nuevoGasto.categoria }),
+      body: JSON.stringify({ concepto: nuevoGasto.concepto, importe: Number(nuevoGasto.importe), es_negativo: true, categoria: nuevoGasto.categoria }),
     });
-    setNuevoGasto({ concepto: "", importe: "", esNegativo: true, categoria: "otros" });
+    setNuevoGasto({ concepto: "", importe: "", categoria: "otros" });
     const data = await fetch(`/api/admin/operaciones/${operacionId}/gastos`).then((r) => r.json());
     setGastos((prev) => ({ ...prev, [operacionId]: Array.isArray(data) ? data : [] }));
     cargarTodo();
@@ -610,6 +661,16 @@ export default function ContabilidadManager() {
             <div className="analytics-stat-value">{fmt(balance.beneficioNetoTotal)}</div>
             <p>Compraventas netas {fmt(balance.compraventas.neto)} (gastos {fmt(balance.compraventas.gastos)}) · Créditos netos {fmt(balance.creditos.neto)}</p>
           </div>
+          {balance.gastosFijos && (
+            <div className="analytics-card" style={{ borderLeft: "3px solid #ef4444" }}>
+              <h3>Gastos fijos empresa</h3>
+              <div className="analytics-stat-value">{fmt(balance.gastosFijos.mensual)}/mes</div>
+              <p>
+                Anualizado {fmt(balance.gastosFijos.anualizado)} · Acumulado {fmt(balance.gastosFijos.acumulado)} ·{" "}
+                {balance.gastosFijos.pctSobreNetoOperativo.toFixed(1)}% del beneficio operativo
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -625,6 +686,9 @@ export default function ContabilidadManager() {
         </button>
         <button type="button" className={`contabilidad-tab${tab === "compraventas" ? " active" : ""}`} onClick={() => setTab("compraventas")}>
           Compraventas
+        </button>
+        <button type="button" className={`contabilidad-tab${tab === "fijos" ? " active" : ""}`} onClick={() => setTab("fijos")}>
+          Gastos fijos
         </button>
       </div>
 
@@ -694,6 +758,19 @@ export default function ContabilidadManager() {
                   <p>
                     {metricas.anioAnterior ? `${fmtPct(metricas.variacion.netoPct)} vs ${metricasAnio - 1}` : `Sin datos de ${metricasAnio - 1}`}
                   </p>
+                </div>
+              </div>
+
+              <div className="analytics-grid" style={{ marginTop: 12 }}>
+                <div className="analytics-card" style={{ borderLeft: "3px solid #ef4444" }}>
+                  <h3>Gastos fijos {metricasAnio}</h3>
+                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.gastosFijos)}</div>
+                  <p>{metricas.totalAnual.pctFijosSobreBruto.toFixed(1)}% del bruto · {metricas.totalAnual.pctFijosSobreNeto.toFixed(1)}% del beneficio operativo</p>
+                </div>
+                <div className="analytics-card" style={{ borderLeft: "3px solid #059669" }}>
+                  <h3>Beneficio tras fijos</h3>
+                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.netoTrasFijos)}</div>
+                  <p>Neto operativo {fmt(metricas.totalAnual.neto)} − fijos {fmt(metricas.totalAnual.gastosFijos)}</p>
                 </div>
               </div>
 
@@ -851,15 +928,8 @@ export default function ContabilidadManager() {
                           {CATEGORIAS_GASTO.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                         </select>
                       </label>
-                      <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                        <input type="checkbox" checked={nuevoGastoCredito.esNegativo} onChange={(e) => setNuevoGastoCredito({ ...nuevoGastoCredito, esNegativo: e.target.checked })} />
-                        Resta del neto (gasto)
-                      </label>
-                      <button type="submit" className="btn-primary">Añadir movimiento</button>
+                      <button type="submit" className="btn-primary">Añadir gasto</button>
                     </form>
-                    <p className="admin-empty" style={{ margin: "4px 0 12px" }}>
-                      Desmarca la casilla para un ingreso extra que suma al neto en vez de restar.
-                    </p>
                     {(creditoGastos[cr.id] ?? []).map((g) => (
                       <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                         <span>{g.concepto} — {g.es_negativo ? "-" : "+"}{fmt(g.importe)} · <span style={{ opacity: 0.6 }}>{labelCategoria(g.categoria)}</span></span>
@@ -1162,6 +1232,87 @@ export default function ContabilidadManager() {
         </div>
       )}
 
+      {tab === "fijos" && (
+        <div className="articulos-list-section" style={{ marginTop: 20 }}>
+          <div className="section-head">
+            <h2>Gastos fijos ({gastosFijos.filter((g) => !g.fecha_fin).length} activos)</h2>
+            <button type="button" className="btn-primary" onClick={() => setMostrarNuevoFijo((v) => !v)}>
+              {mostrarNuevoFijo ? "Cancelar" : "Nuevo gasto fijo"}
+            </button>
+          </div>
+          <p className="admin-empty" style={{ margin: "0 0 12px" }}>
+            Suscripciones, hosting, herramientas, salarios fijos... Se prorratean por cada mes activo y se restan del beneficio en Métricas.
+          </p>
+
+          {mostrarNuevoFijo && (
+            <form className="piso-form" onSubmit={crearGastoFijo}>
+              <div className="lead-form-row">
+                <label>
+                  Concepto
+                  <input required value={nuevoFijo.concepto} onChange={(e) => setNuevoFijo({ ...nuevoFijo, concepto: e.target.value })} placeholder="Vercel Pro, Anthropic, hosting..." />
+                </label>
+                <label>
+                  Importe mensual (€)
+                  <input type="number" min={0} step="0.01" required value={nuevoFijo.importe_mensual} onChange={(e) => setNuevoFijo({ ...nuevoFijo, importe_mensual: e.target.value })} />
+                </label>
+                <label>
+                  Categoría
+                  <select value={nuevoFijo.categoria} onChange={(e) => setNuevoFijo({ ...nuevoFijo, categoria: e.target.value })}>
+                    <option value="software">Software / SaaS</option>
+                    <option value="hosting">Hosting / Infra</option>
+                    <option value="marketing">Marketing / Ads</option>
+                    <option value="salarios">Salarios / Freelance</option>
+                    <option value="oficina">Oficina</option>
+                    <option value="otros">Otros</option>
+                  </select>
+                </label>
+                <label>
+                  Desde
+                  <input type="date" value={nuevoFijo.fecha_inicio} onChange={(e) => setNuevoFijo({ ...nuevoFijo, fecha_inicio: e.target.value })} />
+                </label>
+              </div>
+              <div className="lead-form-actions">
+                <button type="submit" className="btn-primary">Guardar</button>
+              </div>
+            </form>
+          )}
+
+          {gastosFijos.length === 0 ? (
+            <p className="admin-empty">Aún no hay gastos fijos registrados.</p>
+          ) : (
+            <>
+              {(() => {
+                const activos = gastosFijos.filter((g) => !g.fecha_fin);
+                const totalMes = activos.reduce((s, g) => s + Number(g.importe_mensual), 0);
+                return (
+                  <div className="pnl-card" style={{ marginBottom: 12 }}>
+                    <div><b>{fmt(totalMes)}</b><span>Total /mes</span></div>
+                    <div><b>{fmt(totalMes * 12)}</b><span>Anualizado</span></div>
+                    <div><b>{activos.length}</b><span>Activos</span></div>
+                    <div><b>{gastosFijos.filter((g) => g.fecha_fin).length}</b><span>Finalizados</span></div>
+                  </div>
+                );
+              })()}
+              {gastosFijos.map((g) => (
+                <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+                  <span>
+                    <b>{fmt(g.importe_mensual)}/mes</b> · {g.concepto} · <span style={{ opacity: 0.6 }}>{g.categoria}</span>
+                    <span style={{ opacity: 0.5, marginLeft: 8 }}>desde {g.fecha_inicio}</span>
+                    {g.fecha_fin && <span style={{ opacity: 0.5, marginLeft: 8 }}>hasta {g.fecha_fin}</span>}
+                  </span>
+                  <span style={{ display: "flex", gap: 8 }}>
+                    {!g.fecha_fin && (
+                      <button type="button" className="btn-ghost" onClick={() => terminarGastoFijo(g.id)}>Finalizar</button>
+                    )}
+                    <button type="button" className="btn-ghost" onClick={() => eliminarGastoFijo(g.id)}>Borrar</button>
+                  </span>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+
       {tab === "compraventas" && (
         <div className="articulos-list-section" style={{ marginTop: 20 }}>
           <div className="section-head">
@@ -1241,15 +1392,8 @@ export default function ContabilidadManager() {
                           {CATEGORIAS_GASTO.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                         </select>
                       </label>
-                      <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                        <input type="checkbox" checked={nuevoGasto.esNegativo} onChange={(e) => setNuevoGasto({ ...nuevoGasto, esNegativo: e.target.checked })} />
-                        Resta del neto (gasto)
-                      </label>
-                      <button type="submit" className="btn-primary">Añadir movimiento</button>
+                      <button type="submit" className="btn-primary">Añadir gasto</button>
                     </form>
-                    <p className="admin-empty" style={{ margin: "4px 0 12px" }}>
-                      Desmarca la casilla para un ingreso extra que suma al neto en vez de restar.
-                    </p>
                     {(gastos[op.id] ?? []).map((g) => (
                       <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                         <span>{g.concepto} — {g.es_negativo ? "-" : "+"}{fmt(g.importe)} · <span style={{ opacity: 0.6 }}>{labelCategoria(g.categoria)}</span></span>

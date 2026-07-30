@@ -264,65 +264,8 @@ export async function eliminarCliente(id: string) {
   if (error) throw error;
 }
 
-function primerDiaMes(d: Date) {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
-}
-
-// Genera automáticamente los meses que falten hasta el mes actual usando la
-// mensualidad activa del cliente, sin tocar meses ya registrados (manuales o
-// de un cobro anterior). Si mensualidad es 0, el cliente está "pausado" y no
-// se genera nada.
-export async function sincronizarIngresosCliente(cliente: Cliente) {
-  if (!cliente.mensualidad || cliente.mensualidad <= 0) return;
-  const admin = getSupabaseAdmin();
-  const { data: ultimos, error } = await admin
-    .from("cliente_ingresos")
-    .select("mes")
-    .eq("cliente_id", cliente.id)
-    .order("mes", { ascending: false })
-    .limit(1);
-  if (error) throw error;
-
-  const mesActual = primerDiaMes(new Date());
-  let cursor = ultimos?.[0]
-    ? (() => {
-        const u = new Date(ultimos[0].mes);
-        return new Date(Date.UTC(u.getUTCFullYear(), u.getUTCMonth() + 1, 1));
-      })()
-    : mesActual;
-
-  const filas: { cliente_id: string; mes: string; ingreso_bruto: number; comision_pct: number; comision_calculada: number }[] = [];
-  while (cursor <= mesActual) {
-    filas.push({
-      cliente_id: cliente.id,
-      mes: cursor.toISOString().slice(0, 10),
-      ingreso_bruto: cliente.mensualidad,
-      comision_pct: cliente.comision_pct_alquiler,
-      comision_calculada: calcularComision(cliente.mensualidad, cliente.comision_pct_alquiler),
-    });
-    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
-  }
-  if (filas.length === 0) return;
-
-  const { error: insertError } = await admin
-    .from("cliente_ingresos")
-    .upsert(filas, { onConflict: "cliente_id,mes", ignoreDuplicates: true });
-  if (insertError) throw insertError;
-}
-
-export async function sincronizarTodosLosIngresos() {
-  const admin = getSupabaseAdmin();
-  const { data, error } = await admin.from("clientes").select("*").gt("mensualidad", 0);
-  if (error) throw error;
-  for (const cliente of (data ?? []) as Cliente[]) {
-    await sincronizarIngresosCliente(cliente);
-  }
-}
-
 export async function listarIngresos(clienteId: string): Promise<IngresoMensual[]> {
   const admin = getSupabaseAdmin();
-  const cliente = await getCliente(clienteId);
-  if (cliente) await sincronizarIngresosCliente(cliente);
   const { data, error } = await admin
     .from("cliente_ingresos")
     .select("*")
@@ -754,16 +697,92 @@ export async function eliminarCreditoDocumento(id: string) {
   if (error) throw error;
 }
 
-export async function balanceTotal() {
-  await sincronizarTodosLosIngresos();
+export type GastoFijo = {
+  id: string;
+  concepto: string;
+  importe_mensual: number;
+  categoria: string;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  notas: string | null;
+  created_at: string;
+};
+
+export async function listarGastosFijos(): Promise<GastoFijo[]> {
   const admin = getSupabaseAdmin();
-  const [ingresosRes, operacionesRes, gastosRes, creditosRes, creditoGastosRes, clienteGastosRes] = await Promise.all([
+  const { data, error } = await admin.from("gastos_fijos").select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as GastoFijo[];
+}
+
+export async function crearGastoFijo(input: {
+  concepto: string;
+  importe_mensual: number;
+  categoria?: string;
+  fecha_inicio?: string;
+  notas?: string;
+}): Promise<GastoFijo> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("gastos_fijos")
+    .insert({
+      concepto: input.concepto,
+      importe_mensual: input.importe_mensual,
+      categoria: input.categoria || "otros",
+      fecha_inicio: input.fecha_inicio || new Date().toISOString().slice(0, 10),
+      notas: input.notas || null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as GastoFijo;
+}
+
+export async function terminarGastoFijo(id: string, fechaFin: string) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("gastos_fijos").update({ fecha_fin: fechaFin }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function eliminarGastoFijo(id: string) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("gastos_fijos").delete().eq("id", id);
+  if (error) throw error;
+}
+
+function gastoFijoActivoEnMes(g: GastoFijo, primerDiaMes: Date, ultimoDiaMes: Date): boolean {
+  const inicio = new Date(g.fecha_inicio);
+  if (inicio > ultimoDiaMes) return false;
+  if (g.fecha_fin) {
+    const fin = new Date(g.fecha_fin);
+    if (fin < primerDiaMes) return false;
+  }
+  return true;
+}
+
+// Coste acumulado desde fecha_inicio de cada gasto hasta hoy (o fecha_fin).
+function acumuladoGastosFijos(gastos: GastoFijo[]): number {
+  const hoy = new Date();
+  return gastos.reduce((s, g) => {
+    const inicio = new Date(g.fecha_inicio);
+    const fin = g.fecha_fin ? new Date(g.fecha_fin) : hoy;
+    const hasta = fin < hoy ? fin : hoy;
+    if (hasta < inicio) return s;
+    const meses = (hasta.getUTCFullYear() - inicio.getUTCFullYear()) * 12 + (hasta.getUTCMonth() - inicio.getUTCMonth()) + 1;
+    return s + Number(g.importe_mensual) * Math.max(meses, 0);
+  }, 0);
+}
+
+export async function balanceTotal() {
+  const admin = getSupabaseAdmin();
+  const [ingresosRes, operacionesRes, gastosRes, creditosRes, creditoGastosRes, clienteGastosRes, gastosFijosRes] = await Promise.all([
     admin.from("cliente_ingresos").select("comision_calculada"),
     admin.from("operaciones_compraventa").select("comision_calculada"),
     admin.from("operacion_gastos").select("importe, es_negativo, pagado"),
     admin.from("operaciones_creditos").select("precio"),
     admin.from("credito_gastos").select("importe, es_negativo, pagado"),
     admin.from("cliente_gasto").select("importe, es_recurrente, pagado, fecha_inicio, fecha_fin"),
+    admin.from("gastos_fijos").select("importe_mensual, fecha_inicio, fecha_fin"),
   ]);
   if (ingresosRes.error) throw ingresosRes.error;
   if (operacionesRes.error) throw operacionesRes.error;
@@ -771,6 +790,7 @@ export async function balanceTotal() {
   if (creditosRes.error) throw creditosRes.error;
   if (creditoGastosRes.error) throw creditoGastosRes.error;
   if (clienteGastosRes.error) console.warn("[balance/cliente_gasto]", clienteGastosRes.error.message);
+  if (gastosFijosRes.error) console.warn("[balance/gastos_fijos]", gastosFijosRes.error.message);
 
   const comisionAlquileres = (ingresosRes.data ?? []).reduce((s, r) => s + Number(r.comision_calculada), 0);
   const comisionCompraventas = (operacionesRes.data ?? []).reduce((s, r) => s + Number(r.comision_calculada), 0);
@@ -805,12 +825,30 @@ export async function balanceTotal() {
   }, 0);
   const netoAlquileres = comisionAlquileres - totalGastosAlquileres;
 
+  const gastosFijos = (gastosFijosRes.data ?? []) as unknown as GastoFijo[];
+  const gastoFijoMensual = gastosFijos
+    .filter((g) => !g.fecha_fin || new Date(g.fecha_fin) >= hoy)
+    .reduce((s, g) => s + Number(g.importe_mensual), 0);
+  const gastoFijoAcumulado = acumuladoGastosFijos(gastosFijos);
+
+  const beneficioNetoOperativo = netoAlquileres + netoCompraventas + netoCreditos;
+  const beneficioNetoFinal = beneficioNetoOperativo - gastoFijoAcumulado;
+
   return {
     comisionBrutaTotal: comisionAlquileres + comisionCompraventas + precioCreditos,
-    beneficioNetoTotal: netoAlquileres + netoCompraventas + netoCreditos,
+    beneficioNetoTotal: beneficioNetoFinal,
     alquileres: { comisionBruta: comisionAlquileres, gastos: totalGastosAlquileres, neto: netoAlquileres },
     compraventas: { comisionBruta: comisionCompraventas, gastos: totalGastosCompraventas, neto: netoCompraventas },
     creditos: { bruto: precioCreditos, neto: netoCreditos },
+    gastosFijos: {
+      mensual: gastoFijoMensual,
+      anualizado: gastoFijoMensual * 12,
+      acumulado: gastoFijoAcumulado,
+      pctSobreBruto: (comisionAlquileres + comisionCompraventas + precioCreditos) > 0
+        ? (gastoFijoAcumulado / (comisionAlquileres + comisionCompraventas + precioCreditos)) * 100
+        : 0,
+      pctSobreNetoOperativo: beneficioNetoOperativo > 0 ? (gastoFijoAcumulado / beneficioNetoOperativo) * 100 : 0,
+    },
   };
 }
 
@@ -822,6 +860,7 @@ export type MetricasMes = {
   alquileres: number;
   compraventas: number;
   creditos: number;
+  gastosFijos: number;
 };
 
 export type MetricasAnuales = {
@@ -829,7 +868,18 @@ export type MetricasAnuales = {
   meses: MetricasMes[];
   mesesAnterior: MetricasMes[];
   trimestres: { trimestre: number; bruto: number; gastos: number; neto: number }[];
-  totalAnual: { bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number };
+  totalAnual: {
+    bruto: number;
+    gastos: number;
+    neto: number;
+    alquileres: number;
+    compraventas: number;
+    creditos: number;
+    gastosFijos: number;
+    netoTrasFijos: number;
+    pctFijosSobreBruto: number;
+    pctFijosSobreNeto: number;
+  };
   anioAnterior: { bruto: number; neto: number } | null;
   variacion: { brutoPct: number | null; netoPct: number | null };
   aniosDisponibles: number[];
@@ -854,19 +904,19 @@ export async function listarAniosConDatos(): Promise<number[]> {
 // categoría), más el total del año anterior para comparar. Los gastos se
 // imputan al mes en que se liquidaron (fecha_pago), no al de la operación.
 export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
-  await sincronizarTodosLosIngresos();
   const admin = getSupabaseAdmin();
 
   const desde = `${anio - 1}-01-01`;
   const hasta = `${anio + 1}-01-01`;
 
-  const [ingresosRes, operacionesRes, gastosRes, creditosRes, creditoGastosRes, clienteGastosRes] = await Promise.all([
+  const [ingresosRes, operacionesRes, gastosRes, creditosRes, creditoGastosRes, clienteGastosRes, gastosFijosRes] = await Promise.all([
     admin.from("cliente_ingresos").select("mes, comision_calculada").gte("mes", desde).lt("mes", hasta),
     admin.from("operaciones_compraventa").select("fecha_cierre, comision_calculada").gte("fecha_cierre", desde).lt("fecha_cierre", hasta),
     admin.from("operacion_gastos").select("fecha_pago, importe, es_negativo, pagado").eq("pagado", true).gte("fecha_pago", desde).lt("fecha_pago", hasta),
     admin.from("operaciones_creditos").select("fecha, precio").gte("fecha", desde).lt("fecha", hasta),
     admin.from("credito_gastos").select("fecha_pago, importe, es_negativo, pagado").eq("pagado", true).gte("fecha_pago", desde).lt("fecha_pago", hasta),
     admin.from("cliente_gasto").select("importe, categoria, es_recurrente, fecha_inicio, fecha_fin, pagado, fecha_pago"),
+    admin.from("gastos_fijos").select("importe_mensual, fecha_inicio, fecha_fin"),
   ]);
   if (ingresosRes.error) throw ingresosRes.error;
   if (operacionesRes.error) throw operacionesRes.error;
@@ -874,6 +924,7 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
   if (creditosRes.error) throw creditosRes.error;
   if (creditoGastosRes.error) throw creditoGastosRes.error;
   if (clienteGastosRes.error) console.warn("[metricas/cliente_gasto]", clienteGastosRes.error.message);
+  if (gastosFijosRes.error) console.warn("[metricas/gastos_fijos]", gastosFijosRes.error.message);
 
   function bucket(anioObjetivo: number): MetricasMes[] {
     const meses: MetricasMes[] = Array.from({ length: 12 }, (_, i) => ({
@@ -884,6 +935,7 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
       alquileres: 0,
       compraventas: 0,
       creditos: 0,
+      gastosFijos: 0,
     }));
 
     for (const r of ingresosRes.data ?? []) {
@@ -945,6 +997,19 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
         m.neto -= importe;
       }
     }
+    // Gastos fijos: prorrata mensual mientras estén activos.
+    for (const g of (gastosFijosRes.data ?? []) as unknown as GastoFijo[]) {
+      const inicio = new Date(g.fecha_inicio);
+      const fin = g.fecha_fin ? new Date(g.fecha_fin) : null;
+      const importe = Number(g.importe_mensual);
+      for (let i = 0; i < 12; i++) {
+        const primerDiaMes = new Date(Date.UTC(anioObjetivo, i, 1));
+        const ultimoDiaMes = new Date(Date.UTC(anioObjetivo, i + 1, 0));
+        if (inicio > ultimoDiaMes) continue;
+        if (fin && fin < primerDiaMes) continue;
+        meses[i].gastosFijos += importe;
+      }
+    }
     return meses;
   }
 
@@ -961,7 +1026,7 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
     };
   });
 
-  const totalAnual = meses.reduce(
+  const totalBase = meses.reduce(
     (acc, m) => ({
       bruto: acc.bruto + m.bruto,
       gastos: acc.gastos + m.gastos,
@@ -969,9 +1034,16 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
       alquileres: acc.alquileres + m.alquileres,
       compraventas: acc.compraventas + m.compraventas,
       creditos: acc.creditos + m.creditos,
+      gastosFijos: acc.gastosFijos + m.gastosFijos,
     }),
-    { bruto: 0, gastos: 0, neto: 0, alquileres: 0, compraventas: 0, creditos: 0 }
+    { bruto: 0, gastos: 0, neto: 0, alquileres: 0, compraventas: 0, creditos: 0, gastosFijos: 0 }
   );
+  const totalAnual = {
+    ...totalBase,
+    netoTrasFijos: totalBase.neto - totalBase.gastosFijos,
+    pctFijosSobreBruto: totalBase.bruto > 0 ? (totalBase.gastosFijos / totalBase.bruto) * 100 : 0,
+    pctFijosSobreNeto: totalBase.neto > 0 ? (totalBase.gastosFijos / totalBase.neto) * 100 : 0,
+  };
 
   const totalAnterior = mesesAnterior.reduce((acc, m) => ({ bruto: acc.bruto + m.bruto, neto: acc.neto + m.neto }), { bruto: 0, neto: 0 });
   const huboAnterior = mesesAnterior.some((m) => m.bruto !== 0 || m.neto !== 0);

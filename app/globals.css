@@ -822,7 +822,8 @@ h1 em {
 }
 
 .lead-form input,
-.lead-form textarea {
+.lead-form textarea,
+.lead-form select {
   font-family: inherit;
   font-size: 0.95rem;
   padding: 12px 14px;
@@ -834,9 +835,18 @@ h1 em {
 }
 
 .lead-form input:focus,
-.lead-form textarea:focus {
+.lead-form textarea:focus,
+.lead-form select:focus {
   outline: 2px solid var(--orange);
   outline-offset: 1px;
+}
+
+/* Selects e inputs del admin heredan la fuente por defecto */
+select,
+input,
+textarea,
+button {
+  font-family: inherit;
 }
 
 .lead-form-actions {
