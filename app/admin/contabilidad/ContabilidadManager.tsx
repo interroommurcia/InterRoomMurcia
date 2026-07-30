@@ -1359,29 +1359,43 @@ export default function ContabilidadManager() {
                   </div>
                 );
               })()}
-              {gastosFijos.map((g) => {
-                const esImpuesto = g.tipo === "impuesto";
-                return (
-                  <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                    <span>
-                      <b>{fmt(g.importe_mensual)}{esImpuesto ? "/trim" : "/mes"}</b>
-                      {esImpuesto && <span style={{ opacity: 0.5, marginLeft: 6 }}>(≈{fmt(g.importe_mensual / 3)}/mes)</span>}
-                      {" · "}{g.concepto} · <span style={{ opacity: 0.6 }}>{g.categoria}</span>
-                      <span style={{ marginLeft: 8, padding: "2px 6px", borderRadius: 4, background: esImpuesto ? "#fef3c7" : "#dbeafe", fontSize: 11 }}>
-                        {esImpuesto ? "Impuesto trimestre" : "Gasto fijo"}
+              {(() => {
+                const fijosList = gastosFijos.filter((g) => (g.tipo ?? "fijo") === "fijo");
+                const impList = gastosFijos.filter((g) => g.tipo === "impuesto");
+                const renderItem = (g: GastoFijo) => {
+                  const esImpuesto = g.tipo === "impuesto";
+                  return (
+                    <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", opacity: g.fecha_fin ? 0.5 : 1 }}>
+                      <span>
+                        <b>{fmt(g.importe_mensual)}{esImpuesto ? "/trim" : "/mes"}</b>
+                        {esImpuesto && <span style={{ opacity: 0.6, marginLeft: 6, fontSize: 12 }}>(≈{fmt(g.importe_mensual / 3)}/mes)</span>}
+                        <br />
+                        <span style={{ fontSize: 13 }}>{g.concepto} · <span style={{ opacity: 0.6 }}>{g.categoria}</span></span>
+                        <br />
+                        <span style={{ opacity: 0.5, fontSize: 11 }}>desde {g.fecha_inicio}{g.fecha_fin && ` · hasta ${g.fecha_fin}`}</span>
                       </span>
-                      <span style={{ opacity: 0.5, marginLeft: 8 }}>desde {g.fecha_inicio}</span>
-                      {g.fecha_fin && <span style={{ opacity: 0.5, marginLeft: 8 }}>hasta {g.fecha_fin}</span>}
-                    </span>
-                    <span style={{ display: "flex", gap: 8 }}>
-                      {!g.fecha_fin && (
-                        <button type="button" className="btn-ghost" onClick={() => terminarGastoFijo(g.id)}>Finalizar</button>
-                      )}
-                      <button type="button" className="btn-ghost" onClick={() => eliminarGastoFijo(g.id)}>Borrar</button>
-                    </span>
+                      <span style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {!g.fecha_fin && (
+                          <button type="button" className="btn-ghost" onClick={() => terminarGastoFijo(g.id)}>Finalizar</button>
+                        )}
+                        <button type="button" className="btn-ghost" onClick={() => eliminarGastoFijo(g.id)}>Borrar</button>
+                      </span>
+                    </div>
+                  );
+                };
+                return (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div style={{ border: "1px solid #dbeafe", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
+                      <h3 style={{ marginTop: 0, fontSize: 15, color: "#1e40af" }}>Gastos fijos mensuales ({fijosList.length})</h3>
+                      {fijosList.length === 0 ? <p className="admin-empty" style={{ margin: 0 }}>Sin gastos fijos.</p> : fijosList.map(renderItem)}
+                    </div>
+                    <div style={{ border: "1px solid #fde68a", borderRadius: 12, padding: 12, background: "#fffbeb" }}>
+                      <h3 style={{ marginTop: 0, fontSize: 15, color: "#b45309" }}>Impuestos trimestrales ({impList.length})</h3>
+                      {impList.length === 0 ? <p className="admin-empty" style={{ margin: 0 }}>Sin impuestos.</p> : impList.map(renderItem)}
+                    </div>
                   </div>
                 );
-              })}
+              })()}
             </>
           )}
         </div>
