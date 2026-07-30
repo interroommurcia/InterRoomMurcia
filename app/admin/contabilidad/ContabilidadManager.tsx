@@ -1447,7 +1447,15 @@ export default function ContabilidadManager() {
             <p className="admin-empty">Todavía no hay operaciones de compraventa.</p>
           ) : (
             operaciones.map((op) => (
-              <div key={op.id} className="pisos-list-item">
+              <div key={op.id} className="pisos-list-item" style={{ position: "relative" }}>
+                <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 4, zIndex: 2 }}>
+                  <button type="button" onClick={() => abrirEdicionOp(op)} title={editandoOp === op.id ? "Cerrar edición" : "Editar bruto"} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 18, padding: 4, lineHeight: 1 }}>
+                    ✏️
+                  </button>
+                  <button type="button" onClick={() => eliminarOperacion(op.id)} title="Eliminar operación" style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 18, padding: 4, lineHeight: 1 }}>
+                    🗑️
+                  </button>
+                </div>
                 <div className="pisos-list-body" onClick={() => toggleOperacion(op)} style={{ cursor: "pointer" }}>
                   <h4>{clienteNombre(op.cliente_id)}</h4>
                   <div className="loc">
@@ -1456,14 +1464,6 @@ export default function ContabilidadManager() {
                   {operacionAbierta === op.id && (
                     <div className="loc">Ganancia neta {fmt(netoDeOperacion(op.comision_calculada, gastos[op.id] ?? []))}</div>
                   )}
-                </div>
-                <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
-                  <button type="button" className="btn-ghost" onClick={() => abrirEdicionOp(op)}>
-                    {editandoOp === op.id ? "Cerrar edición" : "Editar bruto"}
-                  </button>
-                  <button type="button" className="btn-ghost" onClick={() => eliminarOperacion(op.id)}>
-                    Eliminar operación
-                  </button>
                 </div>
 
                 {editandoOp === op.id && (
