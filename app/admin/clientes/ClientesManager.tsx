@@ -88,7 +88,7 @@ export default function ClientesManager() {
   const [mostrarNuevoCliente, setMostrarNuevoCliente] = useState(false);
   const [copiado, setCopiado] = useState<string | null>(null);
   const [editando, setEditando] = useState<string | null>(null);
-  const [edicion, setEdicion] = useState<{ tipo_secundario: "" | Cliente["tipo"]; notas: string }>({ tipo_secundario: "", notas: "" });
+  const [edicion, setEdicion] = useState<{ nombre: string; apellidos: string; telefonoPrefijo: string; telefonoNumero: string; email: string; tipo_secundario: "" | Cliente["tipo"]; notas: string }>({ nombre: "", apellidos: "", telefonoPrefijo: "+34", telefonoNumero: "", email: "", tipo_secundario: "", notas: "" });
 
   async function cargar() {
     const data = await fetch("/api/admin/clientes").then((r) => r.json());
@@ -140,14 +140,30 @@ export default function ClientesManager() {
       return;
     }
     setEditando(c.id);
-    setEdicion({ tipo_secundario: c.tipo_secundario ?? "", notas: c.notas ?? "" });
+    const tel = (c.telefono ?? "").trim();
+    const m = tel.match(/^(\+\d{1,4})\s*(.*)$/);
+    setEdicion({
+      nombre: c.nombre ?? "",
+      apellidos: c.apellidos ?? "",
+      telefonoPrefijo: m?.[1] ?? "+34",
+      telefonoNumero: m?.[2] ?? tel,
+      email: c.email ?? "",
+      tipo_secundario: c.tipo_secundario ?? "",
+      notas: c.notas ?? "",
+    });
   }
 
   async function guardarEdicion(id: string) {
+    if (!confirm("¿Estás seguro de que quieres modificar los datos del contacto?")) return;
+    const telefono = edicion.telefonoNumero.trim() ? `${edicion.telefonoPrefijo} ${edicion.telefonoNumero.trim()}` : null;
     await fetch(`/api/admin/clientes/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        nombre: edicion.nombre.trim(),
+        apellidos: edicion.apellidos.trim() || null,
+        telefono,
+        email: edicion.email.trim() || null,
         tipo_secundario: edicion.tipo_secundario || null,
         notas: edicion.notas || null,
       }),
@@ -352,6 +368,34 @@ export default function ClientesManager() {
               </div>
               {editando === cliente.id && (
                 <div style={{ borderTop: "1px solid var(--color-border, #e5e7eb)", padding: 16 }}>
+                  <div className="lead-form-row">
+                    <label>
+                      Nombre
+                      <input value={edicion.nombre} onChange={(e) => setEdicion({ ...edicion, nombre: e.target.value })} />
+                    </label>
+                    <label>
+                      Apellidos
+                      <input value={edicion.apellidos} onChange={(e) => setEdicion({ ...edicion, apellidos: e.target.value })} />
+                    </label>
+                  </div>
+                  <div className="lead-form-row">
+                    <label>
+                      Prefijo
+                      <select value={edicion.telefonoPrefijo} onChange={(e) => setEdicion({ ...edicion, telefonoPrefijo: e.target.value })}>
+                        {PREFIJOS.map((p) => (
+                          <option key={p.code} value={p.code}>{p.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Teléfono
+                      <input value={edicion.telefonoNumero} onChange={(e) => setEdicion({ ...edicion, telefonoNumero: e.target.value })} />
+                    </label>
+                    <label>
+                      Email
+                      <input type="email" value={edicion.email} onChange={(e) => setEdicion({ ...edicion, email: e.target.value })} />
+                    </label>
+                  </div>
                   <div className="lead-form-row">
                     <label style={{ flex: 1 }}>
                       Rol secundario (opcional)
