@@ -156,6 +156,29 @@ export default function ClientesManager() {
     cargar();
   }
 
+  function exportarExcel() {
+    const cols = ["Nombre", "Apellidos", "Teléfono", "Email", "Tipo", "Rol secundario", "Zona interés", "Operación", "Origen", "Datos completos", "Notas", "Alta"];
+    const escape = (v: unknown) => {
+      const s = v == null ? "" : String(v);
+      return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows = clientes.map((c) => [
+      c.nombre, c.apellidos ?? "", c.telefono ?? "", c.email ?? "",
+      labelTipo(c.tipo), c.tipo_secundario ? labelTipo(c.tipo_secundario) : "",
+      c.zona_interes ?? "", c.operacion ?? "", c.origen,
+      c.datos_completados ? "sí" : "no", c.notas ?? "",
+      new Date(c.created_at).toLocaleDateString("es-ES"),
+    ].map(escape).join(";"));
+    const csv = "﻿" + [cols.join(";"), ...rows].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `clientes-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function copiarEnlace(token: string) {
     const url = `${SITE_URL}/completar-datos/${token}`;
     navigator.clipboard.writeText(url).then(() => {
@@ -203,9 +226,14 @@ export default function ClientesManager() {
           <h2>
             {labelTipo(tab)} ({clientesFiltrados.length}/{clientesDelTab.length})
           </h2>
-          <button type="button" className="btn-primary" onClick={abrirFormulario}>
-            {mostrarNuevoCliente ? "Cancelar" : "Nuevo cliente"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" className="btn-ghost" onClick={exportarExcel} disabled={clientes.length === 0}>
+              Exportar Excel
+            </button>
+            <button type="button" className="btn-primary" onClick={abrirFormulario}>
+              {mostrarNuevoCliente ? "Cancelar" : "Nuevo cliente"}
+            </button>
+          </div>
         </div>
 
         <div className="lead-form-row" style={{ marginBottom: 16 }}>
