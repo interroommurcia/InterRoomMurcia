@@ -1452,11 +1452,11 @@ export default function ContabilidadManager() {
                   <button type="button" onClick={() => abrirEdicionOp(op)} title={editandoOp === op.id ? "Cerrar edición" : "Editar bruto"} style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, lineHeight: 0, color: "var(--orange)" }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                   </button>
-                  <button type="button" onClick={() => eliminarOperacion(op.id)} title="Eliminar operación" style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, lineHeight: 0, color: "var(--orange)" }}>
+                  <button type="button" onClick={() => { if (confirm(`¿Seguro que quieres eliminar esta operación de ${clienteNombre(op.cliente_id)}? Esta acción no se puede deshacer.`)) eliminarOperacion(op.id); }} title="Eliminar operación" style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, lineHeight: 0, color: "var(--orange)" }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
                   </button>
                 </div>
-                <div className="pisos-list-body" onClick={() => toggleOperacion(op)} style={{ cursor: "pointer" }}>
+                <div className="pisos-list-body" onClick={() => toggleOperacion(op)} style={{ cursor: "pointer", paddingLeft: 72 }}>
                   <h4>{clienteNombre(op.cliente_id)}</h4>
                   <div className="loc">
                     Cierre {new Date(op.fecha_cierre).toLocaleDateString("es-ES")} · Venta {fmt(op.precio_venta)} · Bruto (comisión) {fmt(op.comision_calculada)}
