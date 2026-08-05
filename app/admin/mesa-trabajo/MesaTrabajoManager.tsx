@@ -10,11 +10,14 @@ type Tarea = {
   hora: string | null;
   cliente_id: string | null;
   clienteNombre: string | null;
+  asignado_a: string | null;
+  trabajadorNombre: string | null;
   estado: "pendiente" | "hecha";
   notas: string | null;
 };
 
 type Cliente = { id: string; nombre: string; apellidos: string | null };
+type Trabajador = { id: string; nombre: string; activo: boolean };
 
 const TIPOS: { value: Tarea["tipo"]; label: string }[] = [
   { value: "tarea", label: "Tarea" },
@@ -42,28 +45,54 @@ function isoDate(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-const NUEVA_TAREA = { tipo: "tarea" as Tarea["tipo"], titulo: "", fecha: "", hora: "", cliente_id: "", notas: "" };
+const NUEVA_TAREA = { tipo: "tarea" as Tarea["tipo"], titulo: "", fecha: "", hora: "", cliente_id: "", asignado_a: "", notas: "" };
 
 export default function MesaTrabajoManager() {
   const hoy = useMemo(() => new Date(), []);
   const [tareas, setTareas] = useState<Tarea[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [trabajadores, setTrabajadores] = useState<Trabajador[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroTipo, setFiltroTipo] = useState<"todas" | Tarea["tipo"]>("todas");
   const [filtroFecha, setFiltroFecha] = useState<string | null>(null);
+  const [filtroTrabajador, setFiltroTrabajador] = useState<string>("");
   const [verHechas, setVerHechas] = useState(false);
   const [nueva, setNueva] = useState(NUEVA_TAREA);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [cursor, setCursor] = useState(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+  const [gestionTrabajadores, setGestionTrabajadores] = useState(false);
+  const [nuevoTrabajador, setNuevoTrabajador] = useState("");
 
   async function cargar() {
-    const [t, c] = await Promise.all([
+    const [t, c, tr] = await Promise.all([
       fetch("/api/admin/mesa-trabajo").then((r) => r.json()),
       fetch("/api/admin/clientes").then((r) => r.json()),
+      fetch("/api/admin/trabajadores").then((r) => r.json()),
     ]);
     setTareas(Array.isArray(t) ? t : []);
     setClientes(Array.isArray(c) ? c : []);
+    setTrabajadores(Array.isArray(tr) ? tr : []);
     setLoading(false);
+  }
+
+  async function crearTrabajador(e: React.FormEvent) {
+    e.preventDefault();
+    const nombre = nuevoTrabajador.trim();
+    if (!nombre) return;
+    await fetch("/api/admin/trabajadores", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre }) });
+    setNuevoTrabajador("");
+    cargar();
+  }
+
+  async function eliminarTrabajador(id: string) {
+    if (!confirm("¿Eliminar este trabajador? Las tareas asignadas quedarán sin asignar.")) return;
+    await fetch(`/api/admin/trabajadores/${id}`, { method: "DELETE" });
+    cargar();
+  }
+
+  async function reasignarTarea(id: string, asignado_a: string) {
+    await fetch(`/api/admin/mesa-trabajo/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ asignado_a }) });
+    cargar();
   }
 
   useEffect(() => {
@@ -126,6 +155,7 @@ export default function MesaTrabajoManager() {
         fecha: nueva.fecha || undefined,
         hora: nueva.hora || undefined,
         cliente_id: nueva.cliente_id || undefined,
+        asignado_a: nueva.asignado_a || undefined,
         notas: nueva.notas || undefined,
       }),
     });
@@ -152,6 +182,7 @@ export default function MesaTrabajoManager() {
     if (filtroTipo !== "todas" && t.tipo !== filtroTipo) return false;
     if (!verHechas && t.estado === "hecha") return false;
     if (filtroFecha && (t.fecha?.slice(0, 10) ?? null) !== filtroFecha) return false;
+    if (filtroTrabajador && t.asignado_a !== filtroTrabajador) return false;
     return true;
   });
 
@@ -246,16 +277,46 @@ export default function MesaTrabajoManager() {
                 </span>
               )}
             </h2>
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <select value={filtroTrabajador} onChange={(e) => setFiltroTrabajador(e.target.value)} style={{ padding: "4px 8px" }}>
+                <option value="">Todos los trabajadores</option>
+                {trabajadores.map((t) => (
+                  <option key={t.id} value={t.id}>{t.nombre}</option>
+                ))}
+              </select>
               <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 14 }}>
                 <input type="checkbox" checked={verHechas} onChange={(e) => setVerHechas(e.target.checked)} />
                 Ver hechas
               </label>
+              <button type="button" className="btn-ghost" onClick={() => setGestionTrabajadores((v) => !v)}>
+                {gestionTrabajadores ? "Cerrar equipo" : "Equipo"}
+              </button>
               <button type="button" className="btn-primary" onClick={() => setMostrarForm((v) => !v)}>
                 {mostrarForm ? "Cancelar" : "Nueva anotación"}
               </button>
             </div>
           </div>
+
+          {gestionTrabajadores && (
+            <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 12, background: "#fafafa" }}>
+              <form onSubmit={crearTrabajador} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                <input value={nuevoTrabajador} onChange={(e) => setNuevoTrabajador(e.target.value)} placeholder="Nombre del trabajador" style={{ flex: 1 }} />
+                <button type="submit" className="btn-primary">Añadir</button>
+              </form>
+              {trabajadores.length === 0 ? (
+                <p className="admin-empty" style={{ margin: 0 }}>Aún no hay trabajadores.</p>
+              ) : (
+                <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {trabajadores.map((t) => (
+                    <li key={t.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 999 }}>
+                      <span>{t.nombre}</span>
+                      <button type="button" onClick={() => eliminarTrabajador(t.id)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--orange)", fontSize: 14 }}>×</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {mostrarForm && (
             <form className="piso-form" onSubmit={crearTarea}>
@@ -295,6 +356,15 @@ export default function MesaTrabajoManager() {
                     ))}
                   </select>
                 </label>
+                <label>
+                  Asignar a
+                  <select value={nueva.asignado_a} onChange={(e) => setNueva({ ...nueva, asignado_a: e.target.value })}>
+                    <option value="">Sin asignar</option>
+                    {trabajadores.filter((t) => t.activo).map((t) => (
+                      <option key={t.id} value={t.id}>{t.nombre}</option>
+                    ))}
+                  </select>
+                </label>
               </div>
               <label>
                 Notas
@@ -319,10 +389,17 @@ export default function MesaTrabajoManager() {
                   <div className="loc">
                     {t.fecha ? new Date(t.fecha).toLocaleDateString("es-ES") : "sin fecha"}
                     {t.hora ? ` · ${t.hora.slice(0, 5)}` : ""} · {t.clienteNombre || "sin cliente"}
+                    {t.trabajadorNombre && <span style={{ marginLeft: 6, padding: "1px 8px", borderRadius: 999, background: "var(--orange-light)", color: "var(--orange)", fontSize: 11 }}>👤 {t.trabajadorNombre}</span>}
                     {t.notas ? ` · ${t.notas}` : ""}
                   </div>
                 </div>
-                <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
+                <div className="lead-form-actions" style={{ padding: "0 16px 12px", flexWrap: "wrap" }}>
+                  <select value={t.asignado_a ?? ""} onChange={(e) => reasignarTarea(t.id, e.target.value)} style={{ padding: "2px 6px", fontSize: 12 }}>
+                    <option value="">Sin asignar</option>
+                    {trabajadores.filter((tr) => tr.activo || tr.id === t.asignado_a).map((tr) => (
+                      <option key={tr.id} value={tr.id}>{tr.nombre}</option>
+                    ))}
+                  </select>
                   <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
                     <input
                       type="checkbox"

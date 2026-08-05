@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
       fecha: body.fecha,
       hora: body.hora,
       cliente_id: body.cliente_id,
+      asignado_a: body.asignado_a,
       notas: body.notas,
     });
     return NextResponse.json(tarea);

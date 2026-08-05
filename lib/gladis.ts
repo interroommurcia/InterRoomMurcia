@@ -19,6 +19,7 @@ import { telegramSendDocument } from "./telegram";
 import { listarConversaciones, getKnowledgeBase, buildSystemPrompt } from "./chat";
 import { catalogSnapshot } from "./pisos";
 import { crearTarea, listarTareasEntreFechas, type TipoTarea } from "./mesaTrabajo";
+import { buscarTrabajadorPorNombre, listarTrabajadores } from "./trabajadores";
 
 const MAX_HISTORIAL = 20;
 const MAX_TURNOS_HERRAMIENTA = 5;
@@ -40,6 +41,8 @@ Guía de uso de herramientas:
 - Si preguntan "qué respondería Rommi" (el chatbot de la web) ante algo, usa consultar_rommi — simula su respuesta real con el mismo catálogo y base de conocimiento que usa en la web.
 - Si te piden anotar/agendar una tarea, cita o visita ("apúntame", "recuérdame", "queda con..."), usa anotar_agenda. Calcula tú la fecha exacta en formato YYYY-MM-DD a partir de la fecha de hoy (indicada más abajo) si dicen "mañana", "el viernes", etc.
 - Si preguntan qué hay en la agenda (hoy, esta semana, un día o rango concreto), usa consultar_agenda con fechas en formato YYYY-MM-DD, calculadas a partir de la fecha de hoy.
+- Si un miembro del equipo se identifica ("hola Gladis soy Juan", "soy X, qué tengo esta semana") o pregunta por SUS tareas ("qué tengo pendiente esta semana"), usa tareas_del_trabajador con su nombre. Si no dan rango, asume la semana en curso (lunes a domingo) calculada desde hoy. Para saber quiénes son los trabajadores dados de alta puedes usar listar_trabajadores.
+- Cuando anotes una tarea que el usuario diga que es "para" o "asignada a" alguien del equipo, incluye el nombre en el campo trabajador de anotar_agenda.
 - Si ninguna herramienta resuelve la pregunta, dilo con claridad en vez de inventar una respuesta.
 
 REGLA CRÍTICA — confirmación antes de modificar:
@@ -147,7 +150,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "anotar_agenda",
-    description: "Crea una anotación en la mesa de trabajo/calendario: una tarea, cita o visita, con fecha y hora opcionales y cliente vinculado opcional.",
+    description: "Crea una anotación en la mesa de trabajo/calendario: una tarea, cita o visita, con fecha y hora opcionales, cliente vinculado opcional y trabajador asignado opcional.",
     input_schema: {
       type: "object",
       properties: {
@@ -156,10 +159,30 @@ const TOOLS: Anthropic.Tool[] = [
         fecha: { type: "string", description: 'Fecha en formato "YYYY-MM-DD", calculada a partir de hoy si es relativa' },
         hora: { type: "string", description: 'Hora en formato "HH:MM", opcional' },
         cliente: { type: "string", description: "Nombre del cliente a vincular, opcional" },
+        trabajador: { type: "string", description: "Nombre del trabajador al que se asigna la tarea, opcional" },
         notas: { type: "string", description: "Notas adicionales, opcional" },
       },
       required: ["tipo", "titulo"],
     },
+  },
+  {
+    name: "tareas_del_trabajador",
+    description: "Devuelve las tareas/citas/visitas asignadas a un trabajador concreto entre dos fechas. Usar cuando un miembro del equipo pregunte qué tiene pendiente.",
+    input_schema: {
+      type: "object",
+      properties: {
+        nombre: { type: "string", description: "Nombre (o parte) del trabajador" },
+        desde: { type: "string", description: 'Fecha inicial "YYYY-MM-DD"' },
+        hasta: { type: "string", description: 'Fecha final "YYYY-MM-DD"' },
+        incluir_hechas: { type: "boolean", description: "Si incluir las tareas ya marcadas como hechas. Por defecto false." },
+      },
+      required: ["nombre", "desde", "hasta"],
+    },
+  },
+  {
+    name: "listar_trabajadores",
+    description: "Lista los trabajadores dados de alta en el equipo. Útil si no estás seguro de a quién se refiere el usuario.",
+    input_schema: { type: "object", properties: {} },
   },
   {
     name: "consultar_agenda",
@@ -364,15 +387,41 @@ Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.co
       const encontrado = clientes.find((c) => `${c.nombre} ${c.apellidos ?? ""}`.toLowerCase().includes(nombreCliente.toLowerCase()));
       cliente_id = encontrado?.id;
     }
+    let asignado_a: string | undefined;
+    const nombreTrabajador = String(input.trabajador ?? "").trim();
+    if (nombreTrabajador) {
+      const trab = await buscarTrabajadorPorNombre(nombreTrabajador);
+      asignado_a = trab?.id;
+    }
     const tarea = await crearTarea({
       tipo,
       titulo,
       fecha: input.fecha ? String(input.fecha) : undefined,
       hora: input.hora ? String(input.hora) : undefined,
       cliente_id,
+      asignado_a,
       notas: input.notas ? String(input.notas) : undefined,
     });
-    return `Anotado: ${tipo} "${titulo}"${tarea.fecha ? ` el ${tarea.fecha}` : ""}${tarea.hora ? ` a las ${tarea.hora}` : ""}${nombreCliente && !cliente_id ? " (cliente no encontrado, se guardó sin vincular)" : ""}.`;
+    return `Anotado: ${tipo} "${titulo}"${tarea.fecha ? ` el ${tarea.fecha}` : ""}${tarea.hora ? ` a las ${tarea.hora}` : ""}${nombreCliente && !cliente_id ? " (cliente no encontrado)" : ""}${nombreTrabajador && !asignado_a ? " (trabajador no encontrado)" : asignado_a ? ` · asignado a ${nombreTrabajador}` : ""}.`;
+  }
+  if (nombre === "listar_trabajadores") {
+    const trs = await listarTrabajadores();
+    if (!trs.length) return "No hay trabajadores dados de alta todavía.";
+    return trs.map((t) => `- ${t.nombre}${t.activo ? "" : " (inactivo)"}`).join("\n");
+  }
+  if (nombre === "tareas_del_trabajador") {
+    const nombreT = String(input.nombre ?? "").trim();
+    const desde = String(input.desde ?? "").trim();
+    const hasta = String(input.hasta ?? "").trim();
+    if (!nombreT) return "Falta el nombre del trabajador.";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || !/^\d{4}-\d{2}-\d{2}$/.test(hasta)) return 'Formato de fecha inválido, usa "YYYY-MM-DD".';
+    const trab = await buscarTrabajadorPorNombre(nombreT);
+    if (!trab) return `No encuentro a "${nombreT}" en el equipo. Comprueba el nombre o dime que lo dé de alta.`;
+    const incluirHechas = input.incluir_hechas === true;
+    const tareas = (await listarTareasEntreFechas(desde, hasta, trab.id)).filter((t) => incluirHechas || t.estado === "pendiente");
+    if (!tareas.length) return `${trab.nombre} no tiene ${incluirHechas ? "" : "pendientes "}entre ${desde} y ${hasta}.`;
+    const lineas = tareas.map((t) => `- [${t.tipo}] ${t.fecha}${t.hora ? ` ${t.hora.slice(0, 5)}` : ""} · ${t.titulo}${t.clienteNombre ? ` · ${t.clienteNombre}` : ""} · ${t.estado}`);
+    return [`Tareas de ${trab.nombre} (${desde} → ${hasta}):`, ...lineas].join("\n");
   }
   if (nombre === "consultar_agenda") {
     const desde = String(input.desde ?? "").trim();
