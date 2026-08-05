@@ -26,6 +26,7 @@ export type PropiedadHabitacion = {
 export type PropiedadMedia = {
   id: string;
   propiedad_id: string;
+  habitacion_id: string | null;
   tipo: "foto" | "video";
   url: string;
   storage_path: string | null;
@@ -142,10 +143,15 @@ export async function eliminarHabitacion(id: string) {
   if (error) throw error;
 }
 
-export async function subirMedia(propiedad_id: string, archivo: { nombre: string; buffer: Buffer; contentType: string }, tipo: "foto" | "video") {
+export async function subirMedia(
+  propiedad_id: string,
+  archivo: { nombre: string; buffer: Buffer; contentType: string },
+  tipo: "foto" | "video",
+  habitacion_id?: string | null
+) {
   const admin = getSupabaseAdmin();
   const ext = archivo.nombre.split(".").pop() || (tipo === "video" ? "mp4" : "jpg");
-  const path = `${propiedad_id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const path = `${propiedad_id}/${habitacion_id ?? "general"}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error: upErr } = await admin.storage.from(BUCKET).upload(path, archivo.buffer, {
     contentType: archivo.contentType,
     upsert: false,
@@ -154,11 +160,35 @@ export async function subirMedia(propiedad_id: string, archivo: { nombre: string
   const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(path);
   const { data, error } = await admin
     .from("propiedad_media")
-    .insert({ propiedad_id, tipo, url: pub.publicUrl, storage_path: path })
+    .insert({ propiedad_id, habitacion_id: habitacion_id ?? null, tipo, url: pub.publicUrl, storage_path: path })
     .select()
     .single();
   if (error) throw error;
   return data as PropiedadMedia;
+}
+
+export async function descargarMedia(id: string): Promise<{ nombre: string; buffer: Buffer; contentType: string } | null> {
+  const admin = getSupabaseAdmin();
+  const { data: reg } = await admin.from("propiedad_media").select("storage_path, tipo").eq("id", id).maybeSingle();
+  if (!reg?.storage_path) return null;
+  const { data, error } = await admin.storage.from(BUCKET).download(reg.storage_path);
+  if (error || !data) return null;
+  const buffer = Buffer.from(await data.arrayBuffer());
+  const nombre = reg.storage_path.split("/").pop() || "archivo";
+  return { nombre, buffer, contentType: data.type || "application/octet-stream" };
+}
+
+export async function copiarMediaAPiso(mediaId: string): Promise<string | null> {
+  const admin = getSupabaseAdmin();
+  const { data: reg } = await admin.from("propiedad_media").select("storage_path, tipo").eq("id", mediaId).maybeSingle();
+  if (!reg?.storage_path || reg.tipo !== "foto") return null;
+  const { data: blob } = await admin.storage.from(BUCKET).download(reg.storage_path);
+  if (!blob) return null;
+  const ext = reg.storage_path.split(".").pop() || "jpg";
+  const destino = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await admin.storage.from("pisos").upload(destino, blob, { contentType: blob.type, upsert: false });
+  if (error) return null;
+  return admin.storage.from("pisos").getPublicUrl(destino).data.publicUrl;
 }
 
 export async function eliminarMedia(id: string) {

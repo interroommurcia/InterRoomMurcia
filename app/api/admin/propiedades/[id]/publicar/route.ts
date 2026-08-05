@@ -1,0 +1,57 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseAdmin } from "../../../../../../lib/supabaseAdmin";
+import { copiarMediaAPiso } from "../../../../../../lib/propiedades";
+import { crearPiso } from "../../../../../../lib/pisosAdmin";
+import type { Zona } from "../../../../../../lib/pisos";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+const ZONAS: Zona["slug"][] = ["ucam", "umu", "upct"];
+
+function slugify(s: string) {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+}
+
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  const body = await req.json().catch(() => null);
+  if (!body) return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
+  const { habitacion_id, zona, slug, titulo, barrio, precio_mes, metros, descripcion } = body as Record<string, unknown>;
+  if (!ZONAS.includes(zona as Zona["slug"])) return NextResponse.json({ error: "zona inválida" }, { status: 400 });
+  if (!titulo || !barrio || !descripcion || !precio_mes) return NextResponse.json({ error: "faltan datos" }, { status: 400 });
+
+  const admin = getSupabaseAdmin();
+  let q = admin.from("propiedad_media").select("id").eq("propiedad_id", params.id).eq("tipo", "foto");
+  if (habitacion_id) q = q.eq("habitacion_id", String(habitacion_id));
+  else q = q.is("habitacion_id", null);
+  const { data: fotos } = await q.order("orden");
+
+  let imageUrl: string | null = null;
+  if (fotos && fotos.length > 0) {
+    imageUrl = await copiarMediaAPiso(fotos[0].id);
+  }
+
+  const slugFinal = slugify(String(slug || titulo)) + "-" + Math.random().toString(36).slice(2, 6);
+  try {
+    await crearPiso({
+      slug: slugFinal,
+      titulo: String(titulo),
+      zona: zona as Zona["slug"],
+      barrio: String(barrio),
+      precioMes: Number(precio_mes),
+      metros: metros ? Number(metros) : null,
+      descripcion: String(descripcion),
+      disponible: true,
+      imageUrl,
+    });
+    return NextResponse.json({ ok: true, slug: slugFinal, zona, url: `/habitaciones/${zona}/${slugFinal}` });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Error" }, { status: 500 });
+  }
+}

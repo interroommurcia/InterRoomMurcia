@@ -10,7 +10,7 @@ type Habitacion = {
   clienteNombre: string | null;
   orden: number;
 };
-type Media = { id: string; tipo: "foto" | "video"; url: string };
+type Media = { id: string; tipo: "foto" | "video"; url: string; habitacion_id: string | null };
 type Propiedad = {
   id: string;
   tipo: string;
@@ -34,6 +34,8 @@ const NUEVA: Omit<Propiedad, "id" | "habitaciones" | "media"> = {
   precio_total: null,
   notas: "",
 };
+
+const FONT = "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
 export default function PropiedadesManager() {
   const [props, setProps] = useState<Propiedad[]>([]);
@@ -111,11 +113,12 @@ export default function PropiedadesManager() {
     cargar();
   }
 
-  async function subirArchivo(propId: string, file: File, tipo: "foto" | "video") {
-    setSubiendo(propId);
+  async function subirArchivo(propId: string, file: File, tipo: "foto" | "video", habitacion_id?: string | null) {
+    setSubiendo(propId + (habitacion_id ?? ""));
     const fd = new FormData();
     fd.append("file", file);
     fd.append("tipo", tipo);
+    if (habitacion_id) fd.append("habitacion_id", habitacion_id);
     await fetch(`/api/admin/propiedades/${propId}/media`, { method: "POST", body: fd });
     setSubiendo(null);
     cargar();
@@ -127,66 +130,75 @@ export default function PropiedadesManager() {
     cargar();
   }
 
-  if (loading) return <p className="admin-empty">Cargando...</p>;
+  if (loading) return <p className="admin-empty" style={{ fontFamily: FONT }}>Cargando...</p>;
 
   return (
-    <div className="contabilidad-manager">
-      <div className="section-head">
-        <h2 style={{ fontSize: 16 }}>{props.length} propiedad{props.length === 1 ? "" : "es"}</h2>
-        <button type="button" className="btn-primary" onClick={() => setMostrarForm((v) => !v)}>
-          {mostrarForm ? "Cancelar" : "Nueva propiedad"}
+    <div style={{ fontFamily: FONT }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, letterSpacing: "-0.01em" }}>
+          {props.length} propiedad{props.length === 1 ? "" : "es"}
+        </h2>
+        <button
+          type="button"
+          onClick={() => setMostrarForm((v) => !v)}
+          style={{
+            padding: "8px 16px",
+            borderRadius: 8,
+            background: mostrarForm ? "#f3f4f6" : "var(--orange)",
+            color: mostrarForm ? "#374151" : "#fff",
+            border: "none",
+            cursor: "pointer",
+            fontSize: 14,
+            fontWeight: 500,
+            fontFamily: FONT,
+          }}
+        >
+          {mostrarForm ? "Cancelar" : "+ Nueva propiedad"}
         </button>
       </div>
 
       {mostrarForm && (
-        <form className="piso-form" onSubmit={crear}>
-          <div className="lead-form-row">
-            <label>
-              Tipo
-              <select value={nueva.tipo} onChange={(e) => setNueva({ ...nueva, tipo: e.target.value })}>
+        <form onSubmit={crear} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20, marginBottom: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+            <Field label="Tipo">
+              <select value={nueva.tipo} onChange={(e) => setNueva({ ...nueva, tipo: e.target.value })} style={inputStyle}>
                 <option value="piso">Piso</option>
                 <option value="casa">Casa</option>
                 <option value="estudio">Estudio</option>
                 <option value="chalet">Chalet</option>
               </select>
-            </label>
-            <label style={{ flex: 1 }}>
-              Nombre
-              <input required value={nueva.nombre} onChange={(e) => setNueva({ ...nueva, nombre: e.target.value })} placeholder="Ej. Piso Guadalupe 3B" />
-            </label>
-            <label style={{ flex: 1 }}>
-              Dirección
-              <input value={nueva.direccion ?? ""} onChange={(e) => setNueva({ ...nueva, direccion: e.target.value })} />
-            </label>
+            </Field>
+            <Field label="Nombre">
+              <input required value={nueva.nombre} onChange={(e) => setNueva({ ...nueva, nombre: e.target.value })} placeholder="Ej. Piso Guadalupe 3B" style={inputStyle} />
+            </Field>
+            <Field label="Dirección">
+              <input value={nueva.direccion ?? ""} onChange={(e) => setNueva({ ...nueva, direccion: e.target.value })} style={inputStyle} />
+            </Field>
+            <Field label="Habitaciones">
+              <input type="number" min={0} value={nueva.num_habitaciones} onChange={(e) => setNueva({ ...nueva, num_habitaciones: Number(e.target.value) })} style={inputStyle} />
+            </Field>
+            <Field label="Baños">
+              <input type="number" min={0} value={nueva.num_banos} onChange={(e) => setNueva({ ...nueva, num_banos: Number(e.target.value) })} style={inputStyle} />
+            </Field>
+            <Field label="Precio total (€)">
+              <input type="number" min={0} step="0.01" value={nueva.precio_total ?? ""} onChange={(e) => setNueva({ ...nueva, precio_total: e.target.value ? Number(e.target.value) : null })} style={inputStyle} />
+            </Field>
           </div>
-          <div className="lead-form-row">
-            <label>
-              Habitaciones
-              <input type="number" min={0} value={nueva.num_habitaciones} onChange={(e) => setNueva({ ...nueva, num_habitaciones: Number(e.target.value) })} />
-            </label>
-            <label>
-              Baños
-              <input type="number" min={0} value={nueva.num_banos} onChange={(e) => setNueva({ ...nueva, num_banos: Number(e.target.value) })} />
-            </label>
-            <label>
-              Precio total (€)
-              <input type="number" min={0} step="0.01" value={nueva.precio_total ?? ""} onChange={(e) => setNueva({ ...nueva, precio_total: e.target.value ? Number(e.target.value) : null })} />
-            </label>
+          <div style={{ marginTop: 12 }}>
+            <Field label="Notas">
+              <textarea value={nueva.notas ?? ""} onChange={(e) => setNueva({ ...nueva, notas: e.target.value })} rows={4} style={{ ...inputStyle, resize: "vertical", minHeight: 80 }} />
+            </Field>
           </div>
-          <label>
-            Notas
-            <textarea value={nueva.notas ?? ""} onChange={(e) => setNueva({ ...nueva, notas: e.target.value })} rows={4} style={{ resize: "vertical", minHeight: 80, fontFamily: "inherit", width: "100%", padding: 8 }} />
-          </label>
-          <div className="lead-form-actions">
-            <button type="submit" className="btn-primary">Guardar</button>
+          <div style={{ marginTop: 12, textAlign: "right" }}>
+            <button type="submit" style={{ padding: "8px 20px", borderRadius: 8, background: "var(--orange)", color: "#fff", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 500, fontFamily: FONT }}>Guardar</button>
           </div>
         </form>
       )}
 
       {props.length === 0 ? (
-        <p className="admin-empty">Aún no hay propiedades captadas.</p>
+        <p style={{ color: "#9ca3af", padding: 24, textAlign: "center" }}>Aún no hay propiedades captadas.</p>
       ) : (
-        <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", marginTop: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {props.map((p) => (
             <PropiedadCard
               key={p.id}
@@ -199,14 +211,33 @@ export default function PropiedadesManager() {
               onCrearHab={(nombre) => crearHab(p.id, nombre)}
               onActualizarHab={actualizarHab}
               onEliminarHab={eliminarHab}
-              onSubir={(f, t) => subirArchivo(p.id, f, t)}
+              onSubir={(f, t, hid) => subirArchivo(p.id, f, t, hid)}
               onEliminarMedia={eliminarMedia}
-              subiendo={subiendo === p.id}
+              subiendoKey={subiendo}
             />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "8px 10px",
+  borderRadius: 6,
+  border: "1px solid #d1d5db",
+  fontSize: 14,
+  fontFamily: FONT,
+  background: "#fff",
+};
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#6b7280", fontWeight: 500 }}>
+      {label}
+      {children}
+    </label>
   );
 }
 
@@ -222,7 +253,7 @@ function PropiedadCard({
   onEliminarHab,
   onSubir,
   onEliminarMedia,
-  subiendo,
+  subiendoKey,
 }: {
   p: Propiedad;
   clientes: Cliente[];
@@ -233,117 +264,324 @@ function PropiedadCard({
   onCrearHab: (nombre: string) => void;
   onActualizarHab: (id: string, patch: Partial<Habitacion>) => void;
   onEliminarHab: (id: string) => void;
-  onSubir: (file: File, tipo: "foto" | "video") => void;
+  onSubir: (file: File, tipo: "foto" | "video", habitacion_id?: string | null) => void;
   onEliminarMedia: (id: string) => void;
-  subiendo: boolean;
+  subiendoKey: string | null;
 }) {
   const [nuevaHab, setNuevaHab] = useState("");
-  const portada = p.media.find((m) => m.tipo === "foto");
+  const mediaGeneral = p.media.filter((m) => !m.habitacion_id);
+  const portada = mediaGeneral.find((m) => m.tipo === "foto") ?? p.media.find((m) => m.tipo === "foto");
+
   return (
-    <div className="pisos-list-item" style={{ display: "flex", flexDirection: "column", padding: 0, overflow: "hidden" }}>
-      <div style={{ position: "relative", height: 180, background: "#f3f4f6", cursor: "pointer" }} onClick={onToggle}>
-        {portada ? (
-          <img src={portada.url} alt={p.nombre} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#9ca3af", fontSize: 13 }}>Sin foto</div>
-        )}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onEliminar(); }}
-          title="Eliminar propiedad"
-          style={{ position: "absolute", top: 8, right: 8, background: "rgba(255,255,255,0.9)", border: "none", borderRadius: 999, width: 28, height: 28, cursor: "pointer", color: "var(--orange)" }}
-        >×</button>
-      </div>
-      <div style={{ padding: 12 }}>
-        <h4 style={{ margin: 0, cursor: "pointer" }} onClick={onToggle}>{p.nombre}</h4>
-        <div className="loc" style={{ fontSize: 12, opacity: 0.7 }}>
-          {p.tipo} · {p.num_habitaciones} hab · {p.num_banos} baños
-          {p.precio_total ? ` · ${p.precio_total}€` : ""}
+    <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", fontFamily: FONT }}>
+      <div style={{ display: "flex", gap: 20, padding: 20, cursor: "pointer" }} onClick={onToggle}>
+        <div style={{ width: 180, height: 130, borderRadius: 8, background: "#f3f4f6", overflow: "hidden", flexShrink: 0 }}>
+          {portada ? (
+            <img src={portada.url} alt={p.nombre} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#9ca3af", fontSize: 13 }}>Sin foto</div>
+          )}
         </div>
-        {p.direccion && <div style={{ fontSize: 12, opacity: 0.6 }}>{p.direccion}</div>}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em", color: "#111827" }}>{p.nombre}</h3>
+            <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4, textTransform: "capitalize" }}>
+              {p.tipo} · {p.num_habitaciones} hab · {p.num_banos} baños
+              {p.precio_total ? ` · ${p.precio_total}€/mes` : ""}
+            </div>
+            {p.direccion && <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>{p.direccion}</div>}
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            {p.habitaciones.map((h) => (
+              <span key={h.id} style={{
+                padding: "3px 10px", borderRadius: 999, fontSize: 12,
+                background: h.cliente_id ? "#fef3c7" : "#d1fae5",
+                color: h.cliente_id ? "#92400e" : "#065f46",
+              }}>
+                {h.nombre}{h.precio ? ` · ${h.precio}€` : ""}{h.cliente_id ? ` · ${h.clienteNombre}` : " · libre"}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+          <button type="button" onClick={(e) => { e.stopPropagation(); onEliminar(); }} title="Eliminar" style={{ background: "transparent", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 20, padding: 4 }}>×</button>
+          <span style={{ color: "#9ca3af", fontSize: 12 }}>{abierta ? "▲ cerrar" : "▼ abrir"}</span>
+        </div>
       </div>
 
       {abierta && (
-        <div style={{ padding: 12, borderTop: "1px solid #e5e7eb", background: "#fafafa" }}>
-          <div className="lead-form-row">
-            <label>
-              Nombre
-              <input defaultValue={p.nombre} onBlur={(e) => e.target.value !== p.nombre && onActualizar({ nombre: e.target.value })} />
-            </label>
-            <label>
-              Dirección
-              <input defaultValue={p.direccion ?? ""} onBlur={(e) => e.target.value !== (p.direccion ?? "") && onActualizar({ direccion: e.target.value })} />
-            </label>
+        <div style={{ padding: 20, borderTop: "1px solid #f3f4f6", background: "#fafafa" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
+            <Field label="Nombre">
+              <input defaultValue={p.nombre} onBlur={(e) => e.target.value !== p.nombre && onActualizar({ nombre: e.target.value })} style={inputStyle} />
+            </Field>
+            <Field label="Dirección">
+              <input defaultValue={p.direccion ?? ""} onBlur={(e) => e.target.value !== (p.direccion ?? "") && onActualizar({ direccion: e.target.value })} style={inputStyle} />
+            </Field>
+            <Field label="Habitaciones">
+              <input type="number" min={0} defaultValue={p.num_habitaciones} onBlur={(e) => Number(e.target.value) !== p.num_habitaciones && onActualizar({ num_habitaciones: Number(e.target.value) })} style={inputStyle} />
+            </Field>
+            <Field label="Baños">
+              <input type="number" min={0} defaultValue={p.num_banos} onBlur={(e) => Number(e.target.value) !== p.num_banos && onActualizar({ num_banos: Number(e.target.value) })} style={inputStyle} />
+            </Field>
+            <Field label="Precio total (€)">
+              <input type="number" min={0} step="0.01" defaultValue={p.precio_total ?? ""} onBlur={(e) => onActualizar({ precio_total: e.target.value ? Number(e.target.value) : null })} style={inputStyle} />
+            </Field>
           </div>
-          <div className="lead-form-row">
-            <label>
-              Habitaciones
-              <input type="number" min={0} defaultValue={p.num_habitaciones} onBlur={(e) => Number(e.target.value) !== p.num_habitaciones && onActualizar({ num_habitaciones: Number(e.target.value) })} />
-            </label>
-            <label>
-              Baños
-              <input type="number" min={0} defaultValue={p.num_banos} onBlur={(e) => Number(e.target.value) !== p.num_banos && onActualizar({ num_banos: Number(e.target.value) })} />
-            </label>
-            <label>
-              Precio total (€)
-              <input type="number" min={0} step="0.01" defaultValue={p.precio_total ?? ""} onBlur={(e) => onActualizar({ precio_total: e.target.value ? Number(e.target.value) : null })} />
-            </label>
-          </div>
-          <label>
-            Notas
-            <textarea defaultValue={p.notas ?? ""} rows={3} style={{ resize: "vertical", minHeight: 60, width: "100%", padding: 8, fontFamily: "inherit" }} onBlur={(e) => onActualizar({ notas: e.target.value })} />
-          </label>
-
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Habitaciones y precios</div>
-            {p.habitaciones.length === 0 && <p className="admin-empty" style={{ margin: "4px 0" }}>Sin habitaciones definidas.</p>}
-            {p.habitaciones.map((h) => (
-              <div key={h.id} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4, flexWrap: "wrap" }}>
-                <input defaultValue={h.nombre} onBlur={(e) => e.target.value !== h.nombre && onActualizarHab(h.id, { nombre: e.target.value })} style={{ flex: "1 1 100px", minWidth: 80 }} />
-                <input type="number" min={0} step="0.01" defaultValue={h.precio ?? ""} placeholder="€" onBlur={(e) => onActualizarHab(h.id, { precio: e.target.value ? Number(e.target.value) : null })} style={{ width: 80 }} />
-                <select defaultValue={h.cliente_id ?? ""} onChange={(e) => onActualizarHab(h.id, { cliente_id: e.target.value || null })} style={{ flex: "1 1 120px" }}>
-                  <option value="">Sin ocupar</option>
-                  {clientes.map((c) => (
-                    <option key={c.id} value={c.id}>{c.nombre} {c.apellidos ?? ""}</option>
-                  ))}
-                </select>
-                <button type="button" onClick={() => onEliminarHab(h.id)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--orange)", fontSize: 16 }}>×</button>
-              </div>
-            ))}
-            <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-              <input value={nuevaHab} onChange={(e) => setNuevaHab(e.target.value)} placeholder="Nueva habitación (ej. Master, H1)" style={{ flex: 1 }} />
-              <button type="button" className="btn-ghost" onClick={() => { onCrearHab(nuevaHab); setNuevaHab(""); }}>Añadir</button>
-            </div>
+          <div style={{ marginBottom: 20 }}>
+            <Field label="Notas">
+              <textarea defaultValue={p.notas ?? ""} rows={3} style={{ ...inputStyle, resize: "vertical", minHeight: 70 }} onBlur={(e) => onActualizar({ notas: e.target.value })} />
+            </Field>
           </div>
 
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Fotos y vídeos</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-              {p.media.map((m) => (
-                <div key={m.id} style={{ position: "relative", width: 88, height: 88 }}>
-                  {m.tipo === "foto" ? (
-                    <img src={m.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4 }} />
-                  ) : (
-                    <video src={m.url} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4, background: "#000" }} muted />
+          <Bloque titulo="Fotos y vídeos generales" sub="De la propiedad completa (fachada, cocina, salón, exterior…)">
+            <MediaGrid media={mediaGeneral} onDelete={onEliminarMedia} />
+            <UploadRow subiendo={subiendoKey === p.id} onFoto={(f) => onSubir(f, "foto", null)} onVideo={(f) => onSubir(f, "video", null)} />
+            {mediaGeneral.length > 0 && (
+              <PublicarBloque
+                propiedadId={p.id}
+                sugerencias={{ titulo: p.nombre, precio: p.precio_total ?? 0, direccion: p.direccion ?? "", descripcion: p.notas ?? "" }}
+                habitacionId={null}
+                metros={null}
+                label="Publicar propiedad entera en el catálogo"
+              />
+            )}
+          </Bloque>
+
+          <div style={{ marginTop: 24 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: "#111827" }}>Habitaciones</div>
+            {p.habitaciones.length === 0 && <p style={{ color: "#9ca3af", fontSize: 13, margin: "8px 0" }}>Sin habitaciones definidas.</p>}
+            {p.habitaciones.map((h) => {
+              const mediaHab = p.media.filter((m) => m.habitacion_id === h.id);
+              return (
+                <div key={h.id} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, padding: 14, marginBottom: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1.5fr 100px 1.5fr auto", gap: 8, alignItems: "end", marginBottom: 10 }}>
+                    <Field label="Habitación">
+                      <input defaultValue={h.nombre} onBlur={(e) => e.target.value !== h.nombre && onActualizarHab(h.id, { nombre: e.target.value })} style={inputStyle} />
+                    </Field>
+                    <Field label="Precio (€)">
+                      <input type="number" min={0} step="0.01" defaultValue={h.precio ?? ""} onBlur={(e) => onActualizarHab(h.id, { precio: e.target.value ? Number(e.target.value) : null })} style={inputStyle} />
+                    </Field>
+                    <Field label="Ocupada por">
+                      <select defaultValue={h.cliente_id ?? ""} onChange={(e) => onActualizarHab(h.id, { cliente_id: e.target.value || null })} style={inputStyle}>
+                        <option value="">Libre</option>
+                        {clientes.map((c) => (
+                          <option key={c.id} value={c.id}>{c.nombre} {c.apellidos ?? ""}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <button type="button" onClick={() => onEliminarHab(h.id)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 20, padding: 4, alignSelf: "center" }}>×</button>
+                  </div>
+                  <MediaGrid media={mediaHab} onDelete={onEliminarMedia} pequenio />
+                  <UploadRow
+                    subiendo={subiendoKey === p.id + h.id}
+                    onFoto={(f) => onSubir(f, "foto", h.id)}
+                    onVideo={(f) => onSubir(f, "video", h.id)}
+                    labelFoto="+ Foto de esta habitación"
+                    labelVideo="+ Vídeo"
+                  />
+                  {!h.cliente_id && mediaHab.length > 0 && (
+                    <PublicarBloque
+                      propiedadId={p.id}
+                      habitacionId={h.id}
+                      sugerencias={{ titulo: `${h.nombre} en ${p.nombre}`, precio: h.precio ?? 0, direccion: p.direccion ?? "", descripcion: p.notas ?? "" }}
+                      metros={null}
+                      label="Publicar esta habitación en el catálogo"
+                    />
                   )}
-                  <button
-                    type="button"
-                    onClick={() => onEliminarMedia(m.id)}
-                    style={{ position: "absolute", top: 2, right: 2, background: "rgba(255,255,255,0.9)", border: "none", borderRadius: 999, width: 20, height: 20, cursor: "pointer", color: "var(--orange)", fontSize: 12 }}
-                  >×</button>
                 </div>
-              ))}
+              );
+            })}
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <input value={nuevaHab} onChange={(e) => setNuevaHab(e.target.value)} placeholder="Nueva habitación (ej. Master, H1)" style={{ ...inputStyle, flex: 1 }} />
+              <button type="button" onClick={() => { onCrearHab(nuevaHab); setNuevaHab(""); }} style={{ padding: "8px 16px", borderRadius: 8, background: "#111827", color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontFamily: FONT }}>Añadir</button>
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <label className="btn-ghost" style={{ cursor: "pointer" }}>
-                {subiendo ? "Subiendo..." : "+ Foto"}
-                <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && onSubir(e.target.files[0], "foto")} disabled={subiendo} />
-              </label>
-              <label className="btn-ghost" style={{ cursor: "pointer" }}>
-                {subiendo ? "Subiendo..." : "+ Vídeo"}
-                <input type="file" accept="video/*" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && onSubir(e.target.files[0], "video")} disabled={subiendo} />
-              </label>
-            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Bloque({ titulo, sub, children }: { titulo: string; sub?: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>{titulo}</div>
+      {sub && <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 8 }}>{sub}</div>}
+      {children}
+    </div>
+  );
+}
+
+function MediaGrid({ media, onDelete, pequenio }: { media: Media[]; onDelete: (id: string) => void; pequenio?: boolean }) {
+  if (media.length === 0) return <div style={{ fontSize: 12, color: "#9ca3af", padding: "8px 0" }}>Sin archivos aún.</div>;
+  const size = pequenio ? 72 : 100;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+      {media.map((m) => (
+        <div key={m.id} style={{ position: "relative", width: size, height: size, borderRadius: 6, overflow: "hidden", background: "#000" }}>
+          {m.tipo === "foto" ? (
+            <img src={m.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <video src={m.url} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted />
+          )}
+          <div style={{ position: "absolute", top: 2, right: 2, display: "flex", gap: 2 }}>
+            <a
+              href={`/api/admin/propiedades/media/${m.id}/download`}
+              title="Descargar"
+              style={{ background: "rgba(255,255,255,0.95)", borderRadius: 999, width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", color: "#374151", fontSize: 12, textDecoration: "none" }}
+            >↓</a>
+            <button
+              type="button"
+              onClick={() => onDelete(m.id)}
+              title="Eliminar"
+              style={{ background: "rgba(255,255,255,0.95)", border: "none", borderRadius: 999, width: 22, height: 22, cursor: "pointer", color: "var(--orange)", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}
+            >×</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function UploadRow({
+  subiendo,
+  onFoto,
+  onVideo,
+  labelFoto = "+ Foto",
+  labelVideo = "+ Vídeo",
+}: {
+  subiendo: boolean;
+  onFoto: (f: File) => void;
+  onVideo: (f: File) => void;
+  labelFoto?: string;
+  labelVideo?: string;
+}) {
+  const btn: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "6px 14px",
+    borderRadius: 6,
+    border: "1px solid #d1d5db",
+    background: "#fff",
+    cursor: subiendo ? "wait" : "pointer",
+    fontSize: 13,
+    color: "#374151",
+    fontFamily: FONT,
+  };
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <label style={btn}>
+        {subiendo ? "Subiendo…" : labelFoto}
+        <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && onFoto(e.target.files[0])} disabled={subiendo} />
+      </label>
+      <label style={btn}>
+        {subiendo ? "Subiendo…" : labelVideo}
+        <input type="file" accept="video/*" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && onVideo(e.target.files[0])} disabled={subiendo} />
+      </label>
+    </div>
+  );
+}
+
+function PublicarBloque({
+  propiedadId,
+  habitacionId,
+  sugerencias,
+  metros,
+  label,
+}: {
+  propiedadId: string;
+  habitacionId: string | null;
+  sugerencias: { titulo: string; precio: number; direccion: string; descripcion: string };
+  metros: number | null;
+  label: string;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [zona, setZona] = useState<"ucam" | "umu" | "upct">("umu");
+  const [titulo, setTitulo] = useState(sugerencias.titulo);
+  const [precio, setPrecio] = useState(sugerencias.precio || 0);
+  const [barrio, setBarrio] = useState(sugerencias.direccion);
+  const [descripcion, setDescripcion] = useState(sugerencias.descripcion || "");
+  const [publicando, setPublicando] = useState(false);
+  const [resultado, setResultado] = useState<{ url: string } | null>(null);
+
+  async function publicar() {
+    if (!titulo || !barrio || !descripcion || !precio) {
+      alert("Faltan datos: título, barrio, descripción y precio son obligatorios.");
+      return;
+    }
+    setPublicando(true);
+    const res = await fetch(`/api/admin/propiedades/${propiedadId}/publicar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ habitacion_id: habitacionId, zona, titulo, barrio, precio_mes: precio, metros, descripcion }),
+    });
+    const data = await res.json();
+    setPublicando(false);
+    if (data.ok) setResultado({ url: data.url });
+    else alert(data.error || "No se pudo publicar");
+  }
+
+  if (resultado) {
+    return (
+      <div style={{ marginTop: 10, padding: 12, borderRadius: 8, background: "#d1fae5", color: "#065f46", fontSize: 13 }}>
+        ✓ Publicado. <a href={resultado.url} target="_blank" rel="noopener noreferrer" style={{ color: "#047857", fontWeight: 600 }}>Ver en catálogo →</a>{" "}
+        <a href="/admin/pisos" style={{ color: "#047857", marginLeft: 8 }}>Editar en catálogo</a>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button
+        type="button"
+        onClick={() => setAbierto((v) => !v)}
+        style={{
+          padding: "6px 14px",
+          borderRadius: 6,
+          border: "1px solid var(--orange)",
+          background: abierto ? "var(--orange-light)" : "#fff",
+          color: "var(--orange)",
+          cursor: "pointer",
+          fontSize: 13,
+          fontWeight: 500,
+          fontFamily: FONT,
+        }}
+      >
+        {abierto ? "Cancelar" : label}
+      </button>
+      {abierto && (
+        <div style={{ marginTop: 10, padding: 14, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8 }}>
+          <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 10 }}>
+            Se creará un anuncio en el catálogo con la primera foto disponible como portada. Podrás ajustar detalles después en <b>/admin/pisos</b>.
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
+            <Field label="Zona (campus)">
+              <select value={zona} onChange={(e) => setZona(e.target.value as "ucam" | "umu" | "upct")} style={inputStyle}>
+                <option value="ucam">UCAM</option>
+                <option value="umu">UMU</option>
+                <option value="upct">UPCT</option>
+              </select>
+            </Field>
+            <Field label="Título del anuncio">
+              <input value={titulo} onChange={(e) => setTitulo(e.target.value)} style={inputStyle} />
+            </Field>
+            <Field label="Barrio">
+              <input value={barrio} onChange={(e) => setBarrio(e.target.value)} style={inputStyle} />
+            </Field>
+            <Field label="Precio/mes (€)">
+              <input type="number" min={0} value={precio} onChange={(e) => setPrecio(Number(e.target.value))} style={inputStyle} />
+            </Field>
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <Field label="Descripción">
+              <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={4} style={{ ...inputStyle, resize: "vertical", minHeight: 80 }} placeholder="Describe la propiedad para el anuncio…" />
+            </Field>
+          </div>
+          <div style={{ marginTop: 12, textAlign: "right" }}>
+            <button type="button" disabled={publicando} onClick={publicar} style={{ padding: "8px 20px", borderRadius: 8, background: "var(--orange)", color: "#fff", border: "none", cursor: publicando ? "wait" : "pointer", fontSize: 14, fontWeight: 500, fontFamily: FONT }}>
+              {publicando ? "Publicando…" : "Publicar en catálogo"}
+            </button>
           </div>
         </div>
       )}
