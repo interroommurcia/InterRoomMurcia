@@ -20,6 +20,12 @@ type Propiedad = {
   num_banos: number;
   precio_total: number | null;
   notas: string | null;
+  servicio_wifi: boolean;
+  servicio_limpieza: boolean;
+  servicio_luz: boolean;
+  servicio_agua: boolean;
+  tiene_garaje: boolean;
+  precio_garaje: number | null;
   habitaciones: Habitacion[];
   media: Media[];
 };
@@ -33,7 +39,31 @@ const NUEVA: Omit<Propiedad, "id" | "habitaciones" | "media"> = {
   num_banos: 0,
   precio_total: null,
   notas: "",
+  servicio_wifi: false,
+  servicio_limpieza: false,
+  servicio_luz: false,
+  servicio_agua: false,
+  tiene_garaje: false,
+  precio_garaje: null,
 };
+
+function totalConGaraje(p: { precio_total: number | null; tiene_garaje: boolean; precio_garaje: number | null }) {
+  const base = p.precio_total ?? 0;
+  const gar = p.tiene_garaje && p.precio_garaje ? p.precio_garaje : 0;
+  return base + gar;
+}
+
+function descripcionConServicios(p: Propiedad) {
+  const servicios: string[] = [];
+  if (p.servicio_wifi) servicios.push("wifi");
+  if (p.servicio_limpieza) servicios.push("limpieza");
+  if (p.servicio_luz) servicios.push("luz");
+  if (p.servicio_agua) servicios.push("agua");
+  const extras: string[] = [];
+  if (servicios.length) extras.push(`Incluye: ${servicios.join(", ")}.`);
+  if (p.tiene_garaje) extras.push(`Plaza de garaje disponible${p.precio_garaje ? ` (+${p.precio_garaje}€/mes)` : ""}.`);
+  return [p.notas ?? "", ...extras].filter(Boolean).join("\n\n");
+}
 
 const FONT = "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
@@ -287,7 +317,15 @@ function PropiedadCard({
             <h3 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em", color: "#111827" }}>{p.nombre}</h3>
             <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4, textTransform: "capitalize" }}>
               {p.tipo} · {p.num_habitaciones} hab · {p.num_banos} baños
-              {p.precio_total ? ` · ${p.precio_total}€/mes` : ""}
+              {p.precio_total ? ` · ${totalConGaraje(p)}€/mes` : ""}
+              {p.tiene_garaje && p.precio_garaje ? ` (piso ${p.precio_total}€ + garaje ${p.precio_garaje}€)` : ""}
+            </div>
+            <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+              {p.servicio_wifi && <ServicioTag label="Wifi" />}
+              {p.servicio_limpieza && <ServicioTag label="Limpieza" />}
+              {p.servicio_luz && <ServicioTag label="Luz" />}
+              {p.servicio_agua && <ServicioTag label="Agua" />}
+              {p.tiene_garaje && <ServicioTag label="Garaje" />}
             </div>
             {p.direccion && <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>{p.direccion}</div>}
           </div>
@@ -334,13 +372,50 @@ function PropiedadCard({
             </Field>
           </div>
 
+          <div style={{ marginBottom: 20, padding: 14, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 10 }}>Servicios incluidos</div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              {[
+                { key: "servicio_wifi" as const, label: "Wifi" },
+                { key: "servicio_limpieza" as const, label: "Limpieza" },
+                { key: "servicio_luz" as const, label: "Luz" },
+                { key: "servicio_agua" as const, label: "Agua" },
+              ].map(({ key, label }) => (
+                <label key={key} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+                  <input type="checkbox" defaultChecked={p[key]} onChange={(e) => onActualizar({ [key]: e.target.checked } as Partial<Propiedad>)} />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 20, padding: 14, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 10 }}>Características</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" defaultChecked={p.tiene_garaje} onChange={(e) => onActualizar({ tiene_garaje: e.target.checked, precio_garaje: e.target.checked ? p.precio_garaje : null })} />
+                Tiene garaje
+              </label>
+              {p.tiene_garaje && (
+                <Field label="Precio plaza garaje (€/mes)">
+                  <input type="number" min={0} step="0.01" defaultValue={p.precio_garaje ?? ""} onBlur={(e) => onActualizar({ precio_garaje: e.target.value ? Number(e.target.value) : null })} style={{ ...inputStyle, width: 180 }} />
+                </Field>
+              )}
+              {p.tiene_garaje && p.precio_garaje && p.precio_total && (
+                <div style={{ fontSize: 13, color: "#065f46", background: "#d1fae5", padding: "6px 12px", borderRadius: 6, fontWeight: 500 }}>
+                  Total con garaje: {totalConGaraje(p)}€/mes
+                </div>
+              )}
+            </div>
+          </div>
+
           <Bloque titulo="Fotos y vídeos generales" sub="De la propiedad completa (fachada, cocina, salón, exterior…)">
             <MediaGrid media={mediaGeneral} onDelete={onEliminarMedia} />
             <UploadRow subiendo={subiendoKey === p.id} onFoto={(f) => onSubir(f, "foto", null)} onVideo={(f) => onSubir(f, "video", null)} />
             {mediaGeneral.length > 0 && (
               <PublicarBloque
                 propiedadId={p.id}
-                sugerencias={{ titulo: p.nombre, precio: p.precio_total ?? 0, direccion: p.direccion ?? "", descripcion: p.notas ?? "" }}
+                sugerencias={{ titulo: p.nombre, precio: totalConGaraje(p) || (p.precio_total ?? 0), direccion: p.direccion ?? "", descripcion: descripcionConServicios(p) }}
                 habitacionId={null}
                 metros={null}
                 label="Publicar propiedad entera en el catálogo"
@@ -400,6 +475,14 @@ function PropiedadCard({
         </div>
       )}
     </div>
+  );
+}
+
+function ServicioTag({ label }: { label: string }) {
+  return (
+    <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 11, background: "#eff6ff", color: "#1e40af", fontWeight: 500 }}>
+      {label}
+    </span>
   );
 }
 

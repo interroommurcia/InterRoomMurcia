@@ -15,6 +15,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       num_banos: body.num_banos,
       precio_total: body.precio_total,
       notas: body.notas,
+      servicio_wifi: body.servicio_wifi,
+      servicio_limpieza: body.servicio_limpieza,
+      servicio_luz: body.servicio_luz,
+      servicio_agua: body.servicio_agua,
+      tiene_garaje: body.tiene_garaje,
+      precio_garaje: body.precio_garaje,
     });
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {

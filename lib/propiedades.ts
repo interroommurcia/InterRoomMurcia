@@ -9,6 +9,12 @@ export type Propiedad = {
   num_banos: number;
   precio_total: number | null;
   notas: string | null;
+  servicio_wifi: boolean;
+  servicio_limpieza: boolean;
+  servicio_luz: boolean;
+  servicio_agua: boolean;
+  tiene_garaje: boolean;
+  precio_garaje: number | null;
   created_at: string;
   updated_at: string;
 };
