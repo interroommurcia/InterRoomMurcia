@@ -21,6 +21,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       servicio_agua: body.servicio_agua,
       tiene_garaje: body.tiene_garaje,
       precio_garaje: body.precio_garaje,
+      libre_enero: body.libre_enero,
+      propietario_id: body.propietario_id,
+      valor_compra: body.valor_compra,
     });
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {

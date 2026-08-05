@@ -9,6 +9,7 @@ type Habitacion = {
   precio: number | null;
   cliente_id: string | null;
   clienteNombre: string | null;
+  libre_enero: boolean;
   orden: number;
 };
 type Media = { id: string; tipo: "foto" | "video"; url: string; habitacion_id: string | null };
@@ -27,10 +28,13 @@ type Propiedad = {
   servicio_agua: boolean;
   tiene_garaje: boolean;
   precio_garaje: number | null;
+  libre_enero: boolean;
+  propietario_id: string | null;
+  valor_compra: number | null;
   habitaciones: Habitacion[];
   media: Media[];
 };
-type Cliente = { id: string; nombre: string; apellidos: string | null };
+type Cliente = { id: string; nombre: string; apellidos: string | null; tipo?: string };
 
 const NUEVA: Omit<Propiedad, "id" | "habitaciones" | "media"> = {
   tipo: "piso",
@@ -46,6 +50,9 @@ const NUEVA: Omit<Propiedad, "id" | "habitaciones" | "media"> = {
   servicio_agua: false,
   tiene_garaje: false,
   precio_garaje: null,
+  libre_enero: false,
+  propietario_id: null,
+  valor_compra: null,
 };
 
 function totalConGaraje(p: { precio_total: number | null; tiene_garaje: boolean; precio_garaje: number | null }) {
@@ -359,6 +366,7 @@ function PropiedadCard({
               {propView.servicio_luz && <ServicioTag label="Luz" />}
               {propView.servicio_agua && <ServicioTag label="Agua" />}
               {propView.tiene_garaje && <ServicioTag label="Garaje" />}
+              {propView.libre_enero && <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 11, background: "#fef3c7", color: "#92400e", fontWeight: 500 }}>Libre en Enero</span>}
             </div>
             {propView.direccion && <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>{propView.direccion}</div>}
           </div>
@@ -466,28 +474,55 @@ function PropiedadCard({
                   Total con garaje: {totalConGaraje(propView)}€/mes
                 </div>
               )}
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={val("libre_enero")} onChange={(e) => set("libre_enero", e.target.checked)} />
+                Se queda libre en Enero (rotación completa)
+              </label>
             </div>
           </div>
 
-          <Bloque titulo="Fotos y vídeos generales" sub="De la propiedad completa (fachada, cocina, salón, exterior…)">
-            <MediaGrid media={mediaGeneral} onDelete={onEliminarMedia} />
-            <UploadRow subiendo={subiendoKey === p.id} onFoto={(f) => onSubir(f, "foto", null)} onVideo={(f) => onSubir(f, "video", null)} />
-            {mediaGeneral.length > 0 && (
-              <PublicarBloque
-                propiedadId={p.id}
-                sugerencias={{ titulo: p.nombre, precio: totalConGaraje(p) || (p.precio_total ?? 0), direccion: p.direccion ?? "", descripcion: descripcionConServicios(p) }}
-                habitacionId={null}
-                metros={null}
-                label="Publicar propiedad entera en el catálogo"
-              />
-            )}
+          <div style={{ marginBottom: 20, padding: 14, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 10 }}>Propietario y rentabilidad</div>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, alignItems: "end" }}>
+              <Field label="Cliente propietario">
+                <ClienteBuscador
+                  clientes={clientes.filter((c) => c.tipo === "propietario")}
+                  value={val("propietario_id")}
+                  onChange={(id) => set("propietario_id", id)}
+                  placeholderVacio="Sin asignar"
+                />
+              </Field>
+              <Field label="Valor de compra (€) — para rentabilidad">
+                <input type="number" min={0} step="1" value={val("valor_compra") ?? ""} onChange={(e) => set("valor_compra", e.target.value ? Number(e.target.value) : null)} style={inputStyle} />
+              </Field>
+            </div>
+            {val("propietario_id") && !dirty && <EstadisticasPropietario propiedadId={p.id} />}
+            {dirty && val("propietario_id") && <div style={{ marginTop: 10, fontSize: 12, color: "#9ca3af" }}>Guarda los cambios para ver las estadísticas actualizadas.</div>}
+          </div>
+
+          <Bloque titulo="Fotos generales" sub="Fachada, cocina, salón, exterior…">
+            <MediaGrid media={mediaGeneral.filter((m) => m.tipo === "foto")} onDelete={onEliminarMedia} />
           </Bloque>
+          <Bloque titulo="Vídeos generales">
+            <MediaGrid media={mediaGeneral.filter((m) => m.tipo === "video")} onDelete={onEliminarMedia} />
+          </Bloque>
+          <UploadRow subiendo={subiendoKey === p.id} onFoto={(f) => onSubir(f, "foto", null)} onVideo={(f) => onSubir(f, "video", null)} />
+          {mediaGeneral.length > 0 && (
+            <PublicarBloque
+              propiedadId={p.id}
+              sugerencias={{ titulo: propView.nombre, precio: totalConGaraje(propView) || (propView.precio_total ?? 0), direccion: propView.direccion ?? "", descripcion: descripcionConServicios(propView) }}
+              habitacionId={null}
+              metros={null}
+              label="Publicar propiedad entera en el catálogo"
+            />
+          )}
 
           <div style={{ marginTop: 24 }}>
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: "#111827" }}>Habitaciones</div>
             {p.habitaciones.length === 0 && <p style={{ color: "#9ca3af", fontSize: 13, margin: "8px 0" }}>Sin habitaciones definidas.</p>}
             {p.habitaciones.map((h) => {
               const mediaHab = p.media.filter((m) => m.habitacion_id === h.id);
+              const estudiantes = clientes.filter((c) => c.tipo === "estudiante");
               return (
                 <div key={h.id} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, padding: 14, marginBottom: 10 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1.5fr 100px 1.5fr auto", gap: 8, alignItems: "end", marginBottom: 10 }}>
@@ -497,17 +532,26 @@ function PropiedadCard({
                     <Field label="Precio (€)">
                       <input type="number" min={0} step="0.01" defaultValue={h.precio ?? ""} onBlur={(e) => onActualizarHab(h.id, { precio: e.target.value ? Number(e.target.value) : null })} style={inputStyle} />
                     </Field>
-                    <Field label="Ocupada por">
-                      <select defaultValue={h.cliente_id ?? ""} onChange={(e) => onActualizarHab(h.id, { cliente_id: e.target.value || null })} style={inputStyle}>
-                        <option value="">Libre</option>
-                        {clientes.map((c) => (
-                          <option key={c.id} value={c.id}>{c.nombre} {c.apellidos ?? ""}</option>
-                        ))}
-                      </select>
+                    <Field label="Ocupada por (estudiante)">
+                      <ClienteBuscador
+                        clientes={estudiantes}
+                        value={h.cliente_id}
+                        onChange={(id) => onActualizarHab(h.id, { cliente_id: id })}
+                        placeholderVacio="Libre"
+                      />
                     </Field>
                     <button type="button" onClick={() => onEliminarHab(h.id)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 20, padding: 4, alignSelf: "center" }}>×</button>
                   </div>
-                  <MediaGrid media={mediaHab} onDelete={onEliminarMedia} pequenio />
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#6b7280", marginBottom: 10, cursor: "pointer" }}>
+                    <input type="checkbox" defaultChecked={h.libre_enero} onChange={(e) => onActualizarHab(h.id, { libre_enero: e.target.checked })} />
+                    Se queda libre en Enero (rotación)
+                  </label>
+                  <Bloque titulo="Fotos" sub={mediaHab.filter((m) => m.tipo === "foto").length === 0 ? "Sin fotos aún." : undefined}>
+                    <MediaGrid media={mediaHab.filter((m) => m.tipo === "foto")} onDelete={onEliminarMedia} pequenio />
+                  </Bloque>
+                  <Bloque titulo="Vídeos" sub={mediaHab.filter((m) => m.tipo === "video").length === 0 ? "Sin vídeos aún." : undefined}>
+                    <MediaGrid media={mediaHab.filter((m) => m.tipo === "video")} onDelete={onEliminarMedia} pequenio />
+                  </Bloque>
                   <UploadRow
                     subiendo={subiendoKey === p.id + h.id}
                     onFoto={(f) => onSubir(f, "foto", h.id)}
@@ -519,7 +563,7 @@ function PropiedadCard({
                     <PublicarBloque
                       propiedadId={p.id}
                       habitacionId={h.id}
-                      sugerencias={{ titulo: `${h.nombre} en ${p.nombre}`, precio: h.precio ?? 0, direccion: p.direccion ?? "", descripcion: p.notas ?? "" }}
+                      sugerencias={{ titulo: `${h.nombre} en ${propView.nombre}`, precio: h.precio ?? 0, direccion: propView.direccion ?? "", descripcion: propView.notas ?? "" }}
                       metros={null}
                       label="Publicar esta habitación en el catálogo"
                     />
@@ -534,6 +578,100 @@ function PropiedadCard({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ClienteBuscador({
+  clientes,
+  value,
+  onChange,
+  placeholderVacio,
+}: {
+  clientes: Cliente[];
+  value: string | null | undefined;
+  onChange: (id: string | null) => void;
+  placeholderVacio: string;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [query, setQuery] = useState("");
+  const seleccionado = clientes.find((c) => c.id === value);
+  const filtrados = query
+    ? clientes.filter((c) => `${c.nombre} ${c.apellidos ?? ""}`.toLowerCase().includes(query.toLowerCase()))
+    : clientes;
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setAbierto((v) => !v)}
+        style={{ ...inputStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+      >
+        <span style={{ color: seleccionado ? "#111827" : "#9ca3af" }}>
+          {seleccionado ? `${seleccionado.nombre} ${seleccionado.apellidos ?? ""}`.trim() : placeholderVacio}
+        </span>
+        <span style={{ color: "#9ca3af", fontSize: 10 }}>▼</span>
+      </button>
+      {abierto && (
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, background: "#fff", border: "1px solid #d1d5db", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", zIndex: 20, maxHeight: 260, overflow: "auto" }}>
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por nombre…"
+            style={{ ...inputStyle, border: "none", borderBottom: "1px solid #e5e7eb", borderRadius: 0, position: "sticky", top: 0, background: "#fff" }}
+          />
+          <div
+            onClick={() => { onChange(null); setAbierto(false); setQuery(""); }}
+            style={{ padding: "8px 10px", cursor: "pointer", fontSize: 13, color: "#9ca3af", borderBottom: "1px solid #f3f4f6" }}
+          >
+            {placeholderVacio}
+          </div>
+          {filtrados.length === 0 ? (
+            <div style={{ padding: "12px", fontSize: 12, color: "#9ca3af" }}>Sin resultados.</div>
+          ) : (
+            filtrados.map((c) => (
+              <div
+                key={c.id}
+                onClick={() => { onChange(c.id); setAbierto(false); setQuery(""); }}
+                style={{ padding: "8px 10px", cursor: "pointer", fontSize: 13, background: c.id === value ? "#eff6ff" : "transparent" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#f9fafb")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = c.id === value ? "#eff6ff" : "transparent")}
+              >
+                {c.nombre} {c.apellidos ?? ""}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EstadisticasPropietario({ propiedadId }: { propiedadId: string }) {
+  const [stats, setStats] = useState<{ ganado_propietario: number; ganado_nosotros: number; total_bruto: number; renta_anual_estimada: number; rentabilidad_pct: number | null; meses_registrados: number } | null>(null);
+  useEffect(() => {
+    fetch(`/api/admin/propiedades/${propiedadId}/estadisticas`).then((r) => r.json()).then(setStats).catch(() => setStats(null));
+  }, [propiedadId]);
+  if (!stats) return <div style={{ marginTop: 10, fontSize: 12, color: "#9ca3af" }}>Cargando estadísticas…</div>;
+  const eur = (n: number) => `${Math.round(n).toLocaleString("es-ES")}€`;
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginTop: 12 }}>
+      <StatCard label="Ganado por el propietario" value={eur(stats.ganado_propietario)} sub={`${stats.meses_registrados} meses`} />
+      <StatCard label="Ganado nosotros" value={eur(stats.ganado_nosotros)} sub="comisiones" tono="orange" />
+      <StatCard label="Renta anual estimada" value={eur(stats.renta_anual_estimada)} sub="12 × precio total" />
+      <StatCard label="Rentabilidad bruta" value={stats.rentabilidad_pct !== null ? `${stats.rentabilidad_pct.toFixed(2)}%` : "—"} sub={stats.rentabilidad_pct !== null ? "renta / valor compra" : "añade valor compra"} tono="green" />
+    </div>
+  );
+}
+
+function StatCard({ label, value, sub, tono }: { label: string; value: string; sub?: string; tono?: "orange" | "green" }) {
+  const bg = tono === "orange" ? "#fff7ed" : tono === "green" ? "#ecfdf5" : "#f9fafb";
+  const color = tono === "orange" ? "#c2410c" : tono === "green" ? "#065f46" : "#111827";
+  return (
+    <div style={{ background: bg, borderRadius: 6, padding: 10 }}>
+      <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.03em" }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 600, color, marginTop: 2 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{sub}</div>}
     </div>
   );
 }

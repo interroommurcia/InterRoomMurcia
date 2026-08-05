@@ -15,6 +15,9 @@ export type Propiedad = {
   servicio_agua: boolean;
   tiene_garaje: boolean;
   precio_garaje: number | null;
+  libre_enero: boolean;
+  propietario_id: string | null;
+  valor_compra: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -25,6 +28,7 @@ export type PropiedadHabitacion = {
   nombre: string;
   precio: number | null;
   cliente_id: string | null;
+  libre_enero: boolean;
   orden: number;
   created_at: string;
 };
@@ -120,7 +124,7 @@ export async function eliminarPropiedad(id: string) {
   if (error) throw error;
 }
 
-export async function crearHabitacion(propiedad_id: string, input: { nombre: string; precio?: number | null; cliente_id?: string | null; orden?: number }) {
+export async function crearHabitacion(propiedad_id: string, input: { nombre: string; precio?: number | null; cliente_id?: string | null; libre_enero?: boolean; orden?: number }) {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from("propiedad_habitaciones")
@@ -137,7 +141,7 @@ export async function crearHabitacion(propiedad_id: string, input: { nombre: str
   return data as PropiedadHabitacion;
 }
 
-export async function actualizarHabitacion(id: string, patch: Partial<Pick<PropiedadHabitacion, "nombre" | "precio" | "cliente_id" | "orden">>) {
+export async function actualizarHabitacion(id: string, patch: Partial<Pick<PropiedadHabitacion, "nombre" | "precio" | "cliente_id" | "libre_enero" | "orden">>) {
   const admin = getSupabaseAdmin();
   const { error } = await admin.from("propiedad_habitaciones").update(patch).eq("id", id);
   if (error) throw error;

@@ -11,6 +11,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { habId: str
       nombre: body.nombre,
       precio: body.precio ?? null,
       cliente_id: body.cliente_id ?? null,
+      libre_enero: typeof body.libre_enero === "boolean" ? body.libre_enero : undefined,
       orden: body.orden ?? undefined,
     });
     return NextResponse.json({ ok: true });
