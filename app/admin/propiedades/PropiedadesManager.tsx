@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { supabase } from "../../../lib/supabaseClient";
 
 type Habitacion = {
   id: string;
@@ -145,13 +146,30 @@ export default function PropiedadesManager() {
 
   async function subirArchivo(propId: string, file: File, tipo: "foto" | "video", habitacion_id?: string | null) {
     setSubiendo(propId + (habitacion_id ?? ""));
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("tipo", tipo);
-    if (habitacion_id) fd.append("habitacion_id", habitacion_id);
-    await fetch(`/api/admin/propiedades/${propId}/media`, { method: "POST", body: fd });
-    setSubiendo(null);
-    cargar();
+    try {
+      const initRes = await fetch(`/api/admin/propiedades/${propId}/media/init`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, tipo, habitacion_id: habitacion_id ?? null }),
+      });
+      const init = await initRes.json();
+      if (!initRes.ok || !init.path) throw new Error(init.error || "No se pudo iniciar la subida");
+      const up = await supabase.storage.from("propiedades").uploadToSignedUrl(init.path, init.token, file, {
+        contentType: file.type || (tipo === "video" ? "video/mp4" : "image/jpeg"),
+      });
+      if (up.error) throw up.error;
+      const reg = await fetch(`/api/admin/propiedades/${propId}/media/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: init.path, tipo, habitacion_id: habitacion_id ?? null }),
+      });
+      if (!reg.ok) throw new Error("No se pudo registrar el archivo");
+      await cargar();
+    } catch (e) {
+      alert("Error subiendo archivo: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setSubiendo(null);
+    }
   }
 
   async function eliminarMedia(id: string) {
@@ -299,6 +317,21 @@ function PropiedadCard({
   subiendoKey: string | null;
 }) {
   const [nuevaHab, setNuevaHab] = useState("");
+  const [borrador, setBorrador] = useState<Partial<Propiedad>>({});
+  const dirty = Object.keys(borrador).length > 0;
+  function set<K extends keyof Propiedad>(k: K, v: Propiedad[K]) {
+    setBorrador((b) => ({ ...b, [k]: v }));
+  }
+  function val<K extends keyof Propiedad>(k: K): Propiedad[K] {
+    return (k in borrador ? borrador[k] : p[k]) as Propiedad[K];
+  }
+  async function guardar() {
+    if (!dirty) return;
+    if (!confirm("¿Estás seguro de que quieres guardar los cambios?")) return;
+    await onActualizar(borrador);
+    setBorrador({});
+  }
+  const propView = { ...p, ...borrador };
   const mediaGeneral = p.media.filter((m) => !m.habitacion_id);
   const portada = mediaGeneral.find((m) => m.tipo === "foto") ?? p.media.find((m) => m.tipo === "foto");
 
@@ -307,27 +340,27 @@ function PropiedadCard({
       <div style={{ display: "flex", gap: 20, padding: 20, cursor: "pointer" }} onClick={onToggle}>
         <div style={{ width: 180, height: 130, borderRadius: 8, background: "#f3f4f6", overflow: "hidden", flexShrink: 0 }}>
           {portada ? (
-            <img src={portada.url} alt={p.nombre} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src={portada.url} alt={propView.nombre} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#9ca3af", fontSize: 13 }}>Sin foto</div>
           )}
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em", color: "#111827" }}>{p.nombre}</h3>
+            <h3 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em", color: "#111827" }}>{propView.nombre}{dirty && <span style={{ marginLeft: 8, fontSize: 11, color: "var(--orange)", fontWeight: 500 }}>· sin guardar</span>}</h3>
             <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4, textTransform: "capitalize" }}>
-              {p.tipo} · {p.num_habitaciones} hab · {p.num_banos} baños
-              {p.precio_total ? ` · ${totalConGaraje(p)}€/mes` : ""}
-              {p.tiene_garaje && p.precio_garaje ? ` (piso ${p.precio_total}€ + garaje ${p.precio_garaje}€)` : ""}
+              {propView.tipo} · {propView.num_habitaciones} hab · {propView.num_banos} baños
+              {propView.precio_total ? ` · ${totalConGaraje(propView)}€/mes` : ""}
+              {propView.tiene_garaje && propView.precio_garaje ? ` (piso ${propView.precio_total}€ + garaje ${propView.precio_garaje}€)` : ""}
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-              {p.servicio_wifi && <ServicioTag label="Wifi" />}
-              {p.servicio_limpieza && <ServicioTag label="Limpieza" />}
-              {p.servicio_luz && <ServicioTag label="Luz" />}
-              {p.servicio_agua && <ServicioTag label="Agua" />}
-              {p.tiene_garaje && <ServicioTag label="Garaje" />}
+              {propView.servicio_wifi && <ServicioTag label="Wifi" />}
+              {propView.servicio_limpieza && <ServicioTag label="Limpieza" />}
+              {propView.servicio_luz && <ServicioTag label="Luz" />}
+              {propView.servicio_agua && <ServicioTag label="Agua" />}
+              {propView.tiene_garaje && <ServicioTag label="Garaje" />}
             </div>
-            {p.direccion && <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>{p.direccion}</div>}
+            {propView.direccion && <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>{propView.direccion}</div>}
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
             {p.habitaciones.map((h) => (
@@ -342,6 +375,26 @@ function PropiedadCard({
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+          {abierta && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); guardar(); }}
+              disabled={!dirty}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 6,
+                border: "none",
+                background: dirty ? "var(--orange)" : "#e5e7eb",
+                color: dirty ? "#fff" : "#9ca3af",
+                cursor: dirty ? "pointer" : "not-allowed",
+                fontSize: 13,
+                fontWeight: 500,
+                fontFamily: FONT,
+              }}
+            >
+              {dirty ? "Guardar cambios" : "Sin cambios"}
+            </button>
+          )}
           <button type="button" onClick={(e) => { e.stopPropagation(); onEliminar(); }} title="Eliminar" style={{ background: "transparent", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 20, padding: 4 }}>×</button>
           <span style={{ color: "#9ca3af", fontSize: 12 }}>{abierta ? "▲ cerrar" : "▼ abrir"}</span>
         </div>
@@ -351,24 +404,24 @@ function PropiedadCard({
         <div style={{ padding: 20, borderTop: "1px solid #f3f4f6", background: "#fafafa" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
             <Field label="Nombre">
-              <input defaultValue={p.nombre} onBlur={(e) => e.target.value !== p.nombre && onActualizar({ nombre: e.target.value })} style={inputStyle} />
+              <input value={val("nombre")} onChange={(e) => set("nombre", e.target.value)} style={inputStyle} />
             </Field>
             <Field label="Dirección">
-              <input defaultValue={p.direccion ?? ""} onBlur={(e) => e.target.value !== (p.direccion ?? "") && onActualizar({ direccion: e.target.value })} style={inputStyle} />
+              <input value={val("direccion") ?? ""} onChange={(e) => set("direccion", e.target.value)} style={inputStyle} />
             </Field>
             <Field label="Habitaciones">
-              <input type="number" min={0} defaultValue={p.num_habitaciones} onBlur={(e) => Number(e.target.value) !== p.num_habitaciones && onActualizar({ num_habitaciones: Number(e.target.value) })} style={inputStyle} />
+              <input type="number" min={0} value={val("num_habitaciones")} onChange={(e) => set("num_habitaciones", Number(e.target.value))} style={inputStyle} />
             </Field>
             <Field label="Baños">
-              <input type="number" min={0} defaultValue={p.num_banos} onBlur={(e) => Number(e.target.value) !== p.num_banos && onActualizar({ num_banos: Number(e.target.value) })} style={inputStyle} />
+              <input type="number" min={0} value={val("num_banos")} onChange={(e) => set("num_banos", Number(e.target.value))} style={inputStyle} />
             </Field>
             <Field label="Precio total (€)">
-              <input type="number" min={0} step="0.01" defaultValue={p.precio_total ?? ""} onBlur={(e) => onActualizar({ precio_total: e.target.value ? Number(e.target.value) : null })} style={inputStyle} />
+              <input type="number" min={0} step="0.01" value={val("precio_total") ?? ""} onChange={(e) => set("precio_total", e.target.value ? Number(e.target.value) : null)} style={inputStyle} />
             </Field>
           </div>
           <div style={{ marginBottom: 20 }}>
             <Field label="Notas">
-              <textarea defaultValue={p.notas ?? ""} rows={3} style={{ ...inputStyle, resize: "vertical", minHeight: 70 }} onBlur={(e) => onActualizar({ notas: e.target.value })} />
+              <textarea value={val("notas") ?? ""} onChange={(e) => set("notas", e.target.value)} rows={3} style={{ ...inputStyle, resize: "vertical", minHeight: 70 }} />
             </Field>
           </div>
 
@@ -382,7 +435,7 @@ function PropiedadCard({
                 { key: "servicio_agua" as const, label: "Agua" },
               ].map(({ key, label }) => (
                 <label key={key} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
-                  <input type="checkbox" defaultChecked={p[key]} onChange={(e) => onActualizar({ [key]: e.target.checked } as Partial<Propiedad>)} />
+                  <input type="checkbox" checked={val(key)} onChange={(e) => set(key, e.target.checked)} />
                   {label}
                 </label>
               ))}
@@ -393,17 +446,24 @@ function PropiedadCard({
             <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 10 }}>Características</div>
             <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
               <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
-                <input type="checkbox" defaultChecked={p.tiene_garaje} onChange={(e) => onActualizar({ tiene_garaje: e.target.checked, precio_garaje: e.target.checked ? p.precio_garaje : null })} />
+                <input
+                  type="checkbox"
+                  checked={val("tiene_garaje")}
+                  onChange={(e) => {
+                    set("tiene_garaje", e.target.checked);
+                    if (!e.target.checked) set("precio_garaje", null);
+                  }}
+                />
                 Tiene garaje
               </label>
-              {p.tiene_garaje && (
+              {val("tiene_garaje") && (
                 <Field label="Precio plaza garaje (€/mes)">
-                  <input type="number" min={0} step="0.01" defaultValue={p.precio_garaje ?? ""} onBlur={(e) => onActualizar({ precio_garaje: e.target.value ? Number(e.target.value) : null })} style={{ ...inputStyle, width: 180 }} />
+                  <input type="number" min={0} step="0.01" value={val("precio_garaje") ?? ""} onChange={(e) => set("precio_garaje", e.target.value ? Number(e.target.value) : null)} style={{ ...inputStyle, width: 180 }} />
                 </Field>
               )}
-              {p.tiene_garaje && p.precio_garaje && p.precio_total && (
+              {val("tiene_garaje") && val("precio_garaje") && val("precio_total") && (
                 <div style={{ fontSize: 13, color: "#065f46", background: "#d1fae5", padding: "6px 12px", borderRadius: 6, fontWeight: 500 }}>
-                  Total con garaje: {totalConGaraje(p)}€/mes
+                  Total con garaje: {totalConGaraje(propView)}€/mes
                 </div>
               )}
             </div>
