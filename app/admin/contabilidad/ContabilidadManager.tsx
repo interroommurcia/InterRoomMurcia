@@ -27,6 +27,7 @@ type Credito = {
   cliente_id: string;
   fecha: string;
   precio: number;
+  cobrado?: boolean;
 };
 
 type Ingreso = {
@@ -45,6 +46,7 @@ type Operacion = {
   precio_venta: number;
   comision_pct: number;
   comision_calculada: number;
+  cobrado?: boolean;
 };
 
 type Gasto = {
@@ -104,9 +106,10 @@ type Documento = {
 type Balance = {
   comisionBrutaTotal: number;
   beneficioNetoTotal: number;
-  alquileres: { comisionBruta: number; gastos?: number; neto?: number };
-  compraventas: { comisionBruta: number; gastos: number; neto: number };
-  creditos: { bruto: number; neto: number };
+  pendienteTotal: number;
+  alquileres: { comisionBruta: number; cobrado: number; pendiente: number; gastos?: number; neto?: number };
+  compraventas: { comisionBruta: number; cobrado: number; pendiente: number; gastos: number; neto: number };
+  creditos: { bruto: number; cobrado: number; pendiente: number; neto: number };
   gastosFijos?: {
     mensual: number; anualizado: number; acumulado: number; pctSobreBruto: number; pctSobreNetoOperativo: number;
     fijos?: { mensual: number; anualizado: number; acumulado: number; pctSobreNetoOperativo: number };
@@ -215,7 +218,7 @@ function fmtPct(n: number | null) {
   return `${signo}${n.toFixed(1)}%`;
 }
 
-const ACTIVAR_ALQUILER = { cliente_id: "", mensualidad: "", comision_pct: "15", fecha_inicio: "", fecha_fin: "" };
+const ACTIVAR_ALQUILER = { cliente_id: "", mensualidad: "", comision_pct: "15", comision_fija: "", fecha_inicio: "", fecha_fin: "" };
 
 function añoActual(mes: string) {
   return new Date(mes).getUTCFullYear();
@@ -329,7 +332,10 @@ export default function ContabilidadManager() {
   }
 
   useEffect(() => {
-    cargarTodo();
+    (async () => {
+      await fetch("/api/admin/contabilidad/generar-mensualidades", { method: "POST" }).catch(() => null);
+      cargarTodo();
+    })();
   }, []);
 
   useEffect(() => {
@@ -432,12 +438,14 @@ export default function ContabilidadManager() {
       body: JSON.stringify({
         mensualidad: Number(activarAlquiler.mensualidad) || 0,
         comision_pct_alquiler: Number(activarAlquiler.comision_pct) || 15,
+        comision_fija_alquiler: activarAlquiler.comision_fija ? Number(activarAlquiler.comision_fija) : null,
         alquiler_fecha_inicio: activarAlquiler.fecha_inicio || null,
         alquiler_fecha_fin: activarAlquiler.fecha_fin || null,
       }),
     });
     setActivarAlquiler(ACTIVAR_ALQUILER);
     setMostrarActivarAlquiler(false);
+    await fetch("/api/admin/contabilidad/generar-mensualidades", { method: "POST" });
     cargarTodo();
   }
 
@@ -700,12 +708,27 @@ export default function ContabilidadManager() {
           <div className="analytics-card">
             <h3>Comisión bruta total</h3>
             <div className="analytics-stat-value">{fmt(balance.comisionBrutaTotal)}</div>
-            <p>Alquileres {fmt(balance.alquileres.comisionBruta)} · Compraventas {fmt(balance.compraventas.comisionBruta)} · Créditos {fmt(balance.creditos.bruto)}</p>
+            <p>Cobrado {fmt(balance.comisionBrutaTotal - (balance.pendienteTotal ?? 0))} · <b style={{ color: (balance.pendienteTotal ?? 0) > 0 ? "#c2410c" : undefined }}>Pendiente {fmt(balance.pendienteTotal ?? 0)}</b></p>
           </div>
           <div className="analytics-card">
             <h3>Beneficio neto total</h3>
             <div className="analytics-stat-value">{fmt(balance.beneficioNetoTotal)}</div>
             <p>Compraventas netas {fmt(balance.compraventas.neto)} (gastos {fmt(balance.compraventas.gastos)}) · Créditos netos {fmt(balance.creditos.neto)}</p>
+          </div>
+          <div className="analytics-card" style={{ borderLeft: "3px solid #3b82f6" }}>
+            <h3>Alquileres</h3>
+            <div className="analytics-stat-value">{fmt(balance.alquileres.comisionBruta)}</div>
+            <p>Cobrado {fmt(balance.alquileres.cobrado)} · <b style={{ color: balance.alquileres.pendiente > 0 ? "#c2410c" : undefined }}>Pendiente {fmt(balance.alquileres.pendiente)}</b></p>
+          </div>
+          <div className="analytics-card" style={{ borderLeft: "3px solid #10b981" }}>
+            <h3>Compraventas</h3>
+            <div className="analytics-stat-value">{fmt(balance.compraventas.comisionBruta)}</div>
+            <p>Cobrado {fmt(balance.compraventas.cobrado)} · <b style={{ color: balance.compraventas.pendiente > 0 ? "#c2410c" : undefined }}>Pendiente {fmt(balance.compraventas.pendiente)}</b></p>
+          </div>
+          <div className="analytics-card" style={{ borderLeft: "3px solid #8b5cf6" }}>
+            <h3>Compra de créditos</h3>
+            <div className="analytics-stat-value">{fmt(balance.creditos.bruto)}</div>
+            <p>Cobrado {fmt(balance.creditos.cobrado)} · <b style={{ color: balance.creditos.pendiente > 0 ? "#c2410c" : undefined }}>Pendiente {fmt(balance.creditos.pendiente)}</b></p>
           </div>
           {balance.gastosFijos?.fijos && (
             <div className="analytics-card" style={{ borderLeft: "3px solid #ef4444" }}>
@@ -958,10 +981,14 @@ export default function ContabilidadManager() {
             creditos.map((cr) => (
               <div key={cr.id} className="pisos-list-item">
                 <div className="pisos-list-body" onClick={() => toggleCredito(cr)} style={{ cursor: "pointer" }}>
-                  <h4>{clienteNombre(cr.cliente_id)}</h4>
+                  <h4>{clienteNombre(cr.cliente_id)} {cr.cobrado ? <span style={{ marginLeft: 8, padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11, fontWeight: 500 }}>Cobrado</span> : <span style={{ marginLeft: 8, padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11, fontWeight: 500 }}>Pendiente</span>}</h4>
                   <div className="loc">
                     Fecha {new Date(cr.fecha).toLocaleDateString("es-ES")} · Bruto (precio) {fmt(cr.precio)}
                   </div>
+                  <label style={{ display: "inline-flex", gap: 4, alignItems: "center", marginTop: 4, fontSize: 13 }} onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={!!cr.cobrado} onChange={async (e) => { await fetch(`/api/admin/creditos/${cr.id}/cobrado`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cobrado: e.target.checked }) }); cargarTodo(); }} />
+                    Cobrado
+                  </label>
                   {creditoAbierto === cr.id && (
                     <div className="loc">Neto {fmt(netoDeOperacion(cr.precio, creditoGastos[cr.id] ?? []))}</div>
                   )}
@@ -1072,6 +1099,10 @@ export default function ContabilidadManager() {
                   % Comisión
                   <input type="number" min={0} step="0.1" value={activarAlquiler.comision_pct} onChange={(e) => setActivarAlquiler({ ...activarAlquiler, comision_pct: e.target.value })} />
                 </label>
+                <label>
+                  Comisión € fija (opcional, sobrescribe %)
+                  <input type="number" min={0} step="0.01" value={activarAlquiler.comision_fija} onChange={(e) => setActivarAlquiler({ ...activarAlquiler, comision_fija: e.target.value })} placeholder="auto según %" />
+                </label>
               </div>
               <div className="lead-form-row">
                 <label>
@@ -1140,7 +1171,12 @@ export default function ContabilidadManager() {
 
                     {(ingresos[cliente.id] ?? []).map((ing) => (
                       <div key={ing.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                        <span>{ing.mes.slice(0, 7)} — ingreso {fmt(ing.ingreso_bruto)}, comisión {fmt(ing.comision_calculada)}</span>
+                        <span>
+                          <b>Mensualidad {(() => { const d = ing.mes.slice(0, 10).split("-"); return `${d[2]}/${d[1]}/${d[0]}`; })()}</b>
+                          {" — "}bruto {fmt(ing.ingreso_bruto)}, comisión {fmt(ing.comision_calculada)}
+                          {!ing.cobrado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11 }}>Pendiente</span>}
+                          {ing.cobrado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11 }}>Cobrado</span>}
+                        </span>
                         <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
                             <input type="checkbox" checked={ing.cobrado} onChange={(e) => toggleIngresoCobrado(cliente.id, ing.id, e.target.checked)} />
@@ -1481,10 +1517,14 @@ export default function ContabilidadManager() {
                   </button>
                 </div>
                 <div className="pisos-list-body" onClick={() => toggleOperacion(op)} style={{ cursor: "pointer", paddingLeft: 72 }}>
-                  <h4>{clienteNombre(op.cliente_id)}</h4>
+                  <h4>{clienteNombre(op.cliente_id)} {op.cobrado ? <span style={{ marginLeft: 8, padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11, fontWeight: 500 }}>Cobrado</span> : <span style={{ marginLeft: 8, padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11, fontWeight: 500 }}>Pendiente</span>}</h4>
                   <div className="loc">
                     Cierre {new Date(op.fecha_cierre).toLocaleDateString("es-ES")} · Venta {fmt(op.precio_venta)} · Bruto (comisión) {fmt(op.comision_calculada)}
                   </div>
+                  <label style={{ display: "inline-flex", gap: 4, alignItems: "center", marginTop: 4, fontSize: 13 }} onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={!!op.cobrado} onChange={async (e) => { await fetch(`/api/admin/operaciones/${op.id}/cobrado`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cobrado: e.target.checked }) }); cargarTodo(); }} />
+                    Cobrado
+                  </label>
                   {operacionAbierta === op.id && (
                     <div className="loc">Ganancia neta {fmt(netoDeOperacion(op.comision_calculada, gastos[op.id] ?? []))}</div>
                   )}
