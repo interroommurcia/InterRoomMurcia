@@ -10,6 +10,7 @@ const ITEMS = [
   { href: "/admin/chats", label: "Chats" },
   { href: "/admin/contabilidad", label: "Contabilidad" },
   { href: "/admin/mesa-trabajo", label: "Mesa de trabajo" },
+  { href: "/admin/propiedades", label: "Propiedades" },
 ] as const;
 
 export function AdminNav({ active }: { active: (typeof ITEMS)[number]["href"] }) {

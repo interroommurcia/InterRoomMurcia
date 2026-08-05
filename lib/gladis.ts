@@ -42,7 +42,7 @@ Guía de uso de herramientas:
 - Si te piden anotar/agendar una tarea, cita o visita ("apúntame", "recuérdame", "queda con..."), usa anotar_agenda. Calcula tú la fecha exacta en formato YYYY-MM-DD a partir de la fecha de hoy (indicada más abajo) si dicen "mañana", "el viernes", etc.
 - Si preguntan qué hay en la agenda (hoy, esta semana, un día o rango concreto), usa consultar_agenda con fechas en formato YYYY-MM-DD, calculadas a partir de la fecha de hoy.
 - Si un miembro del equipo se identifica ("hola Gladis soy Juan", "soy X, qué tengo esta semana") o pregunta por SUS tareas ("qué tengo pendiente esta semana"), usa tareas_del_trabajador con su nombre. Si no dan rango, asume la semana en curso (lunes a domingo) calculada desde hoy. Para saber quiénes son los trabajadores dados de alta puedes usar listar_trabajadores.
-- Cuando anotes una tarea que el usuario diga que es "para" o "asignada a" alguien del equipo, incluye el nombre en el campo trabajador de anotar_agenda.
+- Cuando anotes una tarea que el usuario diga que es "para" o "asignada a" alguien del equipo, incluye los nombres en el array trabajadores de anotar_agenda (puede haber varios).
 - Si ninguna herramienta resuelve la pregunta, dilo con claridad en vez de inventar una respuesta.
 
 REGLA CRÍTICA — confirmación antes de modificar:
@@ -159,7 +159,7 @@ const TOOLS: Anthropic.Tool[] = [
         fecha: { type: "string", description: 'Fecha en formato "YYYY-MM-DD", calculada a partir de hoy si es relativa' },
         hora: { type: "string", description: 'Hora en formato "HH:MM", opcional' },
         cliente: { type: "string", description: "Nombre del cliente a vincular, opcional" },
-        trabajador: { type: "string", description: "Nombre del trabajador al que se asigna la tarea, opcional" },
+        trabajadores: { type: "array", items: { type: "string" }, description: "Nombres de los trabajadores a los que se asigna la tarea (uno o varios), opcional" },
         notas: { type: "string", description: "Notas adicionales, opcional" },
       },
       required: ["tipo", "titulo"],
@@ -387,11 +387,15 @@ Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.co
       const encontrado = clientes.find((c) => `${c.nombre} ${c.apellidos ?? ""}`.toLowerCase().includes(nombreCliente.toLowerCase()));
       cliente_id = encontrado?.id;
     }
-    let asignado_a: string | undefined;
-    const nombreTrabajador = String(input.trabajador ?? "").trim();
-    if (nombreTrabajador) {
-      const trab = await buscarTrabajadorPorNombre(nombreTrabajador);
-      asignado_a = trab?.id;
+    const nombresTrabajadores: string[] = Array.isArray(input.trabajadores)
+      ? (input.trabajadores as unknown[]).map((s) => String(s).trim()).filter(Boolean)
+      : input.trabajador ? [String(input.trabajador).trim()] : [];
+    const asignados_ids: string[] = [];
+    const noEncontrados: string[] = [];
+    for (const nom of nombresTrabajadores) {
+      const trab = await buscarTrabajadorPorNombre(nom);
+      if (trab) asignados_ids.push(trab.id);
+      else noEncontrados.push(nom);
     }
     const tarea = await crearTarea({
       tipo,
@@ -399,10 +403,12 @@ Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.co
       fecha: input.fecha ? String(input.fecha) : undefined,
       hora: input.hora ? String(input.hora) : undefined,
       cliente_id,
-      asignado_a,
+      asignados_ids: asignados_ids.length ? asignados_ids : undefined,
       notas: input.notas ? String(input.notas) : undefined,
     });
-    return `Anotado: ${tipo} "${titulo}"${tarea.fecha ? ` el ${tarea.fecha}` : ""}${tarea.hora ? ` a las ${tarea.hora}` : ""}${nombreCliente && !cliente_id ? " (cliente no encontrado)" : ""}${nombreTrabajador && !asignado_a ? " (trabajador no encontrado)" : asignado_a ? ` · asignado a ${nombreTrabajador}` : ""}.`;
+    const asignadosMsg = asignados_ids.length ? ` · asignado a ${nombresTrabajadores.filter((n) => !noEncontrados.includes(n)).join(", ")}` : "";
+    const missMsg = noEncontrados.length ? ` (no encontrado: ${noEncontrados.join(", ")})` : "";
+    return `Anotado: ${tipo} "${titulo}"${tarea.fecha ? ` el ${tarea.fecha}` : ""}${tarea.hora ? ` a las ${tarea.hora}` : ""}${nombreCliente && !cliente_id ? " (cliente no encontrado)" : ""}${asignadosMsg}${missMsg}.`;
   }
   if (nombre === "listar_trabajadores") {
     const trs = await listarTrabajadores();

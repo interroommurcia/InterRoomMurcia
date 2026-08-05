@@ -6,9 +6,10 @@ export const dynamic = "force-dynamic";
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
-  const patch: { estado?: "pendiente" | "hecha"; asignado_a?: string | null } = {};
+  const patch: { estado?: "pendiente" | "hecha"; asignados_ids?: string[]; notas?: string | null } = {};
   if (body.estado === "pendiente" || body.estado === "hecha") patch.estado = body.estado;
-  if (body.asignado_a !== undefined) patch.asignado_a = body.asignado_a || null;
+  if (Array.isArray(body.asignados_ids)) patch.asignados_ids = body.asignados_ids.filter((s: unknown) => typeof s === "string");
+  if (body.notas !== undefined) patch.notas = body.notas || null;
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: "sin cambios" }, { status: 400 });
   try {
     await actualizarTarea(params.id, patch);

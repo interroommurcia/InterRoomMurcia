@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       fecha: body.fecha,
       hora: body.hora,
       cliente_id: body.cliente_id,
-      asignado_a: body.asignado_a,
+      asignados_ids: Array.isArray(body.asignados_ids) ? body.asignados_ids : undefined,
       notas: body.notas,
     });
     return NextResponse.json(tarea);

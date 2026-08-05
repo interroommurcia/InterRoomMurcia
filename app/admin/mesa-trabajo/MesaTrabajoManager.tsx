@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+type TrabajadorRef = { id: string; nombre: string };
 type Tarea = {
   id: string;
   tipo: "tarea" | "cita" | "visita";
@@ -10,8 +11,7 @@ type Tarea = {
   hora: string | null;
   cliente_id: string | null;
   clienteNombre: string | null;
-  asignado_a: string | null;
-  trabajadorNombre: string | null;
+  asignados: TrabajadorRef[];
   estado: "pendiente" | "hecha";
   notas: string | null;
 };
@@ -45,7 +45,7 @@ function isoDate(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-const NUEVA_TAREA = { tipo: "tarea" as Tarea["tipo"], titulo: "", fecha: "", hora: "", cliente_id: "", asignado_a: "", notas: "" };
+const NUEVA_TAREA = { tipo: "tarea" as Tarea["tipo"], titulo: "", fecha: "", hora: "", cliente_id: "", asignados_ids: [] as string[], notas: "" };
 
 export default function MesaTrabajoManager() {
   const hoy = useMemo(() => new Date(), []);
@@ -90,9 +90,16 @@ export default function MesaTrabajoManager() {
     cargar();
   }
 
-  async function reasignarTarea(id: string, asignado_a: string) {
-    await fetch(`/api/admin/mesa-trabajo/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ asignado_a }) });
+  async function reasignarTarea(id: string, asignados_ids: string[]) {
+    await fetch(`/api/admin/mesa-trabajo/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ asignados_ids }) });
     cargar();
+  }
+
+  function toggleAsignadoNueva(id: string) {
+    setNueva((n) => ({
+      ...n,
+      asignados_ids: n.asignados_ids.includes(id) ? n.asignados_ids.filter((x) => x !== id) : [...n.asignados_ids, id],
+    }));
   }
 
   useEffect(() => {
@@ -155,7 +162,7 @@ export default function MesaTrabajoManager() {
         fecha: nueva.fecha || undefined,
         hora: nueva.hora || undefined,
         cliente_id: nueva.cliente_id || undefined,
-        asignado_a: nueva.asignado_a || undefined,
+        asignados_ids: nueva.asignados_ids.length ? nueva.asignados_ids : undefined,
         notas: nueva.notas || undefined,
       }),
     });
@@ -182,7 +189,7 @@ export default function MesaTrabajoManager() {
     if (filtroTipo !== "todas" && t.tipo !== filtroTipo) return false;
     if (!verHechas && t.estado === "hecha") return false;
     if (filtroFecha && (t.fecha?.slice(0, 10) ?? null) !== filtroFecha) return false;
-    if (filtroTrabajador && t.asignado_a !== filtroTrabajador) return false;
+    if (filtroTrabajador && !t.asignados.some((a) => a.id === filtroTrabajador)) return false;
     return true;
   });
 
@@ -356,19 +363,45 @@ export default function MesaTrabajoManager() {
                     ))}
                   </select>
                 </label>
-                <label>
-                  Asignar a
-                  <select value={nueva.asignado_a} onChange={(e) => setNueva({ ...nueva, asignado_a: e.target.value })}>
-                    <option value="">Sin asignar</option>
-                    {trabajadores.filter((t) => t.activo).map((t) => (
-                      <option key={t.id} value={t.id}>{t.nombre}</option>
-                    ))}
-                  </select>
-                </label>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, marginBottom: 4, opacity: 0.75 }}>Asignar a (uno o varios)</div>
+                {trabajadores.filter((t) => t.activo).length === 0 ? (
+                  <p className="admin-empty" style={{ margin: 0 }}>No hay trabajadores dados de alta.</p>
+                ) : (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {trabajadores.filter((t) => t.activo).map((t) => {
+                      const sel = nueva.asignados_ids.includes(t.id);
+                      return (
+                        <button
+                          type="button"
+                          key={t.id}
+                          onClick={() => toggleAsignadoNueva(t.id)}
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: 999,
+                            border: `1px solid ${sel ? "var(--orange)" : "#e5e7eb"}`,
+                            background: sel ? "var(--orange-light)" : "#fff",
+                            color: sel ? "var(--orange)" : "#374151",
+                            cursor: "pointer",
+                            fontSize: 13,
+                          }}
+                        >
+                          {sel ? "✓ " : ""}{t.nombre}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <label>
                 Notas
-                <input value={nueva.notas} onChange={(e) => setNueva({ ...nueva, notas: e.target.value })} />
+                <textarea
+                  value={nueva.notas}
+                  onChange={(e) => setNueva({ ...nueva, notas: e.target.value })}
+                  rows={6}
+                  style={{ resize: "vertical", minHeight: 120, fontFamily: "inherit", width: "100%", padding: 8 }}
+                />
               </label>
               <div className="lead-form-actions">
                 <button type="submit" className="btn-primary">Guardar</button>
@@ -389,17 +422,40 @@ export default function MesaTrabajoManager() {
                   <div className="loc">
                     {t.fecha ? new Date(t.fecha).toLocaleDateString("es-ES") : "sin fecha"}
                     {t.hora ? ` · ${t.hora.slice(0, 5)}` : ""} · {t.clienteNombre || "sin cliente"}
-                    {t.trabajadorNombre && <span style={{ marginLeft: 6, padding: "1px 8px", borderRadius: 999, background: "var(--orange-light)", color: "var(--orange)", fontSize: 11 }}>👤 {t.trabajadorNombre}</span>}
+                    {t.asignados.map((a) => (
+                      <span key={a.id} style={{ marginLeft: 6, padding: "1px 8px", borderRadius: 999, background: "var(--orange-light)", color: "var(--orange)", fontSize: 11 }}>👤 {a.nombre}</span>
+                    ))}
                     {t.notas ? ` · ${t.notas}` : ""}
                   </div>
                 </div>
-                <div className="lead-form-actions" style={{ padding: "0 16px 12px", flexWrap: "wrap" }}>
-                  <select value={t.asignado_a ?? ""} onChange={(e) => reasignarTarea(t.id, e.target.value)} style={{ padding: "2px 6px", fontSize: 12 }}>
-                    <option value="">Sin asignar</option>
-                    {trabajadores.filter((tr) => tr.activo || tr.id === t.asignado_a).map((tr) => (
-                      <option key={tr.id} value={tr.id}>{tr.nombre}</option>
-                    ))}
-                  </select>
+                <div className="lead-form-actions" style={{ padding: "0 16px 12px", flexWrap: "wrap", gap: 4 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+                    <span style={{ fontSize: 11, opacity: 0.6 }}>Asignar:</span>
+                    {trabajadores.filter((tr) => tr.activo || t.asignados.some((a) => a.id === tr.id)).map((tr) => {
+                      const sel = t.asignados.some((a) => a.id === tr.id);
+                      return (
+                        <button
+                          key={tr.id}
+                          type="button"
+                          onClick={() => {
+                            const ids = sel ? t.asignados.filter((a) => a.id !== tr.id).map((a) => a.id) : [...t.asignados.map((a) => a.id), tr.id];
+                            reasignarTarea(t.id, ids);
+                          }}
+                          style={{
+                            padding: "1px 8px",
+                            fontSize: 11,
+                            borderRadius: 999,
+                            border: `1px solid ${sel ? "var(--orange)" : "#e5e7eb"}`,
+                            background: sel ? "var(--orange-light)" : "#fff",
+                            color: sel ? "var(--orange)" : "#6b7280",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {sel ? "✓ " : ""}{tr.nombre}
+                        </button>
+                      );
+                    })}
+                  </div>
                   <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
                     <input
                       type="checkbox"
