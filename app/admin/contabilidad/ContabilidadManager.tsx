@@ -16,6 +16,8 @@ type Cliente = {
   token: string;
   mensualidad: number;
   comision_pct_alquiler: number;
+  alquiler_fecha_inicio: string | null;
+  alquiler_fecha_fin: string | null;
   tieneIngresos: boolean;
   created_at: string;
 };
@@ -213,7 +215,7 @@ function fmtPct(n: number | null) {
   return `${signo}${n.toFixed(1)}%`;
 }
 
-const ACTIVAR_ALQUILER = { cliente_id: "", mensualidad: "", comision_pct: "15" };
+const ACTIVAR_ALQUILER = { cliente_id: "", mensualidad: "", comision_pct: "15", fecha_inicio: "", fecha_fin: "" };
 
 function añoActual(mes: string) {
   return new Date(mes).getUTCFullYear();
@@ -247,7 +249,7 @@ export default function ContabilidadManager() {
 
   const [ingresos, setIngresos] = useState<Record<string, Ingreso[]>>({});
   const [clienteAbierto, setClienteAbierto] = useState<string | null>(null);
-  const [nuevoIngreso, setNuevoIngreso] = useState({ mes: "", ingresoBruto: "" });
+  const [nuevoIngreso, setNuevoIngreso] = useState({ mes: "", ingresoBruto: "", comisionManual: "" });
   const [mostrarAjusteManual, setMostrarAjusteManual] = useState(false);
   const [mensualidadInput, setMensualidadInput] = useState("");
   const [clienteGastos, setClienteGastos] = useState<Record<string, ClienteGasto[]>>({});
@@ -430,6 +432,8 @@ export default function ContabilidadManager() {
       body: JSON.stringify({
         mensualidad: Number(activarAlquiler.mensualidad) || 0,
         comision_pct_alquiler: Number(activarAlquiler.comision_pct) || 15,
+        alquiler_fecha_inicio: activarAlquiler.fecha_inicio || null,
+        alquiler_fecha_fin: activarAlquiler.fecha_fin || null,
       }),
     });
     setActivarAlquiler(ACTIVAR_ALQUILER);
@@ -548,9 +552,13 @@ export default function ContabilidadManager() {
     await fetch(`/api/admin/clientes/${clienteId}/ingresos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mes: `${nuevoIngreso.mes}-01`, ingresoBruto: Number(nuevoIngreso.ingresoBruto) }),
+      body: JSON.stringify({
+        mes: `${nuevoIngreso.mes}-01`,
+        ingresoBruto: Number(nuevoIngreso.ingresoBruto),
+        comisionManual: nuevoIngreso.comisionManual ? Number(nuevoIngreso.comisionManual) : null,
+      }),
     });
-    setNuevoIngreso({ mes: "", ingresoBruto: "" });
+    setNuevoIngreso({ mes: "", ingresoBruto: "", comisionManual: "" });
     const data = await fetch(`/api/admin/clientes/${clienteId}/ingresos`).then((r) => r.json());
     setIngresos((prev) => ({ ...prev, [clienteId]: Array.isArray(data) ? data : [] }));
     cargarTodo();
@@ -1065,6 +1073,16 @@ export default function ContabilidadManager() {
                   <input type="number" min={0} step="0.1" value={activarAlquiler.comision_pct} onChange={(e) => setActivarAlquiler({ ...activarAlquiler, comision_pct: e.target.value })} />
                 </label>
               </div>
+              <div className="lead-form-row">
+                <label>
+                  Fecha inicio mensualidad
+                  <input type="date" value={activarAlquiler.fecha_inicio} onChange={(e) => setActivarAlquiler({ ...activarAlquiler, fecha_inicio: e.target.value })} />
+                </label>
+                <label>
+                  Fecha fin (opcional)
+                  <input type="date" value={activarAlquiler.fecha_fin} onChange={(e) => setActivarAlquiler({ ...activarAlquiler, fecha_fin: e.target.value })} />
+                </label>
+              </div>
               {propietariosInactivos.length === 0 && (
                 <p className="admin-empty">Todos los propietarios ya tienen un alquiler activo. Crea el cliente primero en la pestaña Clientes.</p>
               )}
@@ -1083,6 +1101,8 @@ export default function ContabilidadManager() {
                   <h4>{cliente.nombre} {cliente.apellidos}</h4>
                   <div className="loc">
                     {cliente.telefono || "sin teléfono"} · {cliente.zona_interes || "sin zona"} · mensualidad {fmt(cliente.mensualidad)}
+                    {cliente.alquiler_fecha_inicio && ` · desde ${cliente.alquiler_fecha_inicio}`}
+                    {cliente.alquiler_fecha_fin && ` hasta ${cliente.alquiler_fecha_fin}`}
                   </div>
                 </div>
                 <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
@@ -1148,6 +1168,10 @@ export default function ContabilidadManager() {
                         <label>
                           Ingreso bruto (€)
                           <input type="number" min={0} required value={nuevoIngreso.ingresoBruto} onChange={(e) => setNuevoIngreso({ ...nuevoIngreso, ingresoBruto: e.target.value })} />
+                        </label>
+                        <label>
+                          Comisión € (opcional, sobrescribe %)
+                          <input type="number" min={0} step="0.01" value={nuevoIngreso.comisionManual} onChange={(e) => setNuevoIngreso({ ...nuevoIngreso, comisionManual: e.target.value })} placeholder="auto según %" />
                         </label>
                         <button type="submit" className="btn-primary">Guardar mes</button>
                       </form>

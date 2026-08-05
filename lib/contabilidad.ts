@@ -27,6 +27,8 @@ export type Cliente = {
   datos_completados: boolean;
   mensualidad: number;
   comision_pct_alquiler: number;
+  alquiler_fecha_inicio: string | null;
+  alquiler_fecha_fin: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -40,6 +42,7 @@ export type IngresoMensual = {
   ingreso_bruto: number;
   comision_pct: number;
   comision_calculada: number;
+  comision_manual: boolean;
   cobrado: boolean;
   fecha_cobro: string | null;
   notas: string | null;
@@ -185,6 +188,8 @@ export async function crearCliente(input: {
   notas?: string;
   mensualidad?: number;
   comision_pct_alquiler?: number;
+  alquiler_fecha_inicio?: string | null;
+  alquiler_fecha_fin?: string | null;
 }): Promise<Cliente> {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
@@ -203,6 +208,8 @@ export async function crearCliente(input: {
       notas: input.notas || null,
       mensualidad: input.mensualidad ?? 0,
       comision_pct_alquiler: input.comision_pct_alquiler ?? 15,
+      alquiler_fecha_inicio: input.alquiler_fecha_inicio ?? null,
+      alquiler_fecha_fin: input.alquiler_fecha_fin ?? null,
     })
     .select()
     .single();
@@ -224,6 +231,8 @@ export async function actualizarCliente(
     notas: string | null;
     mensualidad: number;
     comision_pct_alquiler: number;
+    alquiler_fecha_inicio: string | null;
+    alquiler_fecha_fin: string | null;
   }>
 ) {
   const admin = getSupabaseAdmin();
@@ -279,13 +288,31 @@ export async function listarIngresos(clienteId: string): Promise<IngresoMensual[
   return (data ?? []) as IngresoMensual[];
 }
 
-export async function añadirIngreso(clienteId: string, mes: string, ingresoBruto: number, comisionPct = 15, notas?: string) {
+export async function añadirIngreso(
+  clienteId: string,
+  mes: string,
+  ingresoBruto: number,
+  comisionPct = 15,
+  notas?: string,
+  comisionManual?: number | null,
+) {
   const admin = getSupabaseAdmin();
-  const comision_calculada = calcularComision(ingresoBruto, comisionPct);
+  const usarManual = comisionManual !== undefined && comisionManual !== null && Number.isFinite(comisionManual);
+  const comision_calculada = usarManual
+    ? Math.round(Number(comisionManual) * 100) / 100
+    : calcularComision(ingresoBruto, comisionPct);
   const { error } = await admin
     .from("cliente_ingresos")
     .upsert(
-      { cliente_id: clienteId, mes, ingreso_bruto: ingresoBruto, comision_pct: comisionPct, comision_calculada, notas: notas || null },
+      {
+        cliente_id: clienteId,
+        mes,
+        ingreso_bruto: ingresoBruto,
+        comision_pct: usarManual ? 0 : comisionPct,
+        comision_calculada,
+        comision_manual: usarManual,
+        notas: notas || null,
+      },
       { onConflict: "cliente_id,mes" }
     );
   if (error) throw error;

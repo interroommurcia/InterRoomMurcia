@@ -28,7 +28,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "mes e ingresoBruto son requeridos" }, { status: 400 });
   }
   try {
-    await añadirIngreso(params.id, mes, ingresoBruto, Number(body?.comisionPct) || 15, body?.notas);
+    const comisionManualRaw = body?.comisionManual;
+    const comisionManual = comisionManualRaw === "" || comisionManualRaw === null || comisionManualRaw === undefined
+      ? null
+      : Number(comisionManualRaw);
+    await añadirIngreso(
+      params.id,
+      mes,
+      ingresoBruto,
+      Number(body?.comisionPct) || 15,
+      body?.notas,
+      comisionManual !== null && Number.isFinite(comisionManual) ? comisionManual : null,
+    );
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error desconocido" }, { status: 500 });
