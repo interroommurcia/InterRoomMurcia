@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { actualizarPiso, borrarPiso, subirImagenPiso, type PisoInput } from "../../../../../lib/pisosAdmin";
 import type { Zona } from "../../../../../lib/pisos";
 
@@ -44,6 +45,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await borrarPiso(params.id);
+    revalidatePath("/admin/pisos");
+    revalidatePath("/");
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Error borrando piso", err);
