@@ -44,10 +44,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    await borrarPiso(params.id);
+    const affected = await borrarPiso(params.id);
+    if (affected === 0) {
+      return NextResponse.json(
+        { error: "El servidor devolvió 0 filas borradas. Revisa RLS o el SUPABASE_SERVICE_ROLE_KEY en Vercel — probablemente el service role no está aplicándose." },
+        { status: 500 }
+      );
+    }
     revalidatePath("/admin/pisos");
     revalidatePath("/");
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, affected });
   } catch (err) {
     console.error("Error borrando piso", err);
     const message = err instanceof Error ? err.message : "No se pudo borrar el piso";

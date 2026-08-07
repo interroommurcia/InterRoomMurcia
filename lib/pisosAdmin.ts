@@ -43,9 +43,10 @@ export async function actualizarPiso(id: string, input: Partial<PisoInput>) {
   if (error) throw error;
 }
 
-export async function borrarPiso(id: string) {
-  const { error } = await getSupabaseAdmin().from("pisos").delete().eq("id", id);
+export async function borrarPiso(id: string): Promise<number> {
+  const { data, error } = await getSupabaseAdmin().from("pisos").delete().eq("id", id).select("id");
   if (error) throw error;
+  return (data ?? []).length;
 }
 
 export async function subirImagenPiso(file: File): Promise<string> {
