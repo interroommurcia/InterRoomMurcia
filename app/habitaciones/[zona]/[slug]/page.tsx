@@ -81,7 +81,7 @@ export default async function PisoPage({ params }: { params: { zona: string; slu
               <div className="ficha-cta-price">
                 {piso.precioMes}€ <span>/mes</span>
               </div>
-              <p>Escríbenos y te confirmamos disponibilidad y visita en minutos.</p>
+              <p>Escríbenos y te confirmamos disponibilidad, enviamos vídeo y concertamos visita en minutos.</p>
               <a href={whatsappHref(mensaje)} target="_blank" rel="noopener noreferrer" className="btn-primary">
                 Preguntar por WhatsApp
               </a>
