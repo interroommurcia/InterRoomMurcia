@@ -87,7 +87,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
       setPisos((prev) => prev.filter((p) => p.id !== id));
-      router.refresh();
+      window.location.reload();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo borrar el piso.");
     } finally {

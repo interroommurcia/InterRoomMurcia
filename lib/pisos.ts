@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { supabase } from "./supabaseClient";
 
 export type Zona = {
@@ -99,6 +100,7 @@ function mapPiso(row: PisoRow): Piso {
 }
 
 export async function getPisos(): Promise<Piso[]> {
+  noStore();
   const { data, error } = await supabase
     .from("pisos")
     .select("*")
@@ -108,12 +110,14 @@ export async function getPisos(): Promise<Piso[]> {
 }
 
 export async function pisosPorZona(zona: Zona["slug"]): Promise<Piso[]> {
+  noStore();
   const { data, error } = await supabase.from("pisos").select("*").eq("zona", zona);
   if (error) throw error;
   return (data ?? []).map(mapPiso);
 }
 
 export async function pisoPorSlug(zona: Zona["slug"], slug: string): Promise<Piso | null> {
+  noStore();
   const { data, error } = await supabase
     .from("pisos")
     .select("*")
