@@ -191,10 +191,10 @@ export async function descargarMedia(id: string): Promise<{ nombre: string; buff
 export async function copiarMediaAPiso(mediaId: string): Promise<string | null> {
   const admin = getSupabaseAdmin();
   const { data: reg } = await admin.from("propiedad_media").select("storage_path, tipo").eq("id", mediaId).maybeSingle();
-  if (!reg?.storage_path || reg.tipo !== "foto") return null;
+  if (!reg?.storage_path) return null;
   const { data: blob } = await admin.storage.from(BUCKET).download(reg.storage_path);
   if (!blob) return null;
-  const ext = reg.storage_path.split(".").pop() || "jpg";
+  const ext = reg.storage_path.split(".").pop() || (reg.tipo === "video" ? "mp4" : "jpg");
   const destino = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await admin.storage.from("pisos").upload(destino, blob, { contentType: blob.type, upsert: false });
   if (error) return null;

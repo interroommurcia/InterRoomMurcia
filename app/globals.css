@@ -328,7 +328,8 @@ h1 em {
 }
 
 .piso-img {
-  height: 150px;
+  height: 180px;
+  aspect-ratio: 16 / 10;
   background: linear-gradient(135deg, var(--orange), var(--orange-dark) 140%);
   background-size: cover;
   background-position: center;
@@ -435,14 +436,58 @@ h1 em {
   align-items: start;
 }
 
+.ficha-hero-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
 .ficha-hero {
-  height: 340px;
+  height: 420px;
   border-radius: 20px;
   background: linear-gradient(135deg, var(--orange), var(--orange-dark) 140%);
   background-size: cover;
   background-position: center;
   position: relative;
-  margin-bottom: 24px;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+.ficha-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.ficha-gallery img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
+
+.ficha-video {
+  width: 100%;
+  max-height: 520px;
+  border-radius: 16px;
+  background: #000;
+  display: block;
+}
+
+.btn-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #25d366;
+  color: #fff;
+}
+.btn-whatsapp:hover {
+  background: #1ebe57;
+}
+.btn-whatsapp svg {
+  flex-shrink: 0;
 }
 
 .ficha h1 {
@@ -1967,11 +2012,58 @@ button {
 
 @media (max-width: 480px) {
   .chat-widget {
-    right: 12px;
-    bottom: 12px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    align-items: stretch;
+    padding: 12px;
+    gap: 8px;
   }
   .chat-widget-panel {
-    width: calc(100vw - 24px);
+    width: 100%;
+    max-width: 100%;
+    height: calc(100dvh - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 18px 18px 0 0;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+  .chat-widget-button {
+    align-self: flex-end;
+  }
+  .chat-widget-msg {
+    font-size: 0.95rem;
+    max-width: 90%;
+  }
+  .chat-widget-input-row input {
+    font-size: 16px; /* evita el zoom de iOS al enfocar */
+  }
+}
+
+@media (max-width: 640px) {
+  .ficha {
+    padding: 24px 0 40px;
+  }
+  .ficha-hero {
+    height: 260px;
+  }
+  .ficha-gallery {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  .ficha-facts {
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .ficha-cta-card {
+    padding: 20px;
+    gap: 12px;
+  }
+  .btn-whatsapp {
+    padding: 14px 18px;
+    font-size: 1rem;
   }
 }
 

@@ -28,14 +28,24 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!titulo || !barrio || !descripcion || !precio_mes) return NextResponse.json({ error: "faltan datos" }, { status: 400 });
 
   const admin = getSupabaseAdmin();
-  let q = admin.from("propiedad_media").select("id").eq("propiedad_id", params.id).eq("tipo", "foto");
-  if (habitacion_id) q = q.eq("habitacion_id", String(habitacion_id));
-  else q = q.is("habitacion_id", null);
-  const { data: fotos } = await q.order("orden");
+  const baseQ = () => {
+    let q = admin.from("propiedad_media").select("id").eq("propiedad_id", params.id);
+    if (habitacion_id) q = q.eq("habitacion_id", String(habitacion_id));
+    else q = q.is("habitacion_id", null);
+    return q;
+  };
+  const { data: fotos } = await baseQ().eq("tipo", "foto").order("orden");
+  const { data: videos } = await baseQ().eq("tipo", "video").order("orden");
 
-  let imageUrl: string | null = null;
-  if (fotos && fotos.length > 0) {
-    imageUrl = await copiarMediaAPiso(fotos[0].id);
+  const gallery: string[] = [];
+  for (const f of fotos ?? []) {
+    const url = await copiarMediaAPiso(f.id);
+    if (url) gallery.push(url);
+  }
+  const imageUrl = gallery[0] ?? null;
+  let videoUrl: string | null = null;
+  if (videos && videos.length > 0) {
+    videoUrl = await copiarMediaAPiso(videos[0].id);
   }
 
   const slugFinal = slugify(String(slug || titulo)) + "-" + Math.random().toString(36).slice(2, 6);
@@ -50,6 +60,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       descripcion: String(descripcion),
       disponible: true,
       imageUrl,
+      gallery,
+      videoUrl,
     });
     revalidatePath("/");
     revalidatePath(`/habitaciones/${zona}`);

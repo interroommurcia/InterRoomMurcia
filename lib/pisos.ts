@@ -20,6 +20,8 @@ export type Piso = {
   descripcion: string;
   disponible: boolean;
   imageUrl: string | null;
+  gallery: string[];
+  videoUrl: string | null;
 };
 
 export const zonas: Zona[] = [
@@ -75,6 +77,8 @@ type PisoRow = {
   descripcion: string;
   disponible: boolean;
   image_url: string | null;
+  gallery: string[] | null;
+  video_url: string | null;
 };
 
 function mapPiso(row: PisoRow): Piso {
@@ -89,6 +93,8 @@ function mapPiso(row: PisoRow): Piso {
     descripcion: row.descripcion,
     disponible: row.disponible,
     imageUrl: row.image_url,
+    gallery: Array.isArray(row.gallery) ? row.gallery.filter((u): u is string => typeof u === "string") : [],
+    videoUrl: row.video_url ?? null,
   };
 }
 
