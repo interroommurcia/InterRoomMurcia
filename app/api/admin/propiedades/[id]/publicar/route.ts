@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getSupabaseAdmin } from "../../../../../../lib/supabaseAdmin";
 import { copiarMediaAPiso } from "../../../../../../lib/propiedades";
 import { crearPiso } from "../../../../../../lib/pisosAdmin";
@@ -50,6 +51,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       disponible: true,
       imageUrl,
     });
+    revalidatePath("/");
+    revalidatePath(`/habitaciones/${zona}`);
+    revalidatePath(`/habitaciones/${zona}/${slugFinal}`);
     return NextResponse.json({ ok: true, slug: slugFinal, zona, url: `/habitaciones/${zona}/${slugFinal}` });
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error" }, { status: 500 });
