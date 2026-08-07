@@ -33,8 +33,10 @@ function CheckList({ items }: { items: string[] }) {
 function KeysIcon() {
   return (
     <svg className="visual-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-      <circle cx="17" cy="17" r="9" stroke="currentColor" strokeWidth="2.4" />
-      <path d="M23 23l16 16m0 0v-7m0 7h-7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 22h24v10a8 8 0 0 1-8 8H18a8 8 0 0 1-8-8V22z" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
+      <path d="M34 25h4a4 4 0 0 1 0 8h-4" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M17 8c0 3 3 3 3 6M24 8c0 3 3 3 3 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M8 44h30" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
     </svg>
   );
 }

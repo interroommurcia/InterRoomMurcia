@@ -486,8 +486,157 @@ h1 em {
 .btn-whatsapp:hover {
   background: #1ebe57;
 }
-.btn-whatsapp svg {
+.btn-whatsapp svg,
+.btn-whatsapp-outline svg {
   flex-shrink: 0;
+}
+
+.btn-whatsapp-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-color: #25d366;
+  color: var(--ink);
+}
+.btn-whatsapp-outline:hover {
+  background: rgba(37, 211, 102, 0.08);
+}
+
+/* ============================================================
+   Edición de cliente (backoffice)
+   ============================================================ */
+.cliente-edit {
+  background: linear-gradient(180deg, #fff 0%, #fafafa 100%);
+  border-top: 1px solid rgba(26, 26, 26, 0.08);
+  padding: 22px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-radius: 0 0 12px 12px;
+}
+
+.cliente-edit-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cliente-edit-eyebrow {
+  display: inline-block;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--orange-dark);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.cliente-edit-header h5 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--ink);
+}
+.cliente-edit-close {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: rgba(26, 26, 26, 0.45);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.cliente-edit-close:hover {
+  background: rgba(26, 26, 26, 0.06);
+  color: var(--ink);
+}
+
+.cliente-edit-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cliente-edit-section-title {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: rgba(26, 26, 26, 0.55);
+  padding-bottom: 6px;
+  border-bottom: 1px dashed rgba(26, 26, 26, 0.08);
+}
+
+.cliente-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.cliente-edit-grid-tel {
+  grid-template-columns: 180px 1fr 1.4fr;
+}
+
+.cliente-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cliente-edit-field span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(26, 26, 26, 0.7);
+}
+.cliente-edit-field input,
+.cliente-edit-field select,
+.cliente-edit-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(26, 26, 26, 0.14);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.92rem;
+  background: #fff;
+  color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.cliente-edit-field input:focus,
+.cliente-edit-field select:focus,
+.cliente-edit-field textarea:focus {
+  outline: none;
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px rgba(234, 106, 18, 0.15);
+}
+.cliente-edit-field textarea {
+  resize: vertical;
+  min-height: 88px;
+}
+
+.cliente-edit-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 4px;
+  border-top: 1px solid rgba(26, 26, 26, 0.06);
+  padding-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .cliente-edit {
+    padding: 18px 16px;
+  }
+  .cliente-edit-grid,
+  .cliente-edit-grid-tel {
+    grid-template-columns: 1fr;
+  }
+  .cliente-edit-actions {
+    flex-direction: column-reverse;
+  }
+  .cliente-edit-actions .btn-primary,
+  .cliente-edit-actions .btn-ghost {
+    width: 100%;
+    text-align: center;
+  }
 }
 
 .ficha h1 {

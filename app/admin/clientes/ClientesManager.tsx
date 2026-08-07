@@ -367,38 +367,55 @@ export default function ClientesManager() {
                 </div>
               </div>
               {editando === cliente.id && (
-                <div style={{ borderTop: "1px solid var(--color-border, #e5e7eb)", padding: 16 }}>
-                  <div className="lead-form-row">
-                    <label>
-                      Nombre
-                      <input value={edicion.nombre} onChange={(e) => setEdicion({ ...edicion, nombre: e.target.value })} />
-                    </label>
-                    <label>
-                      Apellidos
-                      <input value={edicion.apellidos} onChange={(e) => setEdicion({ ...edicion, apellidos: e.target.value })} />
-                    </label>
+                <div className="cliente-edit">
+                  <div className="cliente-edit-header">
+                    <div>
+                      <span className="cliente-edit-eyebrow">Editando</span>
+                      <h5>{cliente.nombre} {cliente.apellidos}</h5>
+                    </div>
+                    <button type="button" className="cliente-edit-close" onClick={() => setEditando(null)} aria-label="Cerrar">×</button>
                   </div>
-                  <div className="lead-form-row">
-                    <label>
-                      Prefijo
-                      <select value={edicion.telefonoPrefijo} onChange={(e) => setEdicion({ ...edicion, telefonoPrefijo: e.target.value })}>
-                        {PREFIJOS.map((p) => (
-                          <option key={p.code} value={p.code}>{p.label}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Teléfono
-                      <input value={edicion.telefonoNumero} onChange={(e) => setEdicion({ ...edicion, telefonoNumero: e.target.value })} />
-                    </label>
-                    <label>
-                      Email
-                      <input type="email" value={edicion.email} onChange={(e) => setEdicion({ ...edicion, email: e.target.value })} />
-                    </label>
+
+                  <div className="cliente-edit-section">
+                    <div className="cliente-edit-section-title">Datos personales</div>
+                    <div className="cliente-edit-grid">
+                      <label className="cliente-edit-field">
+                        <span>Nombre</span>
+                        <input value={edicion.nombre} onChange={(e) => setEdicion({ ...edicion, nombre: e.target.value })} />
+                      </label>
+                      <label className="cliente-edit-field">
+                        <span>Apellidos</span>
+                        <input value={edicion.apellidos} onChange={(e) => setEdicion({ ...edicion, apellidos: e.target.value })} />
+                      </label>
+                    </div>
                   </div>
-                  <div className="lead-form-row">
-                    <label style={{ flex: 1 }}>
-                      Rol secundario (opcional)
+
+                  <div className="cliente-edit-section">
+                    <div className="cliente-edit-section-title">Contacto</div>
+                    <div className="cliente-edit-grid cliente-edit-grid-tel">
+                      <label className="cliente-edit-field">
+                        <span>Prefijo</span>
+                        <select value={edicion.telefonoPrefijo} onChange={(e) => setEdicion({ ...edicion, telefonoPrefijo: e.target.value })}>
+                          {PREFIJOS.map((p) => (
+                            <option key={p.code} value={p.code}>{p.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="cliente-edit-field">
+                        <span>Teléfono</span>
+                        <input value={edicion.telefonoNumero} onChange={(e) => setEdicion({ ...edicion, telefonoNumero: e.target.value })} placeholder="612 34 56 78" />
+                      </label>
+                      <label className="cliente-edit-field">
+                        <span>Email</span>
+                        <input type="email" value={edicion.email} onChange={(e) => setEdicion({ ...edicion, email: e.target.value })} placeholder="cliente@email.com" />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="cliente-edit-section">
+                    <div className="cliente-edit-section-title">Clasificación</div>
+                    <label className="cliente-edit-field">
+                      <span>Rol secundario (opcional)</span>
                       <select value={edicion.tipo_secundario} onChange={(e) => setEdicion({ ...edicion, tipo_secundario: e.target.value as "" | Cliente["tipo"] })}>
                         <option value="">— ninguno —</option>
                         {TIPOS.filter((t) => t.value !== cliente.tipo).map((t) => (
@@ -407,14 +424,17 @@ export default function ClientesManager() {
                       </select>
                     </label>
                   </div>
-                  <div className="lead-form-row">
-                    <label style={{ flex: 1 }}>
-                      Notas
-                      <textarea rows={3} value={edicion.notas} onChange={(e) => setEdicion({ ...edicion, notas: e.target.value })} />
+
+                  <div className="cliente-edit-section">
+                    <div className="cliente-edit-section-title">Notas internas</div>
+                    <label className="cliente-edit-field">
+                      <textarea rows={4} value={edicion.notas} onChange={(e) => setEdicion({ ...edicion, notas: e.target.value })} placeholder="Observaciones que solo verá el equipo…" />
                     </label>
                   </div>
-                  <div className="lead-form-actions">
-                    <button type="button" className="btn-primary" onClick={() => guardarEdicion(cliente.id)}>Guardar</button>
+
+                  <div className="cliente-edit-actions">
+                    <button type="button" className="btn-ghost" onClick={() => setEditando(null)}>Cancelar</button>
+                    <button type="button" className="btn-primary" onClick={() => guardarEdicion(cliente.id)}>Guardar cambios</button>
                   </div>
                 </div>
               )}
