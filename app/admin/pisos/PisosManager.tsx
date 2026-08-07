@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Piso, Zona } from "../../../lib/pisos";
 
@@ -10,13 +10,18 @@ const ZONAS: { slug: Zona["slug"]; label: string }[] = [
   { slug: "upct", label: "UPCT" },
 ];
 
-export default function PisosManager({ pisos }: { pisos: Piso[] }) {
+export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
   const router = useRouter();
+  const [pisos, setPisos] = useState<Piso[]>(pisosInit);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Piso | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copiado, setCopiado] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPisos(pisosInit);
+  }, [pisosInit]);
 
   function urlPublica(piso: Piso) {
     return `${window.location.origin}/habitaciones/${piso.zona}/${piso.slug}`;
@@ -79,10 +84,12 @@ export default function PisosManager({ pisos }: { pisos: Piso[] }) {
     setError("");
     try {
       const res = await fetch(`/api/admin/pisos/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      setPisos((prev) => prev.filter((p) => p.id !== id));
       router.refresh();
-    } catch {
-      setError("No se pudo borrar el piso.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo borrar el piso.");
     } finally {
       setBusy(false);
     }

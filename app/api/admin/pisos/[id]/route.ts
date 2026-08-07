@@ -47,6 +47,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Error borrando piso", err);
-    return NextResponse.json({ error: "No se pudo borrar el piso" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "No se pudo borrar el piso";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
