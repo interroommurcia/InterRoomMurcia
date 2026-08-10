@@ -78,6 +78,7 @@ export function PropiedadCard({
               {propView.servicio_agua && <ServicioTag label="Agua" />}
               {propView.tiene_garaje && <ServicioTag label="Garaje" />}
               {propView.libre_enero && <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 11, background: "#fef3c7", color: "#92400e", fontWeight: 500 }}>Libre en Enero</span>}
+              {propView.asignado_nombre && <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 11, background: "#e0e7ff", color: "#3730a3", fontWeight: 500 }}>{propView.asignado_nombre}</span>}
             </div>
             {propView.direccion && <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>{propView.direccion}</div>}
           </div>

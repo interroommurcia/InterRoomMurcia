@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import { Cliente, FONT, Field, Habitacion, NUEVA, Propiedad, inputStyle } from "./_components/shared";
+import { Cliente, FONT, FILTROS_INIT, Field, Filtros, Habitacion, NUEVA, Propiedad, filtrarPropiedades, inputStyle } from "./_components/shared";
 import { PropiedadCard } from "./_components/PropiedadCard";
+import { FiltroBar } from "./_components/FiltroBar";
 
 export default function PropiedadesManager() {
   const [props, setProps] = useState<Propiedad[]>([]);
@@ -13,14 +14,26 @@ export default function PropiedadesManager() {
   const [nueva, setNueva] = useState(NUEVA);
   const [abierta, setAbierta] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState<string | null>(null);
+  const [filtros, setFiltros] = useState<Filtros>(FILTROS_INIT);
+  const propsEnriquecidas = props.map((p) => ({
+    ...p,
+    asignado_nombre: p.asignado_a ? (usuarios.find((u) => u.id === p.asignado_a)?.nombre ?? null) : null,
+  }));
+  const propsFiltradas = filtrarPropiedades(propsEnriquecidas, filtros);
+
+  type UsuarioRef = { id: string; nombre: string; rol: string };
+  const [usuarios, setUsuarios] = useState<UsuarioRef[]>([]);
 
   async function cargar() {
-    const [p, c] = await Promise.all([
+    const [p, c, u] = await Promise.all([
       fetch("/api/admin/propiedades").then((r) => r.json()),
       fetch("/api/admin/clientes").then((r) => r.json()),
+      fetch("/api/admin/usuarios").then((r) => r.json()).catch(() => []),
     ]);
     setProps(Array.isArray(p) ? p : []);
     setClientes(Array.isArray(c) ? c : []);
+    const uArr = Array.isArray(u) ? u : [];
+    setUsuarios(uArr);
     setLoading(false);
   }
 
@@ -140,6 +153,8 @@ export default function PropiedadesManager() {
         </button>
       </div>
 
+      <FiltroBar filtros={filtros} onChange={setFiltros} total={props.length} filtrado={propsFiltradas.length} />
+
       {mostrarForm && (
         <form onSubmit={crear} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20, marginBottom: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
@@ -178,11 +193,13 @@ export default function PropiedadesManager() {
         </form>
       )}
 
-      {props.length === 0 ? (
-        <p style={{ color: "#9ca3af", padding: 24, textAlign: "center" }}>Aún no hay propiedades captadas.</p>
+      {propsFiltradas.length === 0 ? (
+        <p style={{ color: "#9ca3af", padding: 24, textAlign: "center" }}>
+          {props.length === 0 ? "Aún no hay propiedades captadas." : "Ninguna propiedad coincide con los filtros."}
+        </p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {props.map((p) => (
+          {propsFiltradas.map((p) => (
             <PropiedadCard
               key={p.id}
               p={p}

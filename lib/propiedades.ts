@@ -18,6 +18,7 @@ export type Propiedad = {
   libre_enero: boolean;
   propietario_id: string | null;
   valor_compra: number | null;
+  asignado_a: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -45,6 +46,7 @@ export type PropiedadMedia = {
 };
 
 export type PropiedadConDetalle = Propiedad & {
+  asignado_nombre: string | null;
   habitaciones: (PropiedadHabitacion & { clienteNombre: string | null })[];
   media: PropiedadMedia[];
 };
@@ -64,6 +66,7 @@ export async function listarPropiedades(): Promise<PropiedadConDetalle[]> {
   };
   return ((data ?? []) as unknown as Row[]).map((r) => ({
     ...r,
+    asignado_nombre: null as string | null,
     habitaciones: (r.propiedad_habitaciones ?? [])
       .sort((a, b) => a.orden - b.orden)
       .map((h) => ({

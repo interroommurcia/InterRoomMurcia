@@ -28,6 +28,8 @@ export type Propiedad = {
   libre_enero: boolean;
   propietario_id: string | null;
   valor_compra: number | null;
+  asignado_a: string | null;
+  asignado_nombre: string | null;
   habitaciones: Habitacion[];
   media: Media[];
 };
@@ -51,6 +53,8 @@ export const NUEVA: Omit<Propiedad, "id" | "habitaciones" | "media"> = {
   libre_enero: false,
   propietario_id: null,
   valor_compra: null,
+  asignado_a: null,
+  asignado_nombre: null,
 };
 
 export const FONT = "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
@@ -90,6 +94,33 @@ export function Field({ label, children }: { label: string; children: React.Reac
       {children}
     </label>
   );
+}
+
+export type Filtros = {
+  libreEnero: boolean;
+  conHabitacionLibre: boolean;
+  tipo: string;
+  minHabitaciones: number;
+  minBanos: number;
+};
+
+export const FILTROS_INIT: Filtros = {
+  libreEnero: false,
+  conHabitacionLibre: false,
+  tipo: "",
+  minHabitaciones: 0,
+  minBanos: 0,
+};
+
+export function filtrarPropiedades(props: Propiedad[], f: Filtros): Propiedad[] {
+  return props.filter((p) => {
+    if (f.libreEnero && !p.libre_enero && !p.habitaciones.some((h) => h.libre_enero)) return false;
+    if (f.conHabitacionLibre && !p.habitaciones.some((h) => !h.cliente_id)) return false;
+    if (f.tipo && p.tipo !== f.tipo) return false;
+    if (f.minHabitaciones && p.num_habitaciones < f.minHabitaciones) return false;
+    if (f.minBanos && p.num_banos < f.minBanos) return false;
+    return true;
+  });
 }
 
 export function ServicioTag({ label }: { label: string }) {

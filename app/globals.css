@@ -1086,7 +1086,32 @@ button {
   display: flex;
   gap: 8px;
   margin-bottom: 24px;
+  flex-wrap: wrap;
+  align-items: center;
 }
+.admin-nav-user {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+}
+.admin-nav-name {
+  color: var(--ink);
+  opacity: 0.6;
+  font-weight: 500;
+}
+.admin-nav-logout {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: var(--ink);
+  opacity: 0.6;
+}
+.admin-nav-logout:hover { opacity: 1; }
 
 .admin-nav-item {
   padding: 8px 16px;
