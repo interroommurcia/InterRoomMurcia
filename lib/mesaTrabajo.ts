@@ -53,6 +53,14 @@ async function reemplazarAsignados(tareaId: string, ids: string[]) {
 
 export async function listarTareas(): Promise<TareaConCliente[]> {
   const admin = getSupabaseAdmin();
+
+  const hace30dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  await admin
+    .from("mesa_trabajo")
+    .delete()
+    .eq("estado", "hecha")
+    .lt("updated_at", hace30dias);
+
   const { data, error } = await admin
     .from("mesa_trabajo")
     .select(SELECT)
@@ -115,12 +123,26 @@ export async function crearTarea(input: {
 
 export async function actualizarTarea(
   id: string,
-  patch: Partial<{ estado: EstadoTarea; asignados_ids: string[]; notas: string | null }>
+  patch: Partial<{
+    estado: EstadoTarea;
+    asignados_ids: string[];
+    notas: string | null;
+    tipo: TipoTarea;
+    titulo: string;
+    fecha: string | null;
+    hora: string | null;
+    cliente_id: string | null;
+  }>
 ) {
   const admin = getSupabaseAdmin();
   const dbPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.estado) dbPatch.estado = patch.estado;
   if (patch.notas !== undefined) dbPatch.notas = patch.notas;
+  if (patch.tipo) dbPatch.tipo = patch.tipo;
+  if (patch.titulo) dbPatch.titulo = patch.titulo;
+  if (patch.fecha !== undefined) dbPatch.fecha = patch.fecha;
+  if (patch.hora !== undefined) dbPatch.hora = patch.hora;
+  if (patch.cliente_id !== undefined) dbPatch.cliente_id = patch.cliente_id;
   const { error } = await admin.from("mesa_trabajo").update(dbPatch).eq("id", id);
   if (error) throw error;
   if (patch.asignados_ids !== undefined) {

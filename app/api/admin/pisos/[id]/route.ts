@@ -29,6 +29,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   if (form.get("disponible") !== null) updates.disponible = form.get("disponible") === "true";
 
+  const categoriaVal = form.get("categoria");
+  if (typeof categoriaVal === "string" && (categoriaVal === "alquiler" || categoriaVal === "compraventa")) updates.categoria = categoriaVal;
+
   try {
     const imagen = form.get("imagen");
     if (imagen instanceof File && imagen.size > 0) {

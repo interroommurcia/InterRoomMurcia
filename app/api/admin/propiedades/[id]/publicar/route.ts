@@ -23,7 +23,8 @@ function slugify(s: string) {
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
-  const { habitacion_id, zona, slug, titulo, barrio, precio_mes, metros, descripcion } = body as Record<string, unknown>;
+  const { habitacion_id, zona, slug, titulo, barrio, precio_mes, metros, descripcion, categoria: catRaw } = body as Record<string, unknown>;
+  const categoria = catRaw === "compraventa" ? "compraventa" : "alquiler";
   if (!ZONAS.includes(zona as Zona["slug"])) return NextResponse.json({ error: "zona inválida" }, { status: 400 });
   if (!titulo || !barrio || !descripcion || !precio_mes) return NextResponse.json({ error: "faltan datos" }, { status: 400 });
 
@@ -62,6 +63,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       imageUrl,
       gallery,
       videoUrl,
+      categoria,
     });
     revalidatePath("/");
     revalidatePath(`/habitaciones/${zona}`);

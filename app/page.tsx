@@ -4,6 +4,8 @@ import { zonas, getPisos } from "../lib/pisos";
 export default async function HomePage() {
   const pisos = await getPisos();
   const disponibles = pisos.filter((p) => p.disponible).length;
+  const alquileres = pisos.filter((p) => p.categoria === "alquiler");
+  const compraventas = pisos.filter((p) => p.categoria === "compraventa");
 
   return (
     <>
@@ -85,33 +87,74 @@ export default async function HomePage() {
       <section className="catalog" id="catalogo">
         <div className="wrap">
           <div className="section-head">
-            <h2>Ultimas incorporaciones</h2>
-            <p>Fichas generadas automaticamente desde el catalogo.</p>
+            <h2>Alquileres</h2>
+            <p>Habitaciones y pisos en alquiler, tradicional y por habitaciones.</p>
           </div>
-          <div className="card-grid">
-            {pisos.map((piso) => (
-              <Link href={`/habitaciones/${piso.zona}/${piso.slug}`} className="piso-card" key={piso.id}>
-                <div
-                  className="piso-img"
-                  style={piso.imageUrl ? { backgroundImage: `url(${piso.imageUrl})` } : undefined}
-                >
-                  <span className={`piso-badge ${piso.disponible ? "" : "no-disponible"}`}>
-                    {piso.disponible ? "Disponible" : "No disponible"}
-                  </span>
-                </div>
-                <div className="piso-body">
-                  <h4>{piso.titulo}</h4>
-                  <div className="loc">{piso.barrio}</div>
-                  <div className="piso-foot">
-                    <div className="piso-price">
-                      {piso.precioMes}€ <span>/mes</span>
-                    </div>
-                    <div className="piso-arrow">-&gt;</div>
+          {alquileres.length > 0 ? (
+            <div className="card-grid">
+              {alquileres.map((piso) => (
+                <Link href={`/habitaciones/${piso.zona}/${piso.slug}`} className="piso-card" key={piso.id}>
+                  <div
+                    className="piso-img"
+                    style={piso.imageUrl ? { backgroundImage: `url(${piso.imageUrl})` } : undefined}
+                  >
+                    <span className={`piso-badge ${piso.disponible ? "" : "no-disponible"}`}>
+                      {piso.disponible ? "Disponible" : "No disponible"}
+                    </span>
                   </div>
-                </div>
-              </Link>
-            ))}
+                  <div className="piso-body">
+                    <h4>{piso.titulo}</h4>
+                    <div className="loc">{piso.barrio}</div>
+                    <div className="piso-foot">
+                      <div className="piso-price">
+                        {piso.precioMes}€ <span>/mes</span>
+                      </div>
+                      <div className="piso-arrow">-&gt;</div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="admin-empty">No hay alquileres publicados todavía.</p>
+          )}
+        </div>
+      </section>
+
+      <section className="catalog" id="compraventa">
+        <div className="wrap">
+          <div className="section-head">
+            <h2>Compraventas</h2>
+            <p>Inmuebles en venta, operaciones de compraventa y créditos.</p>
           </div>
+          {compraventas.length > 0 ? (
+            <div className="card-grid">
+              {compraventas.map((piso) => (
+                <Link href={`/habitaciones/${piso.zona}/${piso.slug}`} className="piso-card" key={piso.id}>
+                  <div
+                    className="piso-img"
+                    style={piso.imageUrl ? { backgroundImage: `url(${piso.imageUrl})` } : undefined}
+                  >
+                    <span className={`piso-badge ${piso.disponible ? "" : "no-disponible"}`}>
+                      {piso.disponible ? "Disponible" : "No disponible"}
+                    </span>
+                  </div>
+                  <div className="piso-body">
+                    <h4>{piso.titulo}</h4>
+                    <div className="loc">{piso.barrio}</div>
+                    <div className="piso-foot">
+                      <div className="piso-price">
+                        {piso.precioMes}€
+                      </div>
+                      <div className="piso-arrow">-&gt;</div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="admin-empty">No hay compraventas publicadas todavía.</p>
+          )}
         </div>
       </section>
     </>

@@ -62,6 +62,8 @@ export default function MesaTrabajoManager() {
   const [cursor, setCursor] = useState(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
   const [gestionTrabajadores, setGestionTrabajadores] = useState(false);
   const [nuevoTrabajador, setNuevoTrabajador] = useState("");
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [edicion, setEdicion] = useState(NUEVA_TAREA);
 
   async function cargar() {
     const [t, c, tr] = await Promise.all([
@@ -100,6 +102,49 @@ export default function MesaTrabajoManager() {
       ...n,
       asignados_ids: n.asignados_ids.includes(id) ? n.asignados_ids.filter((x) => x !== id) : [...n.asignados_ids, id],
     }));
+  }
+
+  function toggleAsignadoEdicion(id: string) {
+    setEdicion((n) => ({
+      ...n,
+      asignados_ids: n.asignados_ids.includes(id) ? n.asignados_ids.filter((x) => x !== id) : [...n.asignados_ids, id],
+    }));
+  }
+
+  function abrirEdicion(t: Tarea) {
+    if (editandoId === t.id) {
+      setEditandoId(null);
+      return;
+    }
+    setEditandoId(t.id);
+    setEdicion({
+      tipo: t.tipo,
+      titulo: t.titulo,
+      fecha: t.fecha?.slice(0, 10) ?? "",
+      hora: t.hora?.slice(0, 5) ?? "",
+      cliente_id: t.cliente_id ?? "",
+      asignados_ids: t.asignados.map((a) => a.id),
+      notas: t.notas ?? "",
+    });
+  }
+
+  async function guardarEdicion(id: string) {
+    if (!confirm("¿Estás seguro de que quieres guardar los cambios?")) return;
+    await fetch(`/api/admin/mesa-trabajo/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipo: edicion.tipo,
+        titulo: edicion.titulo,
+        fecha: edicion.fecha || null,
+        hora: edicion.hora || null,
+        cliente_id: edicion.cliente_id || null,
+        asignados_ids: edicion.asignados_ids,
+        notas: edicion.notas || null,
+      }),
+    });
+    setEditandoId(null);
+    cargar();
   }
 
   useEffect(() => {
@@ -191,6 +236,10 @@ export default function MesaTrabajoManager() {
     if (filtroFecha && (t.fecha?.slice(0, 10) ?? null) !== filtroFecha) return false;
     if (filtroTrabajador && !t.asignados.some((a) => a.id === filtroTrabajador)) return false;
     return true;
+  }).sort((a, b) => {
+    if (a.estado === "hecha" && b.estado !== "hecha") return 1;
+    if (a.estado !== "hecha" && b.estado === "hecha") return -1;
+    return 0;
   });
 
   const isoHoy = isoDate(hoy);
@@ -213,7 +262,7 @@ export default function MesaTrabajoManager() {
       </div>
 
       <div style={{ display: "flex", gap: 24, marginTop: 20, flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 340px", maxWidth: 420 }}>
+        <div style={{ flex: "1 1 300px", maxWidth: 420, minWidth: 0 }}>
           <div className="section-head">
             <h2 style={{ fontSize: 16 }}>
               {MESES[cursor.getMonth()]} {cursor.getFullYear()}
@@ -271,7 +320,7 @@ export default function MesaTrabajoManager() {
           </div>
         </div>
 
-        <div className="articulos-list-section" style={{ flex: "1 1 340px", marginTop: 0 }}>
+        <div className="articulos-list-section" style={{ flex: "1 1 300px", marginTop: 0, minWidth: 0 }}>
           <div className="section-head">
             <h2>
               Pendientes ({filtradas.length})
@@ -412,64 +461,112 @@ export default function MesaTrabajoManager() {
           {filtradas.length === 0 ? (
             <p className="admin-empty">Nada por aquí.</p>
           ) : (
-            filtradas.map((t) => (
-              <div key={t.id} className="pisos-list-item">
-                <div className="pisos-list-body">
-                  <h4>
-                    <span className="editor-badge-hidden">{TIPOS.find((x) => x.value === t.tipo)!.label} · </span>
-                    {t.titulo}
-                  </h4>
-                  <div className="loc">
-                    {t.fecha ? new Date(t.fecha).toLocaleDateString("es-ES") : "sin fecha"}
-                    {t.hora ? ` · ${t.hora.slice(0, 5)}` : ""} · {t.clienteNombre || "sin cliente"}
-                    {t.asignados.map((a) => (
-                      <span key={a.id} style={{ marginLeft: 6, padding: "1px 8px", borderRadius: 999, background: "var(--orange-light)", color: "var(--orange)", fontSize: 11 }}>👤 {a.nombre}</span>
+            filtradas.map((t) => {
+              const isEditing = editandoId === t.id;
+              return (
+                <div key={t.id} style={{ position: "relative", border: `1px solid ${t.estado === "hecha" ? "#e5e7eb" : "#e5e7eb"}`, borderRadius: 10, marginBottom: 10, background: t.estado === "hecha" ? "#f9fafb" : "#fff", overflow: "hidden", opacity: t.estado === "hecha" ? 0.6 : 1 }}>
+                  {t.estado === "hecha" && (
+                    <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%) rotate(-18deg)", fontSize: 28, fontWeight: 800, color: "rgba(156,163,175,0.18)", whiteSpace: "nowrap", pointerEvents: "none", userSelect: "none", zIndex: 1, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                      Tarea Cumplida
+                    </div>
+                  )}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", position: "relative", zIndex: 2 }}>
+                    <span style={{ fontSize: 11, padding: "1px 8px", borderRadius: 999, background: t.estado === "hecha" ? "#d1d5db" : TIPO_COLOR[t.tipo], color: "#fff", flexShrink: 0 }}>
+                      {TIPOS.find((x) => x.value === t.tipo)!.label}
+                    </span>
+                    <span style={{ flex: 1, fontWeight: 500, fontSize: 14, textDecoration: t.estado === "hecha" ? "line-through" : undefined, color: t.estado === "hecha" ? "#9ca3af" : undefined }}>
+                      {t.titulo}
+                    </span>
+                    <span style={{ fontSize: 12, opacity: 0.6, whiteSpace: "nowrap" }}>
+                      {t.fecha ? new Date(t.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "short" }) : "sin fecha"}
+                      {t.hora ? ` ${t.hora.slice(0, 5)}` : ""}
+                    </span>
+                  </div>
+                  <div style={{ padding: "0 14px 6px", fontSize: 13, color: t.estado === "hecha" ? "#d1d5db" : "#6b7280", position: "relative", zIndex: 2 }}>
+                    {t.clienteNombre && <span>Cliente: <b>{t.clienteNombre}</b> · </span>}
+                    {t.asignados.length > 0 && t.asignados.map((a) => (
+                      <span key={a.id} style={{ marginRight: 6, padding: "1px 8px", borderRadius: 999, background: t.estado === "hecha" ? "#f3f4f6" : "var(--orange-light)", color: t.estado === "hecha" ? "#9ca3af" : "var(--orange)", fontSize: 11 }}>{a.nombre}</span>
                     ))}
-                    {t.notas ? ` · ${t.notas}` : ""}
+                    {t.notas && <div style={{ whiteSpace: "pre-wrap", marginTop: 4, opacity: 0.8 }}>{t.notas}</div>}
                   </div>
-                </div>
-                <div className="lead-form-actions" style={{ padding: "0 16px 12px", flexWrap: "wrap", gap: 4 }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
-                    <span style={{ fontSize: 11, opacity: 0.6 }}>Asignar:</span>
-                    {trabajadores.filter((tr) => tr.activo || t.asignados.some((a) => a.id === tr.id)).map((tr) => {
-                      const sel = t.asignados.some((a) => a.id === tr.id);
-                      return (
-                        <button
-                          key={tr.id}
-                          type="button"
-                          onClick={() => {
-                            const ids = sel ? t.asignados.filter((a) => a.id !== tr.id).map((a) => a.id) : [...t.asignados.map((a) => a.id), tr.id];
-                            reasignarTarea(t.id, ids);
-                          }}
-                          style={{
-                            padding: "1px 8px",
-                            fontSize: 11,
-                            borderRadius: 999,
-                            border: `1px solid ${sel ? "var(--orange)" : "#e5e7eb"}`,
-                            background: sel ? "var(--orange-light)" : "#fff",
-                            color: sel ? "var(--orange)" : "#6b7280",
-                            cursor: "pointer",
-                          }}
-                        >
-                          {sel ? "✓ " : ""}{tr.nombre}
-                        </button>
-                      );
-                    })}
+                  <div style={{ display: "flex", gap: 6, padding: "6px 14px 10px", flexWrap: "wrap", alignItems: "center", position: "relative", zIndex: 2 }}>
+                    <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 13 }}>
+                      <input type="checkbox" checked={t.estado === "hecha"} onChange={(e) => marcarEstado(t.id, e.target.checked ? "hecha" : "pendiente")} />
+                      Hecha
+                    </label>
+                    <button type="button" className="btn-ghost" style={{ fontSize: 13 }} onClick={() => abrirEdicion(t)}>
+                      {isEditing ? "Cancelar edición" : "Editar"}
+                    </button>
+                    <button type="button" className="btn-ghost" style={{ fontSize: 13, color: "#ef4444" }} onClick={() => { if (confirm("¿Eliminar esta anotación?")) eliminarTarea(t.id); }}>
+                      Eliminar
+                    </button>
                   </div>
-                  <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <input
-                      type="checkbox"
-                      checked={t.estado === "hecha"}
-                      onChange={(e) => marcarEstado(t.id, e.target.checked ? "hecha" : "pendiente")}
-                    />
-                    Hecha
-                  </label>
-                  <button type="button" className="btn-ghost" onClick={() => eliminarTarea(t.id)}>
-                    Eliminar
-                  </button>
+
+                  {isEditing && (
+                    <div style={{ padding: "12px 14px 14px", borderTop: "1px solid #f3f4f6", background: "#fafafa" }}>
+                      <div className="lead-form-row">
+                        <label>
+                          Tipo
+                          <select value={edicion.tipo} onChange={(e) => setEdicion({ ...edicion, tipo: e.target.value as Tarea["tipo"] })}>
+                            {TIPOS.map((tp) => (
+                              <option key={tp.value} value={tp.value}>{tp.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label style={{ flex: 1 }}>
+                          Título
+                          <input value={edicion.titulo} onChange={(e) => setEdicion({ ...edicion, titulo: e.target.value })} />
+                        </label>
+                      </div>
+                      <div className="lead-form-row">
+                        <label>
+                          Fecha
+                          <input type="date" value={edicion.fecha} onChange={(e) => setEdicion({ ...edicion, fecha: e.target.value })} />
+                        </label>
+                        <label>
+                          Hora
+                          <input type="time" value={edicion.hora} onChange={(e) => setEdicion({ ...edicion, hora: e.target.value })} />
+                        </label>
+                        <label>
+                          Cliente vinculado
+                          <select value={edicion.cliente_id} onChange={(e) => setEdicion({ ...edicion, cliente_id: e.target.value })}>
+                            <option value="">Sin vincular</option>
+                            {clientes.map((c) => (
+                              <option key={c.id} value={c.id}>{c.nombre} {c.apellidos}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, marginBottom: 4, opacity: 0.75 }}>Asignar a (uno o varios)</div>
+                        {trabajadores.filter((tr) => tr.activo).length === 0 ? (
+                          <p className="admin-empty" style={{ margin: 0 }}>No hay trabajadores dados de alta.</p>
+                        ) : (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {trabajadores.filter((tr) => tr.activo).map((tr) => {
+                              const sel = edicion.asignados_ids.includes(tr.id);
+                              return (
+                                <button type="button" key={tr.id} onClick={() => toggleAsignadoEdicion(tr.id)} style={{ padding: "4px 10px", borderRadius: 999, border: `1px solid ${sel ? "var(--orange)" : "#e5e7eb"}`, background: sel ? "var(--orange-light)" : "#fff", color: sel ? "var(--orange)" : "#374151", cursor: "pointer", fontSize: 13 }}>
+                                  {sel ? "✓ " : ""}{tr.nombre}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      <label>
+                        Notas
+                        <textarea value={edicion.notas} onChange={(e) => setEdicion({ ...edicion, notas: e.target.value })} rows={4} style={{ resize: "vertical", minHeight: 80, fontFamily: "inherit", width: "100%", padding: 8 }} />
+                      </label>
+                      <div className="lead-form-actions" style={{ marginTop: 8 }}>
+                        <button type="button" className="btn-ghost" onClick={() => setEditandoId(null)}>Cancelar</button>
+                        <button type="button" className="btn-primary" onClick={() => guardarEdicion(t.id)}>Guardar cambios</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

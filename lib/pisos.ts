@@ -10,6 +10,8 @@ export type Zona = {
   contenido: string[];
 };
 
+export type CategoriaPiso = "alquiler" | "compraventa";
+
 export type Piso = {
   id: string;
   slug: string;
@@ -23,6 +25,7 @@ export type Piso = {
   imageUrl: string | null;
   gallery: string[];
   videoUrl: string | null;
+  categoria: CategoriaPiso;
 };
 
 export const zonas: Zona[] = [
@@ -80,6 +83,7 @@ type PisoRow = {
   image_url: string | null;
   gallery: string[] | null;
   video_url: string | null;
+  categoria: CategoriaPiso;
 };
 
 function mapPiso(row: PisoRow): Piso {
@@ -96,6 +100,7 @@ function mapPiso(row: PisoRow): Piso {
     imageUrl: row.image_url,
     gallery: Array.isArray(row.gallery) ? row.gallery.filter((u): u is string => typeof u === "string") : [],
     videoUrl: row.video_url ?? null,
+    categoria: row.categoria ?? "alquiler",
   };
 }
 
@@ -104,6 +109,17 @@ export async function getPisos(): Promise<Piso[]> {
   const { data, error } = await supabase
     .from("pisos")
     .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(mapPiso);
+}
+
+export async function pisosPorCategoria(categoria: CategoriaPiso): Promise<Piso[]> {
+  noStore();
+  const { data, error } = await supabase
+    .from("pisos")
+    .select("*")
+    .eq("categoria", categoria)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map(mapPiso);

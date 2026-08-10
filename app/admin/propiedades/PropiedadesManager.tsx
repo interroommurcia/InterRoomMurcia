@@ -164,6 +164,7 @@ export default function PropiedadesManager() {
                 <option value="casa">Casa</option>
                 <option value="estudio">Estudio</option>
                 <option value="chalet">Chalet</option>
+                <option value="venta_activo">Venta de Activo</option>
               </select>
             </Field>
             <Field label="Nombre">
@@ -178,7 +179,7 @@ export default function PropiedadesManager() {
             <Field label="Baños">
               <input type="number" min={0} value={nueva.num_banos} onChange={(e) => setNueva({ ...nueva, num_banos: Number(e.target.value) })} style={inputStyle} />
             </Field>
-            <Field label="Precio total (€)">
+            <Field label={nueva.tipo === "venta_activo" ? "Precio de venta (€)" : "Precio total (€/mes)"}>
               <input type="number" min={0} step="0.01" value={nueva.precio_total ?? ""} onChange={(e) => setNueva({ ...nueva, precio_total: e.target.value ? Number(e.target.value) : null })} style={inputStyle} />
             </Field>
           </div>

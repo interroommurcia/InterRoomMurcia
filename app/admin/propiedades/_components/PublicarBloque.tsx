@@ -8,13 +8,16 @@ export function PublicarBloque({
   habitacionId,
   sugerencias,
   label,
+  tipoProp,
 }: {
   propiedadId: string;
   habitacionId: string | null;
   sugerencias: { titulo: string; precio: number; direccion: string; descripcion: string };
   label: string;
+  tipoProp?: string;
 }) {
   const [abierto, setAbierto] = useState(false);
+  const [categoria, setCategoria] = useState<"alquiler" | "compraventa">(tipoProp === "venta_activo" ? "compraventa" : "alquiler");
   const [zona, setZona] = useState<"ucam" | "umu" | "upct">("umu");
   const [titulo, setTitulo] = useState(sugerencias.titulo);
   const [precio, setPrecio] = useState(sugerencias.precio || 0);
@@ -32,7 +35,7 @@ export function PublicarBloque({
     const res = await fetch(`/api/admin/propiedades/${propiedadId}/publicar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ habitacion_id: habitacionId, zona, titulo, barrio, precio_mes: precio, descripcion }),
+      body: JSON.stringify({ habitacion_id: habitacionId, zona, titulo, barrio, precio_mes: precio, descripcion, categoria }),
     });
     const data = await res.json();
     setPublicando(false);
@@ -74,6 +77,12 @@ export function PublicarBloque({
             Se creará un anuncio en el catálogo con la primera foto disponible como portada. Podrás ajustar detalles después en <b>/admin/pisos</b>.
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
+            <Field label="Categoría">
+              <select value={categoria} onChange={(e) => setCategoria(e.target.value as "alquiler" | "compraventa")} style={inputStyle}>
+                <option value="alquiler">Alquiler</option>
+                <option value="compraventa">Compraventa</option>
+              </select>
+            </Field>
             <Field label="Zona (campus)">
               <select value={zona} onChange={(e) => setZona(e.target.value as "ucam" | "umu" | "upct")} style={inputStyle}>
                 <option value="ucam">UCAM</option>
@@ -87,7 +96,7 @@ export function PublicarBloque({
             <Field label="Barrio">
               <input value={barrio} onChange={(e) => setBarrio(e.target.value)} style={inputStyle} />
             </Field>
-            <Field label="Precio/mes (€)">
+            <Field label={categoria === "compraventa" ? "Precio (€)" : "Precio/mes (€)"}>
               <input type="number" min={0} value={precio} onChange={(e) => setPrecio(Number(e.target.value))} style={inputStyle} />
             </Field>
           </div>

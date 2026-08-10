@@ -17,13 +17,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "file y slug requeridos" }, { status: 400 });
   }
   if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: "Archivo demasiado grande (máx. 50MB)" }, { status: 413 });
+    return NextResponse.json({ error: "Archivo demasiado grande (máx. 4MB)" }, { status: 413 });
+  }
+
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  const ALLOWED = ["jpg", "jpeg", "png", "webp", "avif", "gif"];
+  if (!ALLOWED.includes(ext)) {
+    return NextResponse.json({ error: `Extensión .${ext} no permitida. Solo imágenes: ${ALLOWED.join(", ")}` }, { status: 400 });
   }
 
   const supabaseAdmin = getSupabaseAdmin();
   await supabaseAdmin.storage.createBucket("blog-imagenes", { public: true }).catch(() => {});
 
-  const ext = file.name.split(".").pop() || "bin";
   const path = `${slug}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 

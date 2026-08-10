@@ -15,7 +15,8 @@ import {
   type OperacionCompraventa,
 } from "./contabilidad";
 import { calcularPendientes, formatearPendientes } from "./secretaria";
-import { telegramSendDocument } from "./telegram";
+import { telegramSendDocument, telegramSendPhoto } from "./telegram";
+import { listarPropiedades, descargarMedia } from "./propiedades";
 import { listarConversaciones, getKnowledgeBase, buildSystemPrompt } from "./chat";
 import { catalogSnapshot } from "./pisos";
 import { crearTarea, listarTareasEntreFechas, type TipoTarea } from "./mesaTrabajo";
@@ -43,10 +44,12 @@ Guía de uso de herramientas:
 - Si preguntan qué hay en la agenda (hoy, esta semana, un día o rango concreto), usa consultar_agenda con fechas en formato YYYY-MM-DD, calculadas a partir de la fecha de hoy.
 - Si un miembro del equipo se identifica ("hola Gladis soy Juan", "soy X, qué tengo esta semana") o pregunta por SUS tareas ("qué tengo pendiente esta semana"), usa tareas_del_trabajador con su nombre. Si no dan rango, asume la semana en curso (lunes a domingo) calculada desde hoy. Para saber quiénes son los trabajadores dados de alta puedes usar listar_trabajadores.
 - Cuando anotes una tarea que el usuario diga que es "para" o "asignada a" alguien del equipo, incluye los nombres en el array trabajadores de anotar_agenda (puede haber varios).
+- Si preguntan qué habitaciones o propiedades se quedan libres en enero, usa habitaciones_libres_enero. Devuelve las propiedades y habitaciones marcadas con "libre en enero" (rotación completa).
+- Si piden fotos, vídeos o media de una propiedad interna (no del catálogo público), usa buscar_media_propiedad para localizar los archivos. Si quieren que envíes una foto o documento de la propiedad, usa enviar_media_propiedad con el id del medio encontrado.
 - Si ninguna herramienta resuelve la pregunta, dilo con claridad en vez de inventar una respuesta.
 
 REGLA CRÍTICA — confirmación antes de modificar:
-Antes de ejecutar CUALQUIER herramienta que cree, modifique, envíe o elimine datos (anotar_agenda, enviar_documento y todas las futuras herramientas de escritura), NUNCA la llames directamente en el primer turno. En su lugar:
+Antes de ejecutar CUALQUIER herramienta que cree, modifique, envíe o elimine datos (anotar_agenda, enviar_documento, enviar_media_propiedad y todas las futuras herramientas de escritura), NUNCA la llames directamente en el primer turno. En su lugar:
 1. Resume en una frase exactamente qué vas a hacer con los datos concretos (tipo, título, fecha, cliente, importe, destinatario…).
 2. Pregunta explícitamente: "¿Confirmas?" o "¿Lo hago?" y espera respuesta.
 3. Solo cuando el usuario responda con confirmación clara ("sí", "confirma", "hazlo", "adelante", "ok"), ejecuta la herramienta.
@@ -194,6 +197,29 @@ const TOOLS: Anthropic.Tool[] = [
         hasta: { type: "string", description: 'Fecha final "YYYY-MM-DD"' },
       },
       required: ["desde", "hasta"],
+    },
+  },
+  {
+    name: "habitaciones_libres_enero",
+    description: "Lista las propiedades y habitaciones marcadas como 'libre en enero' (rotación completa). Muestra nombre de propiedad, dirección, habitación y precio.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "buscar_media_propiedad",
+    description: "Busca fotos y vídeos subidos a una propiedad interna por nombre de la propiedad. Devuelve id, tipo (foto/video) y nombre de habitación si aplica.",
+    input_schema: {
+      type: "object",
+      properties: { nombre: { type: "string", description: "Nombre o parte del nombre de la propiedad" } },
+      required: ["nombre"],
+    },
+  },
+  {
+    name: "enviar_media_propiedad",
+    description: "Envía por Telegram una foto o documento de una propiedad interna, localizado previamente con buscar_media_propiedad.",
+    input_schema: {
+      type: "object",
+      properties: { media_id: { type: "string", description: "id del medio devuelto por buscar_media_propiedad" } },
+      required: ["media_id"],
     },
   },
 ];
@@ -438,6 +464,52 @@ Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.co
     return tareas
       .map((t) => `- [${t.tipo}] ${t.fecha}${t.hora ? ` ${t.hora.slice(0, 5)}` : ""} · ${t.titulo}${t.clienteNombre ? ` · ${t.clienteNombre}` : ""} · ${t.estado}`)
       .join("\n");
+  }
+  if (nombre === "habitaciones_libres_enero") {
+    const propiedades = await listarPropiedades();
+    const lineas: string[] = [];
+    for (const p of propiedades) {
+      if (p.libre_enero) {
+        lineas.push(`PROPIEDAD COMPLETA: ${p.nombre}${p.direccion ? ` · ${p.direccion}` : ""} · ${p.precio_total ?? "sin precio"}€/mes`);
+      }
+      for (const h of p.habitaciones) {
+        if (h.libre_enero) {
+          lineas.push(`HABITACIÓN: ${h.nombre} en ${p.nombre}${p.direccion ? ` · ${p.direccion}` : ""} · ${h.precio ?? "sin precio"}€/mes${h.cliente_id ? ` · ocupada por ${h.clienteNombre}` : " · libre ahora"}`);
+        }
+      }
+    }
+    if (!lineas.length) return "No hay propiedades ni habitaciones marcadas como libres en enero.";
+    return `Libres en enero (${lineas.length}):\n${lineas.join("\n")}`;
+  }
+  if (nombre === "buscar_media_propiedad") {
+    const query = String(input.nombre ?? "").toLowerCase();
+    if (!query) return "Búsqueda vacía.";
+    const propiedades = await listarPropiedades();
+    const encontradas = propiedades.filter((p) => p.nombre.toLowerCase().includes(query));
+    if (!encontradas.length) return "No se encontró ninguna propiedad con ese nombre.";
+    const lineas: string[] = [];
+    for (const p of encontradas.slice(0, 3)) {
+      if (p.media.length === 0) {
+        lineas.push(`${p.nombre}: sin fotos ni vídeos.`);
+        continue;
+      }
+      for (const m of p.media) {
+        const habNombre = m.habitacion_id ? p.habitaciones.find((h) => h.id === m.habitacion_id)?.nombre ?? "habitación" : "general";
+        lineas.push(`id=${m.id} · ${m.tipo} · ${p.nombre} · ${habNombre}`);
+      }
+    }
+    return lineas.join("\n");
+  }
+  if (nombre === "enviar_media_propiedad") {
+    const mediaId = String(input.media_id ?? "");
+    const archivo = await descargarMedia(mediaId);
+    if (!archivo) return "Medio no encontrado.";
+    if (archivo.contentType.startsWith("image/")) {
+      await telegramSendPhoto(chatId, archivo.buffer, archivo.nombre, archivo.contentType, archivo.nombre);
+    } else {
+      await telegramSendDocument(chatId, archivo.buffer, archivo.nombre, archivo.nombre);
+    }
+    return `Enviado: ${archivo.nombre}`;
   }
   return "Herramienta desconocida.";
 }

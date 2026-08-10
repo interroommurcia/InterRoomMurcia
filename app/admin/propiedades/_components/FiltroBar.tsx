@@ -8,6 +8,7 @@ const TIPOS = [
   { value: "casa", label: "Casa" },
   { value: "estudio", label: "Estudio" },
   { value: "chalet", label: "Chalet" },
+  { value: "venta_activo", label: "Venta de Activo" },
 ];
 
 export function FiltroBar({

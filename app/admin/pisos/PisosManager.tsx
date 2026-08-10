@@ -138,8 +138,12 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
                 <div className="pisos-list-body">
                   <h4>{piso.titulo}</h4>
                   <div className="loc">
-                    {piso.barrio} · {piso.zona.toUpperCase()} · {piso.precioMes}€/mes
+                    {piso.barrio} · {piso.zona.toUpperCase()} · {piso.precioMes}€{piso.categoria === "alquiler" ? "/mes" : ""}
                     {!piso.disponible && " · No disponible"}
+                    {" · "}
+                    <span style={{ fontWeight: 500, color: piso.categoria === "compraventa" ? "#7c3aed" : "#059669" }}>
+                      {piso.categoria === "compraventa" ? "Compraventa" : "Alquiler"}
+                    </span>
                   </div>
                 </div>
                 <div className="pisos-list-actions">
@@ -215,6 +219,13 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
         <textarea name="descripcion" required rows={3} maxLength={2000} defaultValue={piso?.descripcion} />
       </label>
       <div className="lead-form-row">
+        <label>
+          Categoría
+          <select name="categoria" defaultValue={piso?.categoria || "alquiler"}>
+            <option value="alquiler">Alquiler</option>
+            <option value="compraventa">Compraventa</option>
+          </select>
+        </label>
         <label>
           Estado
           <select name="disponible" defaultValue={(piso?.disponible ?? true) ? "true" : "false"}>

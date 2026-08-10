@@ -27,3 +27,19 @@ export async function telegramSendDocument(
   const res = await fetch(apiUrl("sendDocument"), { method: "POST", body: form });
   if (!res.ok) throw new Error(`Telegram sendDocument falló: ${await res.text()}`);
 }
+
+export async function telegramSendPhoto(
+  chatId: string | number,
+  buffer: Buffer,
+  filename: string,
+  contentType: string,
+  caption?: string
+) {
+  const form = new FormData();
+  form.append("chat_id", String(chatId));
+  if (caption) form.append("caption", caption);
+  form.append("photo", new Blob([new Uint8Array(buffer)], { type: contentType }), filename);
+
+  const res = await fetch(apiUrl("sendPhoto"), { method: "POST", body: form });
+  if (!res.ok) throw new Error(`Telegram sendPhoto falló: ${await res.text()}`);
+}

@@ -16,6 +16,8 @@ export async function POST(req: NextRequest) {
   const metros = metrosRaw && metrosRaw !== "" ? Number(metrosRaw) : null;
   const descripcion = String(form.get("descripcion") || "").trim().slice(0, 2000);
   const disponible = form.get("disponible") === "true";
+  const categoriaRaw = String(form.get("categoria") || "alquiler");
+  const categoria = (categoriaRaw === "compraventa" ? "compraventa" : "alquiler") as import("../../../../lib/pisos").CategoriaPiso;
   const imagen = form.get("imagen");
 
   if (!slug || !titulo || !ZONAS_VALIDAS.includes(zona) || !barrio || !precioMes || !descripcion) {
@@ -37,6 +39,7 @@ export async function POST(req: NextRequest) {
       descripcion,
       disponible,
       imageUrl,
+      categoria,
     });
     return NextResponse.json({ ok: true });
   } catch (err) {

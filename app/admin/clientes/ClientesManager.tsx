@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SITE_URL } from "../../../lib/site";
 
 type Cliente = {
@@ -18,6 +18,7 @@ type Cliente = {
   token: string;
   notas: string | null;
   created_at: string;
+  habitacionAsignada?: boolean;
 };
 
 const PREFIJOS = [
@@ -89,6 +90,9 @@ export default function ClientesManager() {
   const [copiado, setCopiado] = useState<string | null>(null);
   const [editando, setEditando] = useState<string | null>(null);
   const [edicion, setEdicion] = useState<{ nombre: string; apellidos: string; telefonoPrefijo: string; telefonoNumero: string; email: string; tipo_secundario: "" | Cliente["tipo"]; notas: string }>({ nombre: "", apellidos: "", telefonoPrefijo: "+34", telefonoNumero: "", email: "", tipo_secundario: "", notas: "" });
+  const [filtroEstado, setFiltroEstado] = useState<"todos" | "activo" | "inactivo">("todos");
+  const [filtroAnio, setFiltroAnio] = useState<string>("");
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
 
   async function cargar() {
     const data = await fetch("/api/admin/clientes").then((r) => r.json());
@@ -99,6 +103,14 @@ export default function ClientesManager() {
   useEffect(() => {
     cargar();
   }, []);
+
+  const aniosDisponibles = useMemo(() => {
+    const anios = new Set<number>();
+    for (const c of clientes) {
+      anios.add(new Date(c.created_at).getFullYear());
+    }
+    return Array.from(anios).sort((a, b) => b - a);
+  }, [clientes]);
 
   function abrirFormulario() {
     setNuevoCliente({ ...NUEVO_CLIENTE, tipo: tab });
@@ -132,6 +144,33 @@ export default function ClientesManager() {
   async function eliminarCliente(id: string) {
     await fetch(`/api/admin/clientes/${id}`, { method: "DELETE" });
     cargar();
+  }
+
+  async function eliminarSeleccionados() {
+    if (seleccionados.size === 0) return;
+    if (!confirm(`¿Eliminar ${seleccionados.size} cliente(s)? Esta acción no se puede deshacer.`)) return;
+    for (const id of seleccionados) {
+      await fetch(`/api/admin/clientes/${id}`, { method: "DELETE" });
+    }
+    setSeleccionados(new Set());
+    cargar();
+  }
+
+  function toggleSeleccion(id: string) {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function seleccionarTodos(ids: string[]) {
+    setSeleccionados((prev) => {
+      const allSelected = ids.every((id) => prev.has(id));
+      if (allSelected) return new Set();
+      return new Set(ids);
+    });
   }
 
   function abrirEdicion(c: Cliente) {
@@ -203,19 +242,35 @@ export default function ClientesManager() {
     });
   }
 
+  const isEstudianteTab = tab === "estudiante";
+
   const clientesDelTab = clientes.filter((c) => c.tipo === tab || c.tipo_secundario === tab);
   const clientesFiltrados = clientesDelTab.filter((c) => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return true;
-    const nombreCompleto = `${c.nombre} ${c.apellidos ?? ""}`.toLowerCase();
-    const qDigits = q.replace(/\D/g, "");
-    const telefonoDigits = (c.telefono ?? "").replace(/\D/g, "");
-    return (
-      nombreCompleto.includes(q) ||
-      (c.email ?? "").toLowerCase().includes(q) ||
-      (qDigits.length > 0 && telefonoDigits.includes(qDigits))
-    );
+    if (q) {
+      const nombreCompleto = `${c.nombre} ${c.apellidos ?? ""}`.toLowerCase();
+      const qDigits = q.replace(/\D/g, "");
+      const telefonoDigits = (c.telefono ?? "").replace(/\D/g, "");
+      if (!(
+        nombreCompleto.includes(q) ||
+        (c.email ?? "").toLowerCase().includes(q) ||
+        (qDigits.length > 0 && telefonoDigits.includes(qDigits))
+      )) return false;
+    }
+    if (isEstudianteTab && filtroEstado !== "todos") {
+      const activo = !!c.habitacionAsignada;
+      if (filtroEstado === "activo" && !activo) return false;
+      if (filtroEstado === "inactivo" && activo) return false;
+    }
+    if (filtroAnio) {
+      const anio = new Date(c.created_at).getFullYear();
+      if (anio !== Number(filtroAnio)) return false;
+    }
+    return true;
   });
+
+  const countActivos = isEstudianteTab ? clientesDelTab.filter((c) => c.habitacionAsignada).length : 0;
+  const countInactivos = isEstudianteTab ? clientesDelTab.filter((c) => !c.habitacionAsignada).length : 0;
 
   if (loading) return <p className="admin-empty">Cargando...</p>;
 
@@ -230,6 +285,9 @@ export default function ClientesManager() {
             onClick={() => {
               setTab(t.value);
               setMostrarNuevoCliente(false);
+              setFiltroEstado("todos");
+              setFiltroAnio("");
+              setSeleccionados(new Set());
             }}
           >
             {t.label} ({clientes.filter((c) => c.tipo === t.value || c.tipo_secundario === t.value).length})
@@ -252,12 +310,43 @@ export default function ClientesManager() {
           </div>
         </div>
 
-        <div className="lead-form-row" style={{ marginBottom: 16 }}>
-          <label style={{ flex: 1 }}>
+        <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <label style={{ flex: 1, minWidth: 200 }}>
             Buscar por nombre, email o móvil
             <input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Ej. Pepe, pepe@mail.com o 612345678" />
           </label>
+          {isEstudianteTab && (
+            <label>
+              Estado
+              <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as "todos" | "activo" | "inactivo")} style={{ minWidth: 140 }}>
+                <option value="todos">Todos ({clientesDelTab.length})</option>
+                <option value="activo">Activos ({countActivos})</option>
+                <option value="inactivo">Inactivos ({countInactivos})</option>
+              </select>
+            </label>
+          )}
+          <label>
+            Año de alta
+            <select value={filtroAnio} onChange={(e) => setFiltroAnio(e.target.value)} style={{ minWidth: 100 }}>
+              <option value="">Todos</option>
+              {aniosDisponibles.map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+          </label>
         </div>
+
+        {seleccionados.size > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 14px", marginBottom: 12, background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: 8, fontSize: 13 }}>
+            <span>{seleccionados.size} seleccionado(s)</span>
+            <button type="button" className="btn-ghost" style={{ color: "#ef4444", fontSize: 13 }} onClick={eliminarSeleccionados}>
+              Eliminar seleccionados
+            </button>
+            <button type="button" className="btn-ghost" style={{ fontSize: 13 }} onClick={() => setSeleccionados(new Set())}>
+              Deseleccionar
+            </button>
+          </div>
+        )}
 
         {mostrarNuevoCliente && (
           <form className="piso-form" onSubmit={crearCliente}>
@@ -340,106 +429,144 @@ export default function ClientesManager() {
         {clientesFiltrados.length === 0 ? (
           <p className="admin-empty">{clientesDelTab.length === 0 ? "Todavía no hay clientes en esta sección." : "Sin resultados para esa búsqueda."}</p>
         ) : (
-          clientesFiltrados.map((cliente) => (
-            <div key={cliente.id} style={{ display: "flex", flexDirection: "column", border: "1px solid var(--color-border, #e5e7eb)", borderRadius: 12, marginBottom: 12, background: "#fff" }}>
-              <div className="pisos-list-item" style={{ marginBottom: 0, border: "none", borderRadius: 0 }}>
-                <div className="pisos-list-body">
-                  <h4>
-                    {cliente.nombre} {cliente.apellidos}
-                    {cliente.tipo_secundario && <span className="editor-badge-hidden"> · también {labelTipo(cliente.tipo_secundario)}</span>}
-                    {!cliente.datos_completados && cliente.origen !== "manual" && <span className="editor-badge-hidden"> · pendiente de rellenar</span>}
-                  </h4>
-                  <div className="loc">
-                    {cliente.telefono || "sin teléfono"} · {cliente.email || "sin email"} · {cliente.zona_interes || "sin zona"} · {cliente.operacion || "—"}
-                  </div>
-                  {cliente.notas && <div className="loc" style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>📝 {cliente.notas}</div>}
-                </div>
-                <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
-                  <button type="button" className="btn-ghost" onClick={() => abrirEdicion(cliente)}>
-                    {editando === cliente.id ? "Cerrar" : "Editar rol / notas"}
-                  </button>
-                  <button type="button" className="btn-ghost" onClick={() => copiarEnlace(cliente.token)}>
-                    {copiado === cliente.token ? "Enlace copiado" : "Copiar enlace de autorrelleno"}
-                  </button>
-                  <button type="button" className="btn-ghost" onClick={() => eliminarCliente(cliente.id)}>
-                    Eliminar
-                  </button>
-                </div>
+          <>
+            {isEstudianteTab && (
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, cursor: "pointer", opacity: 0.7 }}>
+                  <input
+                    type="checkbox"
+                    checked={clientesFiltrados.length > 0 && clientesFiltrados.every((c) => seleccionados.has(c.id))}
+                    onChange={() => seleccionarTodos(clientesFiltrados.map((c) => c.id))}
+                  />
+                  Seleccionar todos ({clientesFiltrados.length})
+                </label>
               </div>
-              {editando === cliente.id && (
-                <div className="cliente-edit">
-                  <div className="cliente-edit-header">
-                    <div>
-                      <span className="cliente-edit-eyebrow">Editando</span>
-                      <h5>{cliente.nombre} {cliente.apellidos}</h5>
+            )}
+            {clientesFiltrados.map((cliente) => (
+              <div key={cliente.id} style={{ display: "flex", flexDirection: "column", border: "1px solid var(--color-border, #e5e7eb)", borderRadius: 12, marginBottom: 12, background: "#fff" }}>
+                <div className="pisos-list-item" style={{ marginBottom: 0, border: "none", borderRadius: 0 }}>
+                  <div className="pisos-list-body">
+                    <h4 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {isEstudianteTab && (
+                        <input
+                          type="checkbox"
+                          checked={seleccionados.has(cliente.id)}
+                          onChange={() => toggleSeleccion(cliente.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ marginRight: 2 }}
+                        />
+                      )}
+                      {cliente.nombre} {cliente.apellidos}
+                      {isEstudianteTab && (
+                        <span style={{
+                          fontSize: 11,
+                          padding: "1px 8px",
+                          borderRadius: 999,
+                          background: cliente.habitacionAsignada ? "#d1fae5" : "#fee2e2",
+                          color: cliente.habitacionAsignada ? "#065f46" : "#991b1b",
+                          fontWeight: 500,
+                        }}>
+                          {cliente.habitacionAsignada ? "Activo" : "Inactivo"}
+                        </span>
+                      )}
+                      {cliente.tipo_secundario && <span className="editor-badge-hidden"> · también {labelTipo(cliente.tipo_secundario)}</span>}
+                      {!cliente.datos_completados && cliente.origen !== "manual" && <span className="editor-badge-hidden"> · pendiente de rellenar</span>}
+                    </h4>
+                    <div className="loc">
+                      {cliente.telefono || "sin teléfono"} · {cliente.email || "sin email"} · {cliente.zona_interes || "sin zona"} · {cliente.operacion || "—"}
+                      <span style={{ marginLeft: 6, opacity: 0.5, fontSize: 12 }}>
+                        Alta: {new Date(cliente.created_at).toLocaleDateString("es-ES", { month: "short", year: "numeric" })}
+                      </span>
                     </div>
-                    <button type="button" className="cliente-edit-close" onClick={() => setEditando(null)} aria-label="Cerrar">×</button>
+                    {cliente.notas && <div className="loc" style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>{cliente.notas}</div>}
                   </div>
-
-                  <div className="cliente-edit-section">
-                    <div className="cliente-edit-section-title">Datos personales</div>
-                    <div className="cliente-edit-grid">
-                      <label className="cliente-edit-field">
-                        <span>Nombre</span>
-                        <input value={edicion.nombre} onChange={(e) => setEdicion({ ...edicion, nombre: e.target.value })} />
-                      </label>
-                      <label className="cliente-edit-field">
-                        <span>Apellidos</span>
-                        <input value={edicion.apellidos} onChange={(e) => setEdicion({ ...edicion, apellidos: e.target.value })} />
-                      </label>
+                  <div className="lead-form-actions" style={{ padding: "0 16px 12px", flexWrap: "wrap" }}>
+                    <button type="button" className="btn-ghost" style={{ minHeight: 44 }} onClick={() => abrirEdicion(cliente)}>
+                      {editando === cliente.id ? "Cerrar" : "Editar rol / notas"}
+                    </button>
+                    <button type="button" className="btn-ghost" style={{ minHeight: 44 }} onClick={() => copiarEnlace(cliente.token)}>
+                      {copiado === cliente.token ? "Enlace copiado" : "Copiar enlace de autorrelleno"}
+                    </button>
+                    <button type="button" className="btn-ghost" style={{ minHeight: 44 }} onClick={() => eliminarCliente(cliente.id)}>
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+                {editando === cliente.id && (
+                  <div className="cliente-edit">
+                    <div className="cliente-edit-header">
+                      <div>
+                        <span className="cliente-edit-eyebrow">Editando</span>
+                        <h5>{cliente.nombre} {cliente.apellidos}</h5>
+                      </div>
+                      <button type="button" className="cliente-edit-close" onClick={() => setEditando(null)} aria-label="Cerrar">×</button>
                     </div>
-                  </div>
 
-                  <div className="cliente-edit-section">
-                    <div className="cliente-edit-section-title">Contacto</div>
-                    <div className="cliente-edit-grid cliente-edit-grid-tel">
+                    <div className="cliente-edit-section">
+                      <div className="cliente-edit-section-title">Datos personales</div>
+                      <div className="cliente-edit-grid">
+                        <label className="cliente-edit-field">
+                          <span>Nombre</span>
+                          <input value={edicion.nombre} onChange={(e) => setEdicion({ ...edicion, nombre: e.target.value })} />
+                        </label>
+                        <label className="cliente-edit-field">
+                          <span>Apellidos</span>
+                          <input value={edicion.apellidos} onChange={(e) => setEdicion({ ...edicion, apellidos: e.target.value })} />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="cliente-edit-section">
+                      <div className="cliente-edit-section-title">Contacto</div>
+                      <div className="cliente-edit-grid cliente-edit-grid-tel">
+                        <label className="cliente-edit-field">
+                          <span>Prefijo</span>
+                          <select value={edicion.telefonoPrefijo} onChange={(e) => setEdicion({ ...edicion, telefonoPrefijo: e.target.value })}>
+                            {PREFIJOS.map((p) => (
+                              <option key={p.code} value={p.code}>{p.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="cliente-edit-field">
+                          <span>Teléfono</span>
+                          <input value={edicion.telefonoNumero} onChange={(e) => setEdicion({ ...edicion, telefonoNumero: e.target.value })} placeholder="612 34 56 78" />
+                        </label>
+                        <label className="cliente-edit-field">
+                          <span>Email</span>
+                          <input type="email" value={edicion.email} onChange={(e) => setEdicion({ ...edicion, email: e.target.value })} placeholder="cliente@email.com" />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="cliente-edit-section">
+                      <div className="cliente-edit-section-title">Clasificación</div>
                       <label className="cliente-edit-field">
-                        <span>Prefijo</span>
-                        <select value={edicion.telefonoPrefijo} onChange={(e) => setEdicion({ ...edicion, telefonoPrefijo: e.target.value })}>
-                          {PREFIJOS.map((p) => (
-                            <option key={p.code} value={p.code}>{p.label}</option>
+                        <span>Rol secundario (opcional)</span>
+                        <select value={edicion.tipo_secundario} onChange={(e) => setEdicion({ ...edicion, tipo_secundario: e.target.value as "" | Cliente["tipo"] })}>
+                          <option value="">— ninguno —</option>
+                          {TIPOS.filter((t) => t.value !== cliente.tipo).map((t) => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
                           ))}
                         </select>
                       </label>
+                    </div>
+
+                    <div className="cliente-edit-section">
+                      <div className="cliente-edit-section-title">Notas internas</div>
                       <label className="cliente-edit-field">
-                        <span>Teléfono</span>
-                        <input value={edicion.telefonoNumero} onChange={(e) => setEdicion({ ...edicion, telefonoNumero: e.target.value })} placeholder="612 34 56 78" />
-                      </label>
-                      <label className="cliente-edit-field">
-                        <span>Email</span>
-                        <input type="email" value={edicion.email} onChange={(e) => setEdicion({ ...edicion, email: e.target.value })} placeholder="cliente@email.com" />
+                        <textarea rows={4} value={edicion.notas} onChange={(e) => setEdicion({ ...edicion, notas: e.target.value })} placeholder="Observaciones que solo verá el equipo…" />
                       </label>
                     </div>
-                  </div>
 
-                  <div className="cliente-edit-section">
-                    <div className="cliente-edit-section-title">Clasificación</div>
-                    <label className="cliente-edit-field">
-                      <span>Rol secundario (opcional)</span>
-                      <select value={edicion.tipo_secundario} onChange={(e) => setEdicion({ ...edicion, tipo_secundario: e.target.value as "" | Cliente["tipo"] })}>
-                        <option value="">— ninguno —</option>
-                        {TIPOS.filter((t) => t.value !== cliente.tipo).map((t) => (
-                          <option key={t.value} value={t.value}>{t.label}</option>
-                        ))}
-                      </select>
-                    </label>
+                    <div className="cliente-edit-actions">
+                      <button type="button" className="btn-ghost" onClick={() => setEditando(null)}>Cancelar</button>
+                      <button type="button" className="btn-primary" onClick={() => guardarEdicion(cliente.id)}>Guardar cambios</button>
+                    </div>
                   </div>
-
-                  <div className="cliente-edit-section">
-                    <div className="cliente-edit-section-title">Notas internas</div>
-                    <label className="cliente-edit-field">
-                      <textarea rows={4} value={edicion.notas} onChange={(e) => setEdicion({ ...edicion, notas: e.target.value })} placeholder="Observaciones que solo verá el equipo…" />
-                    </label>
-                  </div>
-
-                  <div className="cliente-edit-actions">
-                    <button type="button" className="btn-ghost" onClick={() => setEditando(null)}>Cancelar</button>
-                    <button type="button" className="btn-primary" onClick={() => guardarEdicion(cliente.id)}>Guardar cambios</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))
+                )}
+              </div>
+            ))}
+          </>
         )}
       </div>
     </div>

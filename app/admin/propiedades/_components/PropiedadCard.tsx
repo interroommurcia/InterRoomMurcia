@@ -55,8 +55,8 @@ export function PropiedadCard({
 
   return (
     <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", fontFamily: FONT }}>
-      <div style={{ display: "flex", gap: 20, padding: 20, cursor: "pointer" }} onClick={onToggle}>
-        <div style={{ width: 180, height: 130, borderRadius: 8, background: "#f3f4f6", overflow: "hidden", flexShrink: 0 }}>
+      <div style={{ display: "flex", gap: 20, padding: 20, cursor: "pointer", flexWrap: "wrap" }} onClick={onToggle}>
+        <div style={{ width: "100%", maxWidth: 180, height: 130, borderRadius: 8, background: "#f3f4f6", overflow: "hidden", flexShrink: 0 }}>
           {portada ? (
             <img src={portada.url} alt={propView.nombre} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
@@ -67,8 +67,8 @@ export function PropiedadCard({
           <div>
             <h3 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em", color: "#111827" }}>{propView.nombre}{dirty && <span style={{ marginLeft: 8, fontSize: 11, color: "var(--orange)", fontWeight: 500 }}>· sin guardar</span>}</h3>
             <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4, textTransform: "capitalize" }}>
-              {propView.tipo} · {propView.num_habitaciones} hab · {propView.num_banos} baños
-              {propView.precio_total ? ` · ${totalConGaraje(propView)}€/mes` : ""}
+              {propView.tipo === "venta_activo" ? "Venta de Activo" : propView.tipo} · {propView.num_habitaciones} hab · {propView.num_banos} baños
+              {propView.precio_total ? ` · ${totalConGaraje(propView)}€${propView.tipo === "venta_activo" ? "" : "/mes"}` : ""}
               {propView.tiene_garaje && propView.precio_garaje ? ` (piso ${propView.precio_total}€ + garaje ${propView.precio_garaje}€)` : ""}
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
@@ -135,8 +135,17 @@ export function PropiedadCard({
             <Field label="Baños">
               <input type="number" min={0} value={val("num_banos")} onChange={(e) => set("num_banos", Number(e.target.value))} style={inputStyle} />
             </Field>
-            <Field label="Precio total (€)">
+            <Field label={val("tipo") === "venta_activo" ? "Precio de venta (€)" : "Precio total (€/mes)"}>
               <input type="number" min={0} step="0.01" value={val("precio_total") ?? ""} onChange={(e) => set("precio_total", e.target.value ? Number(e.target.value) : null)} style={inputStyle} />
+            </Field>
+            <Field label="Tipo">
+              <select value={val("tipo")} onChange={(e) => set("tipo", e.target.value)} style={inputStyle}>
+                <option value="piso">Piso</option>
+                <option value="casa">Casa</option>
+                <option value="estudio">Estudio</option>
+                <option value="chalet">Chalet</option>
+                <option value="venta_activo">Venta de Activo</option>
+              </select>
             </Field>
           </div>
           <div style={{ marginBottom: 20 }}>
@@ -195,7 +204,7 @@ export function PropiedadCard({
 
           <div style={{ marginBottom: 20, padding: 14, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 10 }}>Propietario y rentabilidad</div>
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, alignItems: "end" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, alignItems: "end" }}>
               <Field label="Cliente propietario">
                 <ClienteBuscador
                   clientes={clientes.filter((c) => c.tipo === "propietario")}
@@ -225,6 +234,7 @@ export function PropiedadCard({
               sugerencias={{ titulo: propView.nombre, precio: totalConGaraje(propView) || (propView.precio_total ?? 0), direccion: propView.direccion ?? "", descripcion: descripcionConServicios(propView) }}
               habitacionId={null}
               label="Publicar propiedad entera en el catálogo"
+              tipoProp={propView.tipo}
             />
           )}
 
@@ -236,7 +246,7 @@ export function PropiedadCard({
               const estudiantes = clientes.filter((c) => c.tipo === "estudiante");
               return (
                 <div key={h.id} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, padding: 14, marginBottom: 10 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1.5fr 100px 1.5fr auto", gap: 8, alignItems: "end", marginBottom: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, alignItems: "end", marginBottom: 10 }}>
                     <Field label="Habitación">
                       <input defaultValue={h.nombre} onBlur={(e) => e.target.value !== h.nombre && onActualizarHab(h.id, { nombre: e.target.value })} style={inputStyle} />
                     </Field>

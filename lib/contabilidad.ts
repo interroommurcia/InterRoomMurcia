@@ -34,7 +34,7 @@ export type Cliente = {
   updated_at: string;
 };
 
-export type ClienteConActividad = Cliente & { tieneIngresos: boolean };
+export type ClienteConActividad = Cliente & { tieneIngresos: boolean; habitacionAsignada: boolean };
 
 export type IngresoMensual = {
   id: string;
@@ -151,14 +151,21 @@ const DOCUMENTOS_BUCKET = "documentos";
 
 export async function listarClientes(): Promise<ClienteConActividad[]> {
   const admin = getSupabaseAdmin();
-  const [{ data, error }, { data: ingresosData, error: ingresosError }] = await Promise.all([
+  const [{ data, error }, { data: ingresosData, error: ingresosError }, { data: habData, error: habError }] = await Promise.all([
     admin.from("clientes").select("*").order("created_at", { ascending: false }),
     admin.from("cliente_ingresos").select("cliente_id"),
+    admin.from("propiedad_habitaciones").select("cliente_id").not("cliente_id", "is", null),
   ]);
   if (error) throw error;
   if (ingresosError) throw ingresosError;
+  if (habError) throw habError;
   const idsConIngresos = new Set((ingresosData ?? []).map((r) => r.cliente_id as string));
-  return ((data ?? []) as Cliente[]).map((c) => ({ ...c, tieneIngresos: idsConIngresos.has(c.id) }));
+  const idsConHabitacion = new Set((habData ?? []).map((r) => r.cliente_id as string));
+  return ((data ?? []) as Cliente[]).map((c) => ({
+    ...c,
+    tieneIngresos: idsConIngresos.has(c.id),
+    habitacionAsignada: idsConHabitacion.has(c.id),
+  }));
 }
 
 export async function getCliente(id: string): Promise<Cliente | null> {

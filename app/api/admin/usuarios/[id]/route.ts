@@ -17,8 +17,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (typeof body.activo === "boolean") patch.activo = body.activo;
 
   if (body.password) {
-    const { createHash } = await import("crypto");
-    patch.password_hash = createHash("sha256").update(body.password).digest("hex");
+    const { createHash, randomBytes } = await import("crypto");
+    const salt = randomBytes(16).toString("hex");
+    patch.password_salt = salt;
+    patch.password_hash = createHash("sha256").update(salt + body.password).digest("hex");
   }
 
   const { error } = await admin.from("usuarios").update(patch).eq("id", params.id);

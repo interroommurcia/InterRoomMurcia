@@ -2,35 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
 const COOKIE = "ir_session";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET || process.env.ADMIN_PASSWORD || "interroom-fallback-key");
+
+function getJwtSecret() {
+  const key = process.env.AUTH_SECRET || process.env.ADMIN_PASSWORD;
+  if (!key) throw new Error("AUTH_SECRET o ADMIN_PASSWORD deben estar definidos");
+  return new TextEncoder().encode(key);
+}
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get(COOKIE)?.value;
 
   if (token) {
     try {
-      await jwtVerify(token, SECRET);
+      await jwtVerify(token, getJwtSecret());
       return NextResponse.next();
     } catch {
-      // token inválido/expirado — redirigir a login
+      // token inválido/expirado
     }
   }
 
-  // Fallback: HTTP Basic Auth para no romper accesos actuales
-  const password = process.env.ADMIN_PASSWORD;
-  if (password) {
-    const auth = req.headers.get("authorization");
-    if (auth?.startsWith("Basic ")) {
-      const decoded = Buffer.from(auth.slice(6), "base64").toString("utf-8");
-      const separator = decoded.indexOf(":");
-      const providedPassword = separator === -1 ? decoded : decoded.slice(separator + 1);
-      if (providedPassword === password) {
-        return NextResponse.next();
-      }
-    }
-  }
-
-  // Redirigir a login si es una página (no API)
   if (!req.nextUrl.pathname.startsWith("/api/")) {
     const loginUrl = new URL("/admin/login", req.url);
     loginUrl.searchParams.set("redirect", req.nextUrl.pathname);
