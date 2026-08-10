@@ -22,6 +22,7 @@ export default function UsuariosManager() {
   const [busy, setBusy] = useState(false);
   const [editandoPass, setEditandoPass] = useState<string | null>(null);
   const [nuevaPass, setNuevaPass] = useState("");
+  const [ok, setOk] = useState("");
 
   async function cargar() {
     const res = await fetch("/api/admin/usuarios");
@@ -68,6 +69,8 @@ export default function UsuariosManager() {
       if (!res.ok) throw new Error(data.error);
       setEditandoPass(null);
       setNuevaPass("");
+      setOk("Contraseña cambiada correctamente");
+      setTimeout(() => setOk(""), 3000);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al cambiar contraseña");
     } finally {
@@ -99,6 +102,7 @@ export default function UsuariosManager() {
   return (
     <div style={{ fontFamily: FONT }}>
       {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{error}</div>}
+      {ok && <div style={{ background: "#f0fdf4", color: "#166534", padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{ok}</div>}
 
       <button
         type="button"
