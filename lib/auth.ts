@@ -121,3 +121,44 @@ export async function crearUsuario(email: string, password: string, nombre: stri
 
   return data;
 }
+
+export async function generarTokenReset(email: string): Promise<string | null> {
+  const normalizedEmail = email.toLowerCase().trim();
+  const admin = getSupabaseAdmin();
+  const { data } = await admin
+    .from("usuarios")
+    .select("id")
+    .eq("email", normalizedEmail)
+    .eq("activo", true)
+    .maybeSingle();
+
+  if (!data) return null;
+
+  const token = await new SignJWT({ sub: data.id, email: normalizedEmail, purpose: "reset" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime("1h")
+    .sign(getJwtSecret());
+
+  return token;
+}
+
+export async function resetearPassword(token: string, newPassword: string): Promise<boolean> {
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecret());
+    if (payload.purpose !== "reset") return false;
+
+    const { createHash, randomBytes } = await import("crypto");
+    const salt = randomBytes(16).toString("hex");
+    const hash = createHash("sha256").update(salt + newPassword).digest("hex");
+
+    const admin = getSupabaseAdmin();
+    const { error } = await admin
+      .from("usuarios")
+      .update({ password_hash: hash, password_salt: salt })
+      .eq("id", payload.sub as string);
+
+    return !error;
+  } catch {
+    return false;
+  }
+}
