@@ -10,6 +10,7 @@ let bucketReady = false;
 async function ensureBucket(admin: ReturnType<typeof getSupabaseAdmin>) {
   if (bucketReady) return;
   await admin.storage.updateBucket(BUCKET, {
+    public: true,
     fileSizeLimit: MAX_FILE_SIZE,
     allowedMimeTypes: ["image/*", "video/*"],
   });
