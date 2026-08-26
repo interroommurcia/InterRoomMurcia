@@ -244,13 +244,16 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
     try {
       await uploadAndPrepare(formData);
       const res = await fetch("/api/admin/pisos", { method: "POST", body: formData });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
       setShowForm(false);
       formEl.reset();
       setExito("Guardado con éxito");
       router.refresh();
-    } catch {
-      setError("No se pudo guardar el piso. Revisa los datos e inténtalo de nuevo.");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "No se pudo guardar el piso.");
     } finally {
       setBusy(false);
     }
@@ -264,12 +267,15 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
     try {
       await uploadAndPrepare(formData);
       const res = await fetch(`/api/admin/pisos/${id}`, { method: "PATCH", body: formData });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
       setEditing(null);
       setExito("Guardado con éxito");
       router.refresh();
-    } catch {
-      setError("No se pudo actualizar el piso.");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "No se pudo actualizar el piso.");
     } finally {
       setBusy(false);
     }
