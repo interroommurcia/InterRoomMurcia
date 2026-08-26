@@ -194,12 +194,20 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
   }
 
   async function uploadFile(file: File): Promise<string> {
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
-    if (!res.ok) throw new Error("Error subiendo archivo");
-    const data = await res.json();
-    return data.url;
+    const res = await fetch("/api/admin/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: file.name, contentType: file.type }),
+    });
+    if (!res.ok) throw new Error("Error obteniendo URL de subida");
+    const { signedUrl, publicUrl } = await res.json();
+    const up = await fetch(signedUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    if (!up.ok) throw new Error("Error subiendo archivo a storage");
+    return publicUrl;
   }
 
   async function uploadAndPrepare(formData: FormData) {

@@ -1,19 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-import { subirImagenPiso } from "../../../../lib/pisosAdmin";
+import { getSupabaseAdmin } from "../../../../lib/supabaseAdmin";
 
 export const maxDuration = 60;
 
+const BUCKET = "pisos";
+
 export async function POST(req: NextRequest) {
-  const form = await req.formData();
-  const file = form.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    return NextResponse.json({ error: "No se envió archivo" }, { status: 400 });
+  const { filename, contentType } = await req.json();
+  if (!filename || !contentType) {
+    return NextResponse.json({ error: "Faltan filename o contentType" }, { status: 400 });
   }
-  try {
-    const url = await subirImagenPiso(file);
-    return NextResponse.json({ url });
-  } catch (err) {
-    console.error("Error subiendo archivo", err);
-    return NextResponse.json({ error: "No se pudo subir el archivo" }, { status: 500 });
+
+  const ext = filename.split(".").pop() || "bin";
+  const path = `${crypto.randomUUID()}.${ext}`;
+  const admin = getSupabaseAdmin();
+
+  const { data, error } = await admin.storage
+    .from(BUCKET)
+    .createSignedUploadUrl(path);
+
+  if (error) {
+    console.error("Error creando signed URL", error);
+    return NextResponse.json({ error: "No se pudo generar la URL de subida" }, { status: 500 });
   }
+
+  const { data: publicData } = admin.storage.from(BUCKET).getPublicUrl(path);
+
+  return NextResponse.json({
+    signedUrl: data.signedUrl,
+    token: data.token,
+    path,
+    publicUrl: publicData.publicUrl,
+  });
 }
