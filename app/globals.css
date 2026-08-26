@@ -2411,3 +2411,48 @@ button {
 }
 .pnl-card .pnl-pos b { color: #10b981; }
 .pnl-card .pnl-neg b { color: #dc2626; }
+
+/* ── Contacto home ── */
+.contacto-home {
+  padding: 48px 0;
+  background: var(--paper-dim);
+  text-align: center;
+}
+.contacto-home h2 {
+  font-size: 1.5rem;
+  margin-bottom: 6px;
+}
+.contacto-home p {
+  opacity: 0.7;
+  margin-bottom: 20px;
+}
+.contacto-home-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.btn-whatsapp,
+.btn-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.btn-whatsapp {
+  background: #25d366;
+  color: #fff;
+}
+.btn-phone {
+  background: var(--orange);
+  color: #fff;
+}
+.btn-whatsapp:hover,
+.btn-phone:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
