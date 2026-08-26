@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { crearPiso, subirImagenPiso } from "../../../../lib/pisosAdmin";
 import type { ZonaSlug } from "../../../../lib/pisos";
 
+export const maxDuration = 60;
+
 const ZONAS_ALQUILER = ["ucam", "umu", "upct"];
 
 function slugify(s: string) {
@@ -37,22 +39,19 @@ export async function POST(req: NextRequest) {
 
   try {
     let imageUrl: string | null = null;
+    const imagen = form.get("imagen");
     if (imagen instanceof File && imagen.size > 0) {
       imageUrl = await subirImagenPiso(imagen);
+    } else {
+      const imgUrl = form.get("imagen_url");
+      if (typeof imgUrl === "string" && imgUrl) imageUrl = imgUrl;
     }
 
-    const gallery: string[] = [];
-    for (const entry of form.getAll("galeria")) {
-      if (entry instanceof File && entry.size > 0) {
-        gallery.push(await subirImagenPiso(entry));
-      }
-    }
+    const galleryRaw = form.get("gallery_urls");
+    const gallery: string[] = galleryRaw ? JSON.parse(String(galleryRaw)) : [];
 
-    let videoUrl: string | null = null;
-    const video = form.get("video");
-    if (video instanceof File && video.size > 0) {
-      videoUrl = await subirImagenPiso(video);
-    }
+    const videoUrlRaw = form.get("video_url");
+    const videoUrl = typeof videoUrlRaw === "string" && videoUrlRaw ? videoUrlRaw : null;
 
     await crearPiso({
       slug,

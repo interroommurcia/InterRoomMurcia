@@ -52,11 +52,11 @@ export default async function PisoPage({ params }: { params: { zona: string; slu
                     {piso.disponible ? "Disponible" : "No disponible"}
                   </span>
                 </div>
-                {piso.gallery.length > 1 && (
+                {piso.gallery.length > 0 && (
                   <div className="ficha-gallery">
-                    {piso.gallery.slice(1).map((url, i) => (
+                    {piso.gallery.map((url, i) => (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img key={i} src={url} alt={`${piso.titulo} — foto ${i + 2}`} loading="lazy" />
+                      <img key={i} src={url} alt={`${piso.titulo} — foto ${i + 1}`} loading="lazy" />
                     ))}
                   </div>
                 )}

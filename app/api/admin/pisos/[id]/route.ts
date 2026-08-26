@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 import { actualizarPiso, borrarPiso, subirImagenPiso, type PisoInput } from "../../../../../lib/pisosAdmin";
 import type { ZonaSlug } from "../../../../../lib/pisos";
 
+export const maxDuration = 60;
+
 const ZONAS_ALQUILER = ["ucam", "umu", "upct"];
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -36,24 +38,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const imagen = form.get("imagen");
     if (imagen instanceof File && imagen.size > 0) {
       updates.imageUrl = await subirImagenPiso(imagen);
+    } else {
+      const imgUrl = form.get("imagen_url");
+      if (typeof imgUrl === "string" && imgUrl) updates.imageUrl = imgUrl;
     }
 
-    const galeriaFiles = form.getAll("galeria");
-    if (galeriaFiles.some((f) => f instanceof File && f.size > 0)) {
-      const existingRaw = form.get("galeria_existente");
-      const existing: string[] = existingRaw ? JSON.parse(String(existingRaw)) : [];
-      const gallery = [...existing];
-      for (const entry of galeriaFiles) {
-        if (entry instanceof File && entry.size > 0) {
-          gallery.push(await subirImagenPiso(entry));
-        }
-      }
-      updates.gallery = gallery;
+    const galleryRaw = form.get("gallery_urls");
+    if (typeof galleryRaw === "string" && galleryRaw) {
+      updates.gallery = JSON.parse(galleryRaw);
     }
 
-    const video = form.get("video");
-    if (video instanceof File && video.size > 0) {
-      updates.videoUrl = await subirImagenPiso(video);
+    const videoUrlRaw = form.get("video_url");
+    if (typeof videoUrlRaw === "string" && videoUrlRaw) {
+      updates.videoUrl = videoUrlRaw;
     }
 
     const borrarVideo = form.get("borrar_video");

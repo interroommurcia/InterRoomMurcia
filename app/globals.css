@@ -1060,6 +1060,11 @@ button {
   color: var(--orange-dark);
   font-size: 0.85rem;
 }
+.lead-form-ok {
+  color: #059669;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
 
 .lead-sent {
   text-align: center;

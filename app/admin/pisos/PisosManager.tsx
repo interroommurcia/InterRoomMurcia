@@ -85,10 +85,14 @@ function SearchSelect({
   const [selected, setSelected] = useState(defaultValue || "");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const prevResetKey = useRef(resetKey);
 
   useEffect(() => {
-    setQuery("");
-    setSelected("");
+    if (prevResetKey.current !== resetKey) {
+      prevResetKey.current = resetKey;
+      setQuery("");
+      setSelected("");
+    }
   }, [resetKey]);
 
   useEffect(() => {
@@ -164,6 +168,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copiado, setCopiado] = useState<string | null>(null);
+  const [exito, setExito] = useState("");
 
   useEffect(() => {
     setPisos(pisosInit);
@@ -188,6 +193,48 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
   }
 
+  async function uploadFile(file: File): Promise<string> {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
+    if (!res.ok) throw new Error("Error subiendo archivo");
+    const data = await res.json();
+    return data.url;
+  }
+
+  async function uploadAndPrepare(formData: FormData) {
+    const imagenFile = formData.get("imagen");
+    if (imagenFile instanceof File && imagenFile.size > 0) {
+      const url = await uploadFile(imagenFile);
+      formData.delete("imagen");
+      formData.set("imagen_url", url);
+    } else {
+      formData.delete("imagen");
+    }
+
+    const galeriaFiles = formData.getAll("galeria");
+    const existingRaw = formData.get("galeria_existente");
+    const existing: string[] = existingRaw ? JSON.parse(String(existingRaw)) : [];
+    const galleryUrls = [...existing];
+    for (const f of galeriaFiles) {
+      if (f instanceof File && f.size > 0) {
+        galleryUrls.push(await uploadFile(f));
+      }
+    }
+    formData.delete("galeria");
+    formData.delete("galeria_existente");
+    if (galleryUrls.length > 0) formData.set("gallery_urls", JSON.stringify(galleryUrls));
+
+    const videoFile = formData.get("video");
+    if (videoFile instanceof File && videoFile.size > 0) {
+      const url = await uploadFile(videoFile);
+      formData.delete("video");
+      formData.set("video_url", url);
+    } else {
+      formData.delete("video");
+    }
+  }
+
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -195,10 +242,13 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
     const formEl = e.currentTarget;
     const formData = new FormData(formEl);
     try {
+      await uploadAndPrepare(formData);
       const res = await fetch("/api/admin/pisos", { method: "POST", body: formData });
       if (!res.ok) throw new Error();
       setShowForm(false);
       formEl.reset();
+      setExito("Piso creado con éxito");
+      setTimeout(() => setExito(""), 3000);
       router.refresh();
     } catch {
       setError("No se pudo guardar el piso. Revisa los datos e inténtalo de nuevo.");
@@ -213,9 +263,12 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
     setError("");
     const formData = new FormData(e.currentTarget);
     try {
+      await uploadAndPrepare(formData);
       const res = await fetch(`/api/admin/pisos/${id}`, { method: "PATCH", body: formData });
       if (!res.ok) throw new Error();
       setEditing(null);
+      setExito("Cambios guardados con éxito");
+      setTimeout(() => setExito(""), 3000);
       router.refresh();
     } catch {
       setError("No se pudo actualizar el piso.");
@@ -243,6 +296,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
 
   return (
     <div className="pisos-manager">
+      {exito && <p className="lead-form-ok">{exito}</p>}
       {error && <p className="lead-form-error">{error}</p>}
 
       <button type="button" className="btn-primary" onClick={() => setShowForm((v) => !v)}>
