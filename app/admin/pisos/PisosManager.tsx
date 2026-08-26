@@ -171,6 +171,9 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
 }
 
 function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
+  const [categoria, setCategoria] = useState<"alquiler" | "compraventa">(piso?.categoria || "alquiler");
+  const esCompraventa = categoria === "compraventa";
+
   return (
     <>
       <div className="lead-form-row">
@@ -206,7 +209,18 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
       </div>
       <div className="lead-form-row">
         <label>
-          Precio/mes (€)
+          Categoría
+          <select
+            name="categoria"
+            defaultValue={piso?.categoria || "alquiler"}
+            onChange={(e) => setCategoria(e.target.value as "alquiler" | "compraventa")}
+          >
+            <option value="alquiler">Alquiler</option>
+            <option value="compraventa">Compraventa</option>
+          </select>
+        </label>
+        <label>
+          {esCompraventa ? "Precio del activo (€)" : "Precio/mes (€)"}
           <input name="precioMes" type="number" min={1} required defaultValue={piso?.precioMes} />
         </label>
         <label>
@@ -219,13 +233,6 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
         <textarea name="descripcion" required rows={3} maxLength={2000} defaultValue={piso?.descripcion} />
       </label>
       <div className="lead-form-row">
-        <label>
-          Categoría
-          <select name="categoria" defaultValue={piso?.categoria || "alquiler"}>
-            <option value="alquiler">Alquiler</option>
-            <option value="compraventa">Compraventa</option>
-          </select>
-        </label>
         <label>
           Estado
           <select name="disponible" defaultValue={(piso?.disponible ?? true) ? "true" : "false"}>
