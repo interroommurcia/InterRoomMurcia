@@ -201,11 +201,9 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
     });
     if (!res.ok) throw new Error("Error obteniendo URL de subida");
     const { signedUrl, publicUrl } = await res.json();
-    const up = await fetch(signedUrl, {
-      method: "PUT",
-      headers: { "Content-Type": file.type },
-      body: file,
-    });
+    const fd = new FormData();
+    fd.append("file", file);
+    const up = await fetch(signedUrl, { method: "POST", body: fd });
     if (!up.ok) throw new Error("Error subiendo archivo a storage");
     return publicUrl;
   }
