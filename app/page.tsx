@@ -13,7 +13,7 @@ export default async function HomePage() {
     <>
       <section className="hero">
         <div className="wrap hero-grid">
-          <Reveal direction="up" duration={0.8}>
+          <Reveal direction="right" duration={1.3}>
             <div>
               <div className="eyebrow">Murcia - UCAM - UMU - UPCT</div>
               <h1>
@@ -31,13 +31,16 @@ export default async function HomePage() {
                 <Link href="#catalogo" className="btn-primary">
                   Buscar habitacion
                 </Link>
+                <Link href="#catalogo" className="btn-ghost">
+                  Catalogo
+                </Link>
                 <Link href="/contacto" className="btn-ghost">
                   Soy propietario
                 </Link>
               </div>
             </div>
           </Reveal>
-          <Reveal direction="right" delay={200} duration={0.9}>
+          <Reveal direction="left" delay={200} duration={1.4}>
             <div className="hero-side">
               <div>
                 <div className="tag">

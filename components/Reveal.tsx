@@ -9,7 +9,7 @@ export default function Reveal({
   className = "",
   delay = 0,
   direction = "up",
-  duration = 0.7,
+  duration = 1.2,
   once = true,
 }: {
   children: React.ReactNode;

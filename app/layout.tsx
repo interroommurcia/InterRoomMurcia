@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import { PostHogProvider } from "../components/PostHogProvider";
 import ChatWidget from "../components/ChatWidget";
+import MobileNav from "../components/MobileNav";
 import { SITE_URL } from "../lib/site";
 import "./globals.css";
 
@@ -58,6 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="/#catalogo" className="nav-cta">
                 Ver habitaciones
               </a>
+              <MobileNav />
             </nav>
           </header>
           {children}
