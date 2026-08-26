@@ -247,8 +247,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
       if (!res.ok) throw new Error();
       setShowForm(false);
       formEl.reset();
-      setExito("Piso creado con éxito");
-      setTimeout(() => setExito(""), 3000);
+      setExito("Guardado con éxito");
       router.refresh();
     } catch {
       setError("No se pudo guardar el piso. Revisa los datos e inténtalo de nuevo.");
@@ -267,8 +266,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
       const res = await fetch(`/api/admin/pisos/${id}`, { method: "PATCH", body: formData });
       if (!res.ok) throw new Error();
       setEditing(null);
-      setExito("Cambios guardados con éxito");
-      setTimeout(() => setExito(""), 3000);
+      setExito("Guardado con éxito");
       router.refresh();
     } catch {
       setError("No se pudo actualizar el piso.");
@@ -296,7 +294,14 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
 
   return (
     <div className="pisos-manager">
-      {exito && <p className="lead-form-ok">{exito}</p>}
+      {exito && (
+        <p className="lead-form-ok">
+          {exito}
+          <button type="button" className="btn-ghost" style={{ marginLeft: 12, fontSize: 13, padding: "2px 10px" }} onClick={() => setExito("")}>
+            Aceptar
+          </button>
+        </p>
+      )}
       {error && <p className="lead-form-error">{error}</p>}
 
       <button type="button" className="btn-primary" onClick={() => setShowForm((v) => !v)}>
