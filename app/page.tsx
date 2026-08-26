@@ -145,7 +145,7 @@ export default async function HomePage() {
                     <div className="loc">{piso.barrio}</div>
                     <div className="piso-foot">
                       <div className="piso-price">
-                        {piso.precioMes}€
+                        {piso.precioMes.toLocaleString("es-ES")}€
                       </div>
                       <div className="piso-arrow">-&gt;</div>
                     </div>
