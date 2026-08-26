@@ -9,11 +9,16 @@ const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 let bucketReady = false;
 async function ensureBucket(admin: ReturnType<typeof getSupabaseAdmin>) {
   if (bucketReady) return;
-  await admin.storage.updateBucket(BUCKET, {
+  const { error } = await admin.storage.updateBucket(BUCKET, {
     public: true,
     fileSizeLimit: MAX_FILE_SIZE,
     allowedMimeTypes: ["image/*", "video/*"],
   });
+  if (error) {
+    console.error("Error actualizando bucket:", error);
+  } else {
+    console.log("Bucket configurado: fileSizeLimit =", MAX_FILE_SIZE);
+  }
   bucketReady = true;
 }
 
