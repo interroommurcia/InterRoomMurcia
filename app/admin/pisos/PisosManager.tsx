@@ -2,12 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Piso, Zona } from "../../../lib/pisos";
+import type { Piso, ZonaSlug } from "../../../lib/pisos";
 
-const ZONAS: { slug: Zona["slug"]; label: string }[] = [
+const ZONAS_ALQUILER: { slug: ZonaSlug; label: string }[] = [
   { slug: "ucam", label: "UCAM" },
   { slug: "umu", label: "UMU" },
   { slug: "upct", label: "UPCT" },
+];
+
+const ZONAS_COMPRAVENTA: { slug: ZonaSlug; label: string }[] = [
+  { slug: "murcia", label: "Murcia" },
+  { slug: "almeria", label: "Almería" },
+  { slug: "andalucia", label: "Andalucía" },
+  { slug: "comunidad-valenciana", label: "Comunidad Valenciana" },
+  { slug: "madrid", label: "Madrid" },
 ];
 
 export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
@@ -173,6 +181,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
 function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
   const [categoria, setCategoria] = useState<"alquiler" | "compraventa">(piso?.categoria || "alquiler");
   const esCompraventa = categoria === "compraventa";
+  const zonasOptions = esCompraventa ? ZONAS_COMPRAVENTA : ZONAS_ALQUILER;
 
   return (
     <>
@@ -190,12 +199,12 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
       </div>
       <div className="lead-form-row">
         <label>
-          Zona
-          <select name="zona" required defaultValue={piso?.zona || ""}>
+          {esCompraventa ? "Provincia" : "Zona"}
+          <select name="zona" required defaultValue={piso?.zona || ""} key={categoria}>
             <option value="" disabled>
               Selecciona...
             </option>
-            {ZONAS.map((z) => (
+            {zonasOptions.map((z) => (
               <option key={z.slug} value={z.slug}>
                 {z.label}
               </option>

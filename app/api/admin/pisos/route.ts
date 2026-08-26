@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { crearPiso, subirImagenPiso } from "../../../../lib/pisosAdmin";
-import type { Zona } from "../../../../lib/pisos";
+import type { ZonaSlug } from "../../../../lib/pisos";
 
-const ZONAS_VALIDAS = ["ucam", "umu", "upct"];
+const ZONAS_VALIDAS = ["ucam", "umu", "upct", "murcia", "almeria", "andalucia", "comunidad-valenciana", "madrid"];
 
 export async function POST(req: NextRequest) {
   const form = await req.formData();
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     await crearPiso({
       slug,
       titulo,
-      zona: zona as Zona["slug"],
+      zona: zona as ZonaSlug,
       barrio,
       precioMes,
       metros,

@@ -1,12 +1,12 @@
 import { getSupabaseAdmin } from "./supabaseAdmin";
-import type { Zona, CategoriaPiso } from "./pisos";
+import type { ZonaSlug, CategoriaPiso } from "./pisos";
 
 const BUCKET = "pisos";
 
 export type PisoInput = {
   slug: string;
   titulo: string;
-  zona: Zona["slug"];
+  zona: ZonaSlug;
   barrio: string;
   precioMes: number;
   metros: number | null;

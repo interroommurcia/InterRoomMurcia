@@ -3,12 +3,12 @@ import { revalidatePath } from "next/cache";
 import { getSupabaseAdmin } from "../../../../../../lib/supabaseAdmin";
 import { copiarMediaAPiso } from "../../../../../../lib/propiedades";
 import { crearPiso } from "../../../../../../lib/pisosAdmin";
-import type { Zona } from "../../../../../../lib/pisos";
+import type { ZonaSlug } from "../../../../../../lib/pisos";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const ZONAS: Zona["slug"][] = ["ucam", "umu", "upct"];
+const ZONAS: ZonaSlug[] = ["ucam", "umu", "upct", "murcia", "almeria", "andalucia", "comunidad-valenciana", "madrid"];
 
 function slugify(s: string) {
   return s
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!body) return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   const { habitacion_id, zona, slug, titulo, barrio, precio_mes, metros, descripcion, categoria: catRaw } = body as Record<string, unknown>;
   const categoria = catRaw === "compraventa" ? "compraventa" : "alquiler";
-  if (!ZONAS.includes(zona as Zona["slug"])) return NextResponse.json({ error: "zona inválida" }, { status: 400 });
+  if (!ZONAS.includes(zona as ZonaSlug)) return NextResponse.json({ error: "zona inválida" }, { status: 400 });
   if (!titulo || !barrio || !descripcion || !precio_mes) return NextResponse.json({ error: "faltan datos" }, { status: 400 });
 
   const admin = getSupabaseAdmin();
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     await crearPiso({
       slug: slugFinal,
       titulo: String(titulo),
-      zona: zona as Zona["slug"],
+      zona: zona as ZonaSlug,
       barrio: String(barrio),
       precioMes: Number(precio_mes),
       metros: metros ? Number(metros) : null,

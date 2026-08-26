@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { actualizarPiso, borrarPiso, subirImagenPiso, type PisoInput } from "../../../../../lib/pisosAdmin";
-import type { Zona } from "../../../../../lib/pisos";
+import type { ZonaSlug } from "../../../../../lib/pisos";
 
-const ZONAS_VALIDAS = ["ucam", "umu", "upct"];
+const ZONAS_VALIDAS = ["ucam", "umu", "upct", "murcia", "almeria", "andalucia", "comunidad-valenciana", "madrid"];
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const form = await req.formData();
@@ -13,7 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (typeof titulo === "string" && titulo.trim()) updates.titulo = titulo.trim().slice(0, 150);
 
   const zona = form.get("zona");
-  if (typeof zona === "string" && ZONAS_VALIDAS.includes(zona)) updates.zona = zona as Zona["slug"];
+  if (typeof zona === "string" && ZONAS_VALIDAS.includes(zona)) updates.zona = zona as ZonaSlug;
 
   const barrio = form.get("barrio");
   if (typeof barrio === "string" && barrio.trim()) updates.barrio = barrio.trim().slice(0, 120);

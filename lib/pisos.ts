@@ -1,8 +1,12 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { supabase } from "./supabaseClient";
 
+export type ZonaAlquiler = "ucam" | "umu" | "upct";
+export type ZonaCompraventa = "murcia" | "almeria" | "andalucia" | "comunidad-valenciana" | "madrid";
+export type ZonaSlug = ZonaAlquiler | ZonaCompraventa;
+
 export type Zona = {
-  slug: "ucam" | "umu" | "upct";
+  slug: ZonaAlquiler;
   universidad: string;
   barrio: string;
   titulo: string;
@@ -16,7 +20,7 @@ export type Piso = {
   id: string;
   slug: string;
   titulo: string;
-  zona: Zona["slug"];
+  zona: ZonaSlug;
   barrio: string;
   precioMes: number;
   metros: number | null;
@@ -74,7 +78,7 @@ type PisoRow = {
   id: string;
   slug: string;
   titulo: string;
-  zona: Zona["slug"];
+  zona: ZonaSlug;
   barrio: string;
   precio_mes: number;
   metros: number | null;
@@ -125,14 +129,14 @@ export async function pisosPorCategoria(categoria: CategoriaPiso): Promise<Piso[
   return (data ?? []).map(mapPiso);
 }
 
-export async function pisosPorZona(zona: Zona["slug"]): Promise<Piso[]> {
+export async function pisosPorZona(zona: ZonaSlug): Promise<Piso[]> {
   noStore();
   const { data, error } = await supabase.from("pisos").select("*").eq("zona", zona);
   if (error) throw error;
   return (data ?? []).map(mapPiso);
 }
 
-export async function pisoPorSlug(zona: Zona["slug"], slug: string): Promise<Piso | null> {
+export async function pisoPorSlug(zona: ZonaSlug, slug: string): Promise<Piso | null> {
   noStore();
   const { data, error } = await supabase
     .from("pisos")
