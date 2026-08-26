@@ -319,6 +319,8 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
 function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
   const [categoria, setCategoria] = useState<"alquiler" | "compraventa">(piso?.categoria || "alquiler");
   const esCompraventa = categoria === "compraventa";
+  const [galleryKeep, setGalleryKeep] = useState<string[]>(piso?.gallery ?? []);
+  const [borrarVideo, setBorrarVideo] = useState(false);
 
   return (
     <>
@@ -399,9 +401,47 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
           </select>
         </div>
         <div className="pf-field">
-          <span className="pf-label">Foto {isEdit && "(deja vacío para no cambiarla)"}</span>
+          <span className="pf-label">Foto principal {isEdit && "(deja vacío para no cambiarla)"}</span>
           <input className="pf-input pf-file" name="imagen" type="file" accept="image/*" />
         </div>
+      </div>
+
+      <div className="pf-field">
+        <span className="pf-label">Galería de fotos {isEdit ? "(se añaden a las existentes)" : "(opcional, varias fotos)"}</span>
+        {isEdit && galleryKeep.length > 0 && (
+          <div className="pf-gallery-preview">
+            {galleryKeep.map((url, i) => (
+              <div key={i} className="pf-gallery-thumb">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={`Foto ${i + 1}`} />
+                <button
+                  type="button"
+                  className="pf-gallery-remove"
+                  onClick={() => setGalleryKeep((prev) => prev.filter((_, j) => j !== i))}
+                  title="Quitar foto"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {isEdit && <input type="hidden" name="galeria_existente" value={JSON.stringify(galleryKeep)} />}
+        <input className="pf-input pf-file" name="galeria" type="file" accept="image/*" multiple />
+      </div>
+
+      <div className="pf-field">
+        <span className="pf-label">Vídeo {isEdit && "(deja vacío para no cambiarlo)"}</span>
+        {isEdit && piso?.videoUrl && !borrarVideo && (
+          <div className="pf-video-preview">
+            <span className="pf-video-tag">Vídeo actual subido</span>
+            <button type="button" className="btn-ghost" style={{ color: "#dc2626", fontSize: 13 }} onClick={() => setBorrarVideo(true)}>
+              Quitar vídeo
+            </button>
+          </div>
+        )}
+        {borrarVideo && <input type="hidden" name="borrar_video" value="true" />}
+        <input className="pf-input pf-file" name="video" type="file" accept="video/*" />
       </div>
     </>
   );

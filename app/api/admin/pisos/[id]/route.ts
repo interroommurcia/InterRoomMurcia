@@ -37,6 +37,30 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (imagen instanceof File && imagen.size > 0) {
       updates.imageUrl = await subirImagenPiso(imagen);
     }
+
+    const galeriaFiles = form.getAll("galeria");
+    if (galeriaFiles.some((f) => f instanceof File && f.size > 0)) {
+      const existingRaw = form.get("galeria_existente");
+      const existing: string[] = existingRaw ? JSON.parse(String(existingRaw)) : [];
+      const gallery = [...existing];
+      for (const entry of galeriaFiles) {
+        if (entry instanceof File && entry.size > 0) {
+          gallery.push(await subirImagenPiso(entry));
+        }
+      }
+      updates.gallery = gallery;
+    }
+
+    const video = form.get("video");
+    if (video instanceof File && video.size > 0) {
+      updates.videoUrl = await subirImagenPiso(video);
+    }
+
+    const borrarVideo = form.get("borrar_video");
+    if (borrarVideo === "true") {
+      updates.videoUrl = null;
+    }
+
     await actualizarPiso(params.id, updates);
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -40,6 +40,20 @@ export async function POST(req: NextRequest) {
     if (imagen instanceof File && imagen.size > 0) {
       imageUrl = await subirImagenPiso(imagen);
     }
+
+    const gallery: string[] = [];
+    for (const entry of form.getAll("galeria")) {
+      if (entry instanceof File && entry.size > 0) {
+        gallery.push(await subirImagenPiso(entry));
+      }
+    }
+
+    let videoUrl: string | null = null;
+    const video = form.get("video");
+    if (video instanceof File && video.size > 0) {
+      videoUrl = await subirImagenPiso(video);
+    }
+
     await crearPiso({
       slug,
       titulo,
@@ -50,6 +64,8 @@ export async function POST(req: NextRequest) {
       descripcion,
       disponible,
       imageUrl,
+      gallery,
+      videoUrl,
       categoria,
     });
     return NextResponse.json({ ok: true });
