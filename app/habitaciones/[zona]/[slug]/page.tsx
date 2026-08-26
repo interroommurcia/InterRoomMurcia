@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { pisoPorSlug, pisosPorZona, zonaPorSlug } from "../../../../lib/pisos";
 import { whatsappHref } from "../../../../lib/whatsapp";
+import FichaMedia from "../../../../components/FichaMedia";
 
 export async function generateMetadata({
   params,
@@ -43,34 +44,13 @@ export default async function PisoPage({ params }: { params: { zona: string; slu
 
           <div className="ficha-grid">
             <div>
-              <div className="ficha-hero-wrap">
-                <div
-                  className="ficha-hero"
-                  style={piso.imageUrl ? { backgroundImage: `url(${piso.imageUrl})` } : undefined}
-                >
-                  <span className={`piso-badge ${piso.disponible ? "" : "no-disponible"}`}>
-                    {piso.disponible ? "Disponible" : "No disponible"}
-                  </span>
-                </div>
-                {piso.gallery.length > 0 && (
-                  <div className="ficha-gallery">
-                    {piso.gallery.map((url, i) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img key={i} src={url} alt={`${piso.titulo} — foto ${i + 1}`} loading="lazy" />
-                    ))}
-                  </div>
-                )}
-                {piso.videoUrl && (
-                  <video
-                    className="ficha-video"
-                    src={piso.videoUrl}
-                    controls
-                    playsInline
-                    preload="metadata"
-                    poster={piso.imageUrl ?? undefined}
-                  />
-                )}
-              </div>
+              <FichaMedia
+                imageUrl={piso.imageUrl}
+                gallery={piso.gallery}
+                videoUrl={piso.videoUrl}
+                titulo={piso.titulo}
+                disponible={piso.disponible}
+              />
 
               <h1>{piso.titulo}</h1>
               <div className="ficha-loc">
