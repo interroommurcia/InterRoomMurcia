@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 const links = [
-  { href: "/#catalogo", label: "Catálogo" },
+  { href: "/catalogo", label: "Catálogo" },
   { href: "/blog", label: "Blog" },
   { href: "/contacto", label: "Contacto" },
 ];
@@ -53,7 +53,7 @@ export default function MobileNav() {
             </a>
           ))}
           <a
-            href="/#catalogo"
+            href="/catalogo"
             className="mobile-nav-cta"
             style={{ transitionDelay: open ? `${80 + links.length * 60}ms` : "0ms" }}
             onClick={() => setOpen(false)}

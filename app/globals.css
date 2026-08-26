@@ -2008,15 +2008,17 @@ button {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: var(--paper);
-  opacity: 0;
+  background: rgba(255, 255, 255, 0.97);
+  pointer-events: none;
   visibility: hidden;
+  opacity: 0;
   transition: opacity 0.35s ease, visibility 0.35s ease;
 }
 
 .mobile-overlay-visible {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
 }
 
 .mobile-nav-inner {
@@ -2033,7 +2035,7 @@ button {
   font-size: clamp(1.5rem, 6vw, 2.2rem);
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--ink);
+  color: var(--orange);
   padding: 18px 0;
   opacity: 0;
   transform: translateY(24px);

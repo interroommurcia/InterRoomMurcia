@@ -52,11 +52,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 Inter<span>Room</span> Murcia
               </a>
               <div className="navlinks">
-                <a href="/#catalogo">Catálogo</a>
+                <a href="/catalogo">Catálogo</a>
                 <a href="/blog">Blog</a>
                 <a href="/contacto">Contacto</a>
               </div>
-              <a href="/#catalogo" className="nav-cta">
+              <a href="/catalogo" className="nav-cta">
                 Ver habitaciones
               </a>
               <MobileNav />
@@ -74,7 +74,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </div>
                 <div className="site-footer-links">
                   <span className="site-footer-heading">Navegación</span>
-                  <a href="/#catalogo">Catálogo</a>
+                  <a href="/catalogo">Catálogo</a>
                   <a href="/blog">Blog</a>
                   <a href="/contacto">Contacto</a>
                 </div>
