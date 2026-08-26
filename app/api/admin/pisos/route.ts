@@ -4,10 +4,20 @@ import type { ZonaSlug } from "../../../../lib/pisos";
 
 const ZONAS_ALQUILER = ["ucam", "umu", "upct"];
 
+function slugify(s: string) {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+}
+
 export async function POST(req: NextRequest) {
   const form = await req.formData();
 
-  const slug = String(form.get("slug") || "").trim().slice(0, 80);
+  const slug = slugify(String(form.get("slug") || ""));
   const titulo = String(form.get("titulo") || "").trim().slice(0, 150);
   const zona = String(form.get("zona") || "");
   const barrio = String(form.get("barrio") || "").trim().slice(0, 120);
