@@ -8,7 +8,7 @@ import type { ZonaSlug } from "../../../../../../lib/pisos";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const ZONAS: ZonaSlug[] = ["ucam", "umu", "upct", "murcia", "almeria", "andalucia", "comunidad-valenciana", "madrid"];
+const ZONAS_ALQUILER = ["ucam", "umu", "upct"];
 
 function slugify(s: string) {
   return s
@@ -25,7 +25,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!body) return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   const { habitacion_id, zona, slug, titulo, barrio, precio_mes, metros, descripcion, categoria: catRaw } = body as Record<string, unknown>;
   const categoria = catRaw === "compraventa" ? "compraventa" : "alquiler";
-  if (!ZONAS.includes(zona as ZonaSlug)) return NextResponse.json({ error: "zona inválida" }, { status: 400 });
+  const zonaStr = String(zona || "");
+  const zonaValida = categoria === "alquiler" ? ZONAS_ALQUILER.includes(zonaStr) : zonaStr.length > 0 && zonaStr.length <= 40;
+  if (!zonaValida) return NextResponse.json({ error: "zona inválida" }, { status: 400 });
   if (!titulo || !barrio || !descripcion || !precio_mes) return NextResponse.json({ error: "faltan datos" }, { status: 400 });
 
   const admin = getSupabaseAdmin();

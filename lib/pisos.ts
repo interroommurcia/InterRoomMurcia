@@ -2,8 +2,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { supabase } from "./supabaseClient";
 
 export type ZonaAlquiler = "ucam" | "umu" | "upct";
-export type ZonaCompraventa = "murcia" | "almeria" | "andalucia" | "comunidad-valenciana" | "madrid";
-export type ZonaSlug = ZonaAlquiler | ZonaCompraventa;
+export type ZonaSlug = ZonaAlquiler | (string & {});
 
 export type Zona = {
   slug: ZonaAlquiler;

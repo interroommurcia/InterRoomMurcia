@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { crearPiso, subirImagenPiso } from "../../../../lib/pisosAdmin";
 import type { ZonaSlug } from "../../../../lib/pisos";
 
-const ZONAS_VALIDAS = ["ucam", "umu", "upct", "murcia", "almeria", "andalucia", "comunidad-valenciana", "madrid"];
+const ZONAS_ALQUILER = ["ucam", "umu", "upct"];
 
 export async function POST(req: NextRequest) {
   const form = await req.formData();
@@ -20,7 +20,8 @@ export async function POST(req: NextRequest) {
   const categoria = (categoriaRaw === "compraventa" ? "compraventa" : "alquiler") as import("../../../../lib/pisos").CategoriaPiso;
   const imagen = form.get("imagen");
 
-  if (!slug || !titulo || !ZONAS_VALIDAS.includes(zona) || !barrio || !precioMes || !descripcion) {
+  const zonaValida = categoria === "alquiler" ? ZONAS_ALQUILER.includes(zona) : zona.length > 0 && zona.length <= 40;
+  if (!slug || !titulo || !zonaValida || !barrio || !precioMes || !descripcion) {
     return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
   }
 

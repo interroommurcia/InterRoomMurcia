@@ -1,22 +1,160 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Piso, ZonaSlug } from "../../../lib/pisos";
+import type { Piso } from "../../../lib/pisos";
 
-const ZONAS_ALQUILER: { slug: ZonaSlug; label: string }[] = [
+const ZONAS_ALQUILER = [
   { slug: "ucam", label: "UCAM" },
   { slug: "umu", label: "UMU" },
   { slug: "upct", label: "UPCT" },
 ];
 
-const ZONAS_COMPRAVENTA: { slug: ZonaSlug; label: string }[] = [
-  { slug: "murcia", label: "Murcia" },
+const PROVINCIAS = [
+  { slug: "a-coruna", label: "A Coruña" },
+  { slug: "alava", label: "Álava" },
+  { slug: "albacete", label: "Albacete" },
+  { slug: "alicante", label: "Alicante" },
   { slug: "almeria", label: "Almería" },
-  { slug: "andalucia", label: "Andalucía" },
-  { slug: "comunidad-valenciana", label: "Comunidad Valenciana" },
+  { slug: "asturias", label: "Asturias" },
+  { slug: "avila", label: "Ávila" },
+  { slug: "badajoz", label: "Badajoz" },
+  { slug: "barcelona", label: "Barcelona" },
+  { slug: "burgos", label: "Burgos" },
+  { slug: "caceres", label: "Cáceres" },
+  { slug: "cadiz", label: "Cádiz" },
+  { slug: "cantabria", label: "Cantabria" },
+  { slug: "castellon", label: "Castellón" },
+  { slug: "ceuta", label: "Ceuta" },
+  { slug: "ciudad-real", label: "Ciudad Real" },
+  { slug: "cordoba", label: "Córdoba" },
+  { slug: "cuenca", label: "Cuenca" },
+  { slug: "girona", label: "Girona" },
+  { slug: "granada", label: "Granada" },
+  { slug: "guadalajara", label: "Guadalajara" },
+  { slug: "guipuzcoa", label: "Guipúzcoa" },
+  { slug: "huelva", label: "Huelva" },
+  { slug: "huesca", label: "Huesca" },
+  { slug: "islas-baleares", label: "Islas Baleares" },
+  { slug: "jaen", label: "Jaén" },
+  { slug: "la-rioja", label: "La Rioja" },
+  { slug: "las-palmas", label: "Las Palmas" },
+  { slug: "leon", label: "León" },
+  { slug: "lleida", label: "Lleida" },
+  { slug: "lugo", label: "Lugo" },
   { slug: "madrid", label: "Madrid" },
+  { slug: "malaga", label: "Málaga" },
+  { slug: "melilla", label: "Melilla" },
+  { slug: "murcia", label: "Murcia" },
+  { slug: "navarra", label: "Navarra" },
+  { slug: "ourense", label: "Ourense" },
+  { slug: "palencia", label: "Palencia" },
+  { slug: "pontevedra", label: "Pontevedra" },
+  { slug: "salamanca", label: "Salamanca" },
+  { slug: "santa-cruz-de-tenerife", label: "Santa Cruz de Tenerife" },
+  { slug: "segovia", label: "Segovia" },
+  { slug: "sevilla", label: "Sevilla" },
+  { slug: "soria", label: "Soria" },
+  { slug: "tarragona", label: "Tarragona" },
+  { slug: "teruel", label: "Teruel" },
+  { slug: "toledo", label: "Toledo" },
+  { slug: "valencia", label: "Valencia" },
+  { slug: "valladolid", label: "Valladolid" },
+  { slug: "vizcaya", label: "Vizcaya" },
+  { slug: "zamora", label: "Zamora" },
+  { slug: "zaragoza", label: "Zaragoza" },
 ];
+
+function SearchSelect({
+  name,
+  options,
+  defaultValue,
+  placeholder,
+  label,
+  resetKey,
+}: {
+  name: string;
+  options: { slug: string; label: string }[];
+  defaultValue?: string;
+  placeholder?: string;
+  label: string;
+  resetKey?: string;
+}) {
+  const initial = options.find((o) => o.slug === defaultValue);
+  const [query, setQuery] = useState(initial?.label || "");
+  const [selected, setSelected] = useState(defaultValue || "");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setQuery("");
+    setSelected("");
+  }, [resetKey]);
+
+  useEffect(() => {
+    function close(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  const normalized = query
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+  const filtered = options.filter((o) =>
+    o.label
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .includes(normalized),
+  );
+
+  return (
+    <div className="pf-field" ref={ref} style={{ position: "relative" }}>
+      <span className="pf-label">{label}</span>
+      <input type="hidden" name={name} value={selected} />
+      <input
+        type="text"
+        className="pf-input"
+        placeholder={placeholder || "Buscar..."}
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setSelected("");
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        autoComplete="off"
+        required={!selected}
+      />
+      {open && filtered.length > 0 && (
+        <ul className="pf-dropdown">
+          {filtered.map((o) => (
+            <li
+              key={o.slug}
+              className={`pf-dropdown-item${selected === o.slug ? " pf-dropdown-active" : ""}`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setSelected(o.slug);
+                setQuery(o.label);
+                setOpen(false);
+              }}
+            >
+              {o.label}
+            </li>
+          ))}
+        </ul>
+      )}
+      {open && filtered.length === 0 && query && (
+        <ul className="pf-dropdown">
+          <li className="pf-dropdown-empty">Sin resultados</li>
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
   const router = useRouter();
@@ -181,45 +319,27 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
 function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
   const [categoria, setCategoria] = useState<"alquiler" | "compraventa">(piso?.categoria || "alquiler");
   const esCompraventa = categoria === "compraventa";
-  const zonasOptions = esCompraventa ? ZONAS_COMPRAVENTA : ZONAS_ALQUILER;
 
   return (
     <>
-      <div className="lead-form-row">
+      <div className="pf-row">
         {!isEdit && (
-          <label>
-            Slug (URL)
-            <input name="slug" required maxLength={80} placeholder="habitacion-centro-murcia" />
-          </label>
+          <div className="pf-field">
+            <span className="pf-label">Slug (URL)</span>
+            <input className="pf-input" name="slug" required maxLength={80} placeholder="habitacion-centro-murcia" />
+          </div>
         )}
-        <label>
-          Título
-          <input name="titulo" required maxLength={150} defaultValue={piso?.titulo} placeholder="Habitación en..." />
-        </label>
+        <div className="pf-field">
+          <span className="pf-label">Título</span>
+          <input className="pf-input" name="titulo" required maxLength={150} defaultValue={piso?.titulo} placeholder="Habitación en..." />
+        </div>
       </div>
-      <div className="lead-form-row">
-        <label>
-          {esCompraventa ? "Provincia" : "Zona"}
-          <select name="zona" required defaultValue={piso?.zona || ""} key={categoria}>
-            <option value="" disabled>
-              Selecciona...
-            </option>
-            {zonasOptions.map((z) => (
-              <option key={z.slug} value={z.slug}>
-                {z.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Barrio
-          <input name="barrio" required maxLength={120} defaultValue={piso?.barrio} placeholder="El Carmen, Murcia" />
-        </label>
-      </div>
-      <div className="lead-form-row">
-        <label>
-          Categoría
+
+      <div className="pf-row">
+        <div className="pf-field">
+          <span className="pf-label">Categoría</span>
           <select
+            className="pf-select"
             name="categoria"
             defaultValue={piso?.categoria || "alquiler"}
             onChange={(e) => setCategoria(e.target.value as "alquiler" | "compraventa")}
@@ -227,32 +347,61 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
             <option value="alquiler">Alquiler</option>
             <option value="compraventa">Compraventa</option>
           </select>
-        </label>
-        <label>
-          {esCompraventa ? "Precio del activo (€)" : "Precio/mes (€)"}
-          <input name="precioMes" type="number" min={1} required defaultValue={piso?.precioMes} />
-        </label>
-        <label>
-          Metros cuadrados
-          <input name="metros" type="number" min={0} defaultValue={piso?.metros ?? undefined} />
-        </label>
+        </div>
+        {esCompraventa ? (
+          <SearchSelect
+            name="zona"
+            options={PROVINCIAS}
+            defaultValue={piso?.zona}
+            placeholder="Escribe para buscar provincia..."
+            label="Provincia"
+            resetKey={categoria}
+          />
+        ) : (
+          <div className="pf-field">
+            <span className="pf-label">Zona</span>
+            <select className="pf-select" name="zona" required defaultValue={piso?.zona || ""} key={categoria}>
+              <option value="" disabled>Selecciona...</option>
+              {ZONAS_ALQUILER.map((z) => (
+                <option key={z.slug} value={z.slug}>{z.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div className="pf-field">
+          <span className="pf-label">Barrio / Localidad</span>
+          <input className="pf-input" name="barrio" required maxLength={120} defaultValue={piso?.barrio} placeholder="El Carmen, Murcia" />
+        </div>
       </div>
-      <label>
-        Descripción
-        <textarea name="descripcion" required rows={3} maxLength={2000} defaultValue={piso?.descripcion} />
-      </label>
-      <div className="lead-form-row">
-        <label>
-          Estado
-          <select name="disponible" defaultValue={(piso?.disponible ?? true) ? "true" : "false"}>
+
+      <div className="pf-row">
+        <div className="pf-field">
+          <span className="pf-label">{esCompraventa ? "Precio del activo (€)" : "Precio/mes (€)"}</span>
+          <input className="pf-input" name="precioMes" type="number" min={1} required defaultValue={piso?.precioMes} />
+        </div>
+        <div className="pf-field">
+          <span className="pf-label">Metros cuadrados</span>
+          <input className="pf-input" name="metros" type="number" min={0} defaultValue={piso?.metros ?? undefined} />
+        </div>
+      </div>
+
+      <div className="pf-field">
+        <span className="pf-label">Descripción</span>
+        <textarea className="pf-textarea" name="descripcion" required rows={3} maxLength={2000} defaultValue={piso?.descripcion} />
+      </div>
+
+      <div className="pf-row">
+        <div className="pf-field">
+          <span className="pf-label">Estado</span>
+          <select className="pf-select" name="disponible" defaultValue={(piso?.disponible ?? true) ? "true" : "false"}>
             <option value="true">Disponible</option>
             <option value="false">No disponible</option>
           </select>
-        </label>
-        <label>
-          Foto {isEdit && "(deja vacío para no cambiarla)"}
-          <input name="imagen" type="file" accept="image/*" />
-        </label>
+        </div>
+        <div className="pf-field">
+          <span className="pf-label">Foto {isEdit && "(deja vacío para no cambiarla)"}</span>
+          <input className="pf-input pf-file" name="imagen" type="file" accept="image/*" />
+        </div>
       </div>
     </>
   );

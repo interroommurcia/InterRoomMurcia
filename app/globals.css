@@ -1164,10 +1164,112 @@ button {
 .piso-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
   background: var(--paper-dim);
   border-radius: 16px;
-  padding: 20px;
+  padding: 24px;
+  font-family: var(--font-montserrat), 'Montserrat', system-ui, sans-serif;
+}
+
+.pf-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.pf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pf-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  opacity: 0.55;
+}
+
+.pf-input,
+.pf-select,
+.pf-textarea {
+  font-family: var(--font-montserrat), 'Montserrat', system-ui, sans-serif;
+  font-size: 0.92rem;
+  font-weight: 500;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(26, 26, 26, 0.12);
+  background: var(--paper);
+  color: var(--ink);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.pf-input:focus,
+.pf-select:focus,
+.pf-textarea:focus {
+  outline: none;
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+}
+
+.pf-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.pf-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.pf-file {
+  padding: 9px 14px;
+}
+
+.pf-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin: 4px 0 0;
+  padding: 6px 0;
+  list-style: none;
+  background: var(--paper);
+  border: 1.5px solid rgba(26, 26, 26, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  max-height: 220px;
+  overflow-y: auto;
+  font-family: var(--font-montserrat), 'Montserrat', system-ui, sans-serif;
+}
+
+.pf-dropdown-item {
+  padding: 9px 14px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.pf-dropdown-item:hover,
+.pf-dropdown-active {
+  background: rgba(249, 115, 22, 0.08);
+  color: var(--orange);
+}
+
+.pf-dropdown-empty {
+  padding: 9px 14px;
+  font-size: 0.85rem;
+  color: var(--ink);
+  opacity: 0.4;
+  font-style: italic;
 }
 
 .pisos-list {
