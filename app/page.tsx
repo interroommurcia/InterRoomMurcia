@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { zonas, getPisos } from "../lib/pisos";
 import { WHATSAPP_NUMBER } from "../lib/whatsapp";
+import Reveal, { RevealStagger } from "../components/Reveal";
 
 export default async function HomePage() {
   const pisos = await getPisos();
@@ -12,60 +13,66 @@ export default async function HomePage() {
     <>
       <section className="hero">
         <div className="wrap hero-grid">
-          <div>
-            <div className="eyebrow">Murcia - UCAM - UMU - UPCT</div>
-            <h1>
-              Tu habitacion
-              <br />
-              cerca del <em>campus</em>,
-              <br />
-              lista este curso.
-            </h1>
-            <p className="hero-sub">
-              Habitaciones verificadas para estudiantes en Murcia y Cartagena.
-              Disponibilidad real, actualizada al minuto, sin intermediarios raros.
-            </p>
-            <div className="hero-actions">
-              <Link href="#catalogo" className="btn-primary">
-                Buscar habitacion
-              </Link>
-              <Link href="/contacto" className="btn-ghost">
-                Soy propietario
-              </Link>
-            </div>
-          </div>
-          <div className="hero-side">
+          <Reveal direction="up" duration={0.8}>
             <div>
-              <div className="tag">
-                <span className="live-dot"></span> Disponibilidad en vivo
+              <div className="eyebrow">Murcia - UCAM - UMU - UPCT</div>
+              <h1>
+                Tu habitacion
+                <br />
+                cerca del <em>campus</em>,
+                <br />
+                lista este curso.
+              </h1>
+              <p className="hero-sub">
+                Habitaciones verificadas para estudiantes en Murcia y Cartagena.
+                Disponibilidad real, actualizada al minuto, sin intermediarios raros.
+              </p>
+              <div className="hero-actions">
+                <Link href="#catalogo" className="btn-primary">
+                  Buscar habitacion
+                </Link>
+                <Link href="/contacto" className="btn-ghost">
+                  Soy propietario
+                </Link>
               </div>
-              <div className="hero-side-title">Catalogo actualizado</div>
             </div>
-            <div className="hero-stats">
+          </Reveal>
+          <Reveal direction="right" delay={200} duration={0.9}>
+            <div className="hero-side">
               <div>
-                <b>{pisos.length}</b>
-                <span>habitaciones</span>
+                <div className="tag">
+                  <span className="live-dot"></span> Disponibilidad en vivo
+                </div>
+                <div className="hero-side-title">Catalogo actualizado</div>
               </div>
-              <div>
-                <b>{zonas.length}</b>
-                <span>zonas universitarias</span>
-              </div>
-              <div>
-                <b>{disponibles}</b>
-                <span>libres ahora</span>
+              <div className="hero-stats">
+                <div>
+                  <b>{pisos.length}</b>
+                  <span>habitaciones</span>
+                </div>
+                <div>
+                  <b>{zonas.length}</b>
+                  <span>zonas universitarias</span>
+                </div>
+                <div>
+                  <b>{disponibles}</b>
+                  <span>libres ahora</span>
+                </div>
               </div>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
 
       <section className="section" id="zonas">
         <div className="wrap">
-          <div className="section-head">
-            <h2>Busca por tu universidad</h2>
-            <p>Cada zona tiene su propia pagina, con los pisos reales de ese barrio.</p>
-          </div>
-          <div className="zone-row">
+          <Reveal direction="up">
+            <div className="section-head">
+              <h2>Busca por tu universidad</h2>
+              <p>Cada zona tiene su propia pagina, con los pisos reales de ese barrio.</p>
+            </div>
+          </Reveal>
+          <RevealStagger className="zone-row" stagger={100}>
             {zonas.map((zona) => {
               const enZona = pisos.filter((p) => p.zona === zona.slug);
               const desde = Math.min(...enZona.map((p) => p.precioMes));
@@ -81,18 +88,20 @@ export default async function HomePage() {
                 </Link>
               );
             })}
-          </div>
+          </RevealStagger>
         </div>
       </section>
 
       <section className="catalog" id="catalogo">
         <div className="wrap">
-          <div className="section-head">
-            <h2>Alquileres</h2>
-            <p>Habitaciones y pisos en alquiler, tradicional y por habitaciones.</p>
-          </div>
+          <Reveal direction="up">
+            <div className="section-head">
+              <h2>Alquileres</h2>
+              <p>Habitaciones y pisos en alquiler, tradicional y por habitaciones.</p>
+            </div>
+          </Reveal>
           {alquileres.length > 0 ? (
-            <div className="card-grid">
+            <RevealStagger className="card-grid" stagger={90}>
               {alquileres.map((piso) => (
                 <Link href={`/habitaciones/${piso.zona}/${piso.slug}`} className="piso-card" key={piso.id}>
                   <div
@@ -115,7 +124,7 @@ export default async function HomePage() {
                   </div>
                 </Link>
               ))}
-            </div>
+            </RevealStagger>
           ) : (
             <p className="admin-empty">No hay alquileres publicados todavía.</p>
           )}
@@ -124,12 +133,14 @@ export default async function HomePage() {
 
       <section className="catalog" id="compraventa">
         <div className="wrap">
-          <div className="section-head">
-            <h2>Compraventas</h2>
-            <p>Inmuebles en venta, operaciones de compraventa y créditos.</p>
-          </div>
+          <Reveal direction="up">
+            <div className="section-head">
+              <h2>Compraventas</h2>
+              <p>Inmuebles en venta, operaciones de compraventa y créditos.</p>
+            </div>
+          </Reveal>
           {compraventas.length > 0 ? (
-            <div className="card-grid">
+            <RevealStagger className="card-grid" stagger={90}>
               {compraventas.map((piso) => (
                 <Link href={`/habitaciones/${piso.zona}/${piso.slug}`} className="piso-card" key={piso.id}>
                   <div
@@ -152,7 +163,7 @@ export default async function HomePage() {
                   </div>
                 </Link>
               ))}
-            </div>
+            </RevealStagger>
           ) : (
             <p className="admin-empty">No hay compraventas publicadas todavía.</p>
           )}
@@ -160,7 +171,7 @@ export default async function HomePage() {
       </section>
 
       <section className="contacto-home">
-        <div className="wrap contacto-home-inner">
+        <Reveal direction="scale" className="wrap contacto-home-inner">
           <h2>Contacta con nosotros</h2>
           <p>Escríbenos por WhatsApp o llámanos directamente.</p>
           <div className="contacto-home-actions">
@@ -182,7 +193,7 @@ export default async function HomePage() {
               +34 613 096 518
             </a>
           </div>
-        </div>
+        </Reveal>
       </section>
     </>
   );

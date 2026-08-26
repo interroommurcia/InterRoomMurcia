@@ -150,6 +150,21 @@ h1 em {
   background: var(--orange);
   color: var(--paper);
   padding: 14px 26px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.2) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.btn-primary:hover::after {
+  transform: translateX(100%);
 }
 
 .btn-ghost,
@@ -158,11 +173,23 @@ h1 em {
   font-weight: 600;
   font-size: 0.95rem;
   display: inline-block;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(234, 106, 18, 0.3);
 }
 
 .btn-ghost {
   padding: 14px 22px;
   border: 1px solid rgba(26, 26, 26, 0.2);
+}
+
+.btn-ghost:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+  transform: translateY(-2px);
 }
 
 .hero-side {
@@ -253,13 +280,15 @@ h1 em {
   border: 1px solid rgba(26, 26, 26, 0.08);
   border-radius: 18px;
   padding: 26px;
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.35s ease;
   display: block;
 }
 
 .zone-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 16px 32px rgba(234, 106, 18, 0.15);
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(234, 106, 18, 0.15);
   border-color: var(--orange);
 }
 
@@ -325,6 +354,19 @@ h1 em {
   overflow: hidden;
   border: 1px solid rgba(26, 26, 26, 0.07);
   display: block;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.35s ease;
+}
+
+.piso-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(234, 106, 18, 0.12);
+  border-color: var(--orange);
+}
+
+.piso-card:hover .piso-img {
+  filter: brightness(1.04);
 }
 
 .piso-img {
@@ -334,6 +376,7 @@ h1 em {
   background-size: cover;
   background-position: center;
   position: relative;
+  transition: filter 0.35s ease;
 }
 
 .piso-badge {
@@ -801,22 +844,61 @@ h1 em {
   }
 }
 
+/* ── Reveal animations ── */
 .reveal {
   opacity: 0;
-  transform: translateY(36px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
+  transition-property: opacity, transform, filter;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+  filter: blur(4px);
 }
+
+.reveal-up    { transform: translateY(40px); }
+.reveal-down  { transform: translateY(-40px); }
+.reveal-left  { transform: translateX(50px); }
+.reveal-right { transform: translateX(-50px); }
+.reveal-scale { transform: scale(0.92); }
+.reveal-none  { transform: none; }
 
 .reveal-visible {
   opacity: 1;
+  transform: translateY(0) translateX(0) scale(1);
+  filter: blur(0);
+}
+
+/* Stagger children */
+.reveal-stagger > * {
+  opacity: 0;
+  transform: translateY(30px);
+  filter: blur(3px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stagger-visible > *:nth-child(1) { transition-delay: calc(var(--stagger) * 0); }
+.stagger-visible > *:nth-child(2) { transition-delay: calc(var(--stagger) * 1); }
+.stagger-visible > *:nth-child(3) { transition-delay: calc(var(--stagger) * 2); }
+.stagger-visible > *:nth-child(4) { transition-delay: calc(var(--stagger) * 3); }
+.stagger-visible > *:nth-child(5) { transition-delay: calc(var(--stagger) * 4); }
+.stagger-visible > *:nth-child(6) { transition-delay: calc(var(--stagger) * 5); }
+.stagger-visible > *:nth-child(7) { transition-delay: calc(var(--stagger) * 6); }
+.stagger-visible > *:nth-child(8) { transition-delay: calc(var(--stagger) * 7); }
+.stagger-visible > *:nth-child(9) { transition-delay: calc(var(--stagger) * 8); }
+
+.stagger-visible > * {
+  opacity: 1;
   transform: translateY(0);
+  filter: blur(0);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal {
-    transition: none;
-    opacity: 1;
-    transform: none;
+  .reveal,
+  .reveal-stagger > * {
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
   }
 }
 
