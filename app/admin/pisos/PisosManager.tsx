@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Piso } from "../../../lib/pisos";
+import { supabase } from "../../../lib/supabaseClient";
 
 const ZONAS_ALQUILER = [
   { slug: "ucam", label: "UCAM" },
@@ -200,11 +201,11 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
       body: JSON.stringify({ filename: file.name, contentType: file.type }),
     });
     if (!res.ok) throw new Error("Error obteniendo URL de subida");
-    const { signedUrl, publicUrl } = await res.json();
-    const fd = new FormData();
-    fd.append("file", file);
-    const up = await fetch(signedUrl, { method: "POST", body: fd });
-    if (!up.ok) throw new Error("Error subiendo archivo a storage");
+    const { token, path, publicUrl } = await res.json();
+    const { error } = await supabase.storage
+      .from("pisos")
+      .uploadToSignedUrl(path, token, file, { contentType: file.type });
+    if (error) throw new Error("Error subiendo archivo a storage: " + error.message);
     return publicUrl;
   }
 
