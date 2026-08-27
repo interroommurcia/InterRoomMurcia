@@ -24,6 +24,22 @@ export default function ChatWidget() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [mensajes, loading]);
 
+  useEffect(() => {
+    if (!open) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const panel = document.querySelector<HTMLDivElement>(".chat-widget-panel");
+    if (!panel) return;
+    function resize() {
+      if (!vv || !panel) return;
+      panel.style.height = `${vv.height - 12}px`;
+      listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+    }
+    resize();
+    vv.addEventListener("resize", resize);
+    return () => vv.removeEventListener("resize", resize);
+  }, [open]);
+
   async function enviar() {
     const texto = input.trim();
     if (!texto || loading) return;
