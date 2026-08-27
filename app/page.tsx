@@ -138,6 +138,7 @@ export default async function HomePage() {
         <div className="wrap">
           <Reveal direction="scale">
             <h2 className="buscas-casa-title">¿Buscas casa?</h2>
+            <p className="buscas-casa-sub">¿Y si comprar casa fuera tan fácil que te sintieras culpable de no haberte preocupado?</p>
           </Reveal>
         </div>
       </section>
@@ -182,6 +183,7 @@ export default async function HomePage() {
       </section>
 
       <section className="contacto-home">
+        <div className="contacto-home-overlay" />
         <Reveal direction="scale" className="wrap contacto-home-inner">
           <h2>Contacta con nosotros</h2>
           <p>Escríbenos por WhatsApp o llámanos directamente.</p>
