@@ -7,7 +7,7 @@ import {
   guardarMensajes,
   getKnowledgeBase,
   buildSystemPrompt,
-  avisarEscaladoRommi,
+  avisarEscaladoRoomi,
   type ChatMensaje,
 } from "../../../lib/chat";
 
@@ -15,38 +15,25 @@ export const maxDuration = 60;
 
 type Clasificacion = { escalar: boolean; motivo: string | null; nombre: string | null; contacto: string | null };
 
-function parseClasificacion(raw: string): Clasificacion {
+function parseClasificacion(raw: string): { textoLimpio: string; clasificacion: Clasificacion } {
+  const defaultClasif: Clasificacion = { escalar: false, motivo: null, nombre: null, contacto: null };
+  const match = raw.match(/\n?\s*(\{[\s\S]*\})\s*$/);
+  if (!match) return { textoLimpio: raw, clasificacion: defaultClasif };
+
+  const textoLimpio = raw.slice(0, match.index).trimEnd();
   try {
-    const match = raw.match(/\{[\s\S]*\}/);
-    const parsed = JSON.parse(match ? match[0] : raw);
+    const parsed = JSON.parse(match[1]);
     return {
-      escalar: Boolean(parsed.escalar),
-      motivo: typeof parsed.motivo === "string" ? parsed.motivo.slice(0, 200) : null,
-      nombre: typeof parsed.nombre === "string" && parsed.nombre.trim() ? parsed.nombre.slice(0, 120) : null,
-      contacto: typeof parsed.contacto === "string" && parsed.contacto.trim() ? parsed.contacto.slice(0, 120) : null,
+      textoLimpio,
+      clasificacion: {
+        escalar: Boolean(parsed.escalar),
+        motivo: typeof parsed.motivo === "string" ? parsed.motivo.slice(0, 200) : null,
+        nombre: typeof parsed.nombre === "string" && parsed.nombre.trim() ? parsed.nombre.slice(0, 120) : null,
+        contacto: typeof parsed.contacto === "string" && parsed.contacto.trim() ? parsed.contacto.slice(0, 120) : null,
+      },
     };
   } catch {
-    return { escalar: false, motivo: null, nombre: null, contacto: null };
-  }
-}
-
-async function clasificarConversacion(anthropic: Anthropic, mensajes: ChatMensaje[]): Promise<Clasificacion> {
-  const transcripcion = mensajes.map((m) => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.text}`).join("\n");
-  try {
-    const res = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 300,
-      system:
-        "Analizas transcripciones de un chat de atención al cliente de una inmobiliaria de alquiler de habitaciones para estudiantes. Devuelve ÚNICAMENTE un JSON (sin texto extra) con esta forma: " +
-        '{"escalar": boolean, "motivo": string o null, "nombre": string o null, "contacto": string o null}. ' +
-        'Pon escalar=true si el usuario pide explícitamente una llamada, hablar con una persona humana, o es un propietario con intención real de alquilar su vivienda. "nombre" y "contacto" solo si el usuario los ha dado en el chat (email o teléfono). Si no hay motivo de escalar, escalar=false y el resto null.',
-      messages: [{ role: "user", content: transcripcion }],
-    });
-    const block = res.content[0];
-    const text = block?.type === "text" ? block.text : "";
-    return parseClasificacion(text);
-  } catch {
-    return { escalar: false, motivo: null, nombre: null, contacto: null };
+    return { textoLimpio: raw, clasificacion: defaultClasif };
   }
 }
 
@@ -75,33 +62,34 @@ export async function POST(req: NextRequest) {
 
   const stream = anthropic.messages.stream({
     model: "claude-sonnet-4-6",
-    max_tokens: 500,
+    max_tokens: 800,
     system: buildSystemPrompt(catalogo, knowledgeBase),
     messages: mensajesConUsuario.map((m) => ({ role: m.role, content: m.text })),
   });
 
   const encoder = new TextEncoder();
-  let assistantText = "";
+  let fullText = "";
 
   const readable = new ReadableStream({
     async start(controller) {
       try {
         for await (const chunk of stream) {
           if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
-            assistantText += chunk.delta.text;
+            fullText += chunk.delta.text;
             controller.enqueue(encoder.encode(chunk.delta.text));
           }
         }
 
+        const { textoLimpio, clasificacion } = parseClasificacion(fullText);
+
         const mensajesFinales: ChatMensaje[] = [
           ...mensajesConUsuario,
-          { role: "assistant", text: assistantText, at: new Date().toISOString() },
+          { role: "assistant", text: textoLimpio, at: new Date().toISOString() },
         ];
-        const clasificacion = await clasificarConversacion(anthropic, mensajesFinales);
         await guardarMensajes(conversacion.id, mensajesFinales, clasificacion);
 
         if (clasificacion.escalar && conversacion.estado !== "escalada") {
-          avisarEscaladoRommi({
+          avisarEscaladoRoomi({
             id: conversacion.id,
             nombre: clasificacion.nombre ?? conversacion.nombre,
             contacto: clasificacion.contacto ?? conversacion.contacto,

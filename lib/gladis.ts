@@ -39,7 +39,7 @@ Guía de uso de herramientas:
 - Si preguntan por un mes concreto (ingresos de alquiler o compraventas cerradas ese mes), usa ingresos_del_mes u operaciones_del_mes con formato "YYYY-MM".
 - Cuando muestres el desglose de una operación, preséntalo como un asiento contable: primero el bruto (comisión), luego cada movimiento con su signo (+ suma, - resta) y si está liquidado o pendiente, y termina con el neto. No mezcles bruto y neto en una sola cifra sin aclararlo.
 - Si preguntan qué se ha hablado con algún cliente en el chat de la web, o quieren revisar conversaciones escaladas, usa buscar_chats.
-- Si preguntan "qué respondería Rommi" (el chatbot de la web) ante algo, usa consultar_rommi — simula su respuesta real con el mismo catálogo y base de conocimiento que usa en la web.
+- Si preguntan "qué respondería Roomi" (el chatbot de la web) ante algo, usa consultar_roomi — simula su respuesta real con el mismo catálogo y base de conocimiento que usa en la web.
 - Si te piden anotar/agendar una tarea, cita o visita ("apúntame", "recuérdame", "queda con..."), usa anotar_agenda. Calcula tú la fecha exacta en formato YYYY-MM-DD a partir de la fecha de hoy (indicada más abajo) si dicen "mañana", "el viernes", etc.
 - Si preguntan qué hay en la agenda (hoy, esta semana, un día o rango concreto), usa consultar_agenda con fechas en formato YYYY-MM-DD, calculadas a partir de la fecha de hoy.
 - Si un miembro del equipo se identifica ("hola Gladis soy Juan", "soy X, qué tengo esta semana") o pregunta por SUS tareas ("qué tengo pendiente esta semana"), usa tareas_del_trabajador con su nombre. Si no dan rango, asume la semana en curso (lunes a domingo) calculada desde hoy. Para saber quiénes son los trabajadores dados de alta puedes usar listar_trabajadores.
@@ -108,7 +108,7 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "buscar_chats",
     description:
-      "Busca en las conversaciones reales del chat de la web (Rommi) por nombre, contacto, motivo de escalado o contenido del mensaje. Sin query devuelve las 5 más recientes.",
+      "Busca en las conversaciones reales del chat de la web (Roomi) por nombre, contacto, motivo de escalado o contenido del mensaje. Sin query devuelve las 5 más recientes.",
     input_schema: {
       type: "object",
       properties: { query: { type: "string", description: "Texto a buscar (nombre, teléfono/email, motivo o parte de un mensaje). Vacío para las recientes." } },
@@ -143,11 +143,11 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
-    name: "consultar_rommi",
-    description: "Simula la respuesta real que daría Rommi (el chatbot de la web) a una pregunta, usando su mismo catálogo y base de conocimiento.",
+    name: "consultar_roomi",
+    description: "Simula la respuesta real que daría Roomi (el chatbot de la web) a una pregunta, usando su mismo catálogo y base de conocimiento.",
     input_schema: {
       type: "object",
-      properties: { pregunta: { type: "string", description: "La pregunta tal como se la haría un usuario a Rommi en la web" } },
+      properties: { pregunta: { type: "string", description: "La pregunta tal como se la haría un usuario a Roomi en la web" } },
       required: ["pregunta"],
     },
   },
@@ -379,12 +379,12 @@ Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.co
     return encontradas
       .slice(0, 5)
       .map((c) => {
-        const resumen = c.mensajes.slice(-6).map((m) => `${m.role === "user" ? "Usuario" : "Rommi"}: ${m.text}`).join("\n");
+        const resumen = c.mensajes.slice(-6).map((m) => `${m.role === "user" ? "Usuario" : "Roomi"}: ${m.text}`).join("\n");
         return `--- ${c.estado}${c.motivo_escalado ? ` (motivo: ${c.motivo_escalado})` : ""} · ${c.nombre ?? "sin nombre"} ${c.contacto ?? ""} · ${new Date(c.updated_at).toLocaleString("es-ES")}\n${resumen}`;
       })
       .join("\n\n");
   }
-  if (nombre === "consultar_rommi") {
+  if (nombre === "consultar_roomi") {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return "Falta ANTHROPIC_API_KEY.";
     const anthropic = new Anthropic({ apiKey });
@@ -400,7 +400,7 @@ Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.co
       .map((b) => b.text)
       .join("\n")
       .trim();
-    return texto || "(Rommi no generó respuesta)";
+    return texto || "(Roomi no generó respuesta)";
   }
   if (nombre === "anotar_agenda") {
     const tipo = String(input.tipo ?? "tarea") as TipoTarea;

@@ -5,6 +5,10 @@ import { usePathname } from "next/navigation";
 
 type Mensaje = { role: "user" | "assistant"; text: string };
 
+function stripClassification(text: string): string {
+  return text.replace(/\n?\s*\{"escalar"[\s\S]*\}\s*$/, "").trimEnd();
+}
+
 const STORAGE_KEY = "irm_chat_conversation_id";
 
 export default function ChatWidget() {
@@ -72,13 +76,16 @@ export default function ChatWidget() {
       setMensajes((prev) => [...prev, { role: "assistant", text: "" }]);
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
+      let fullAssistant = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
+        fullAssistant += chunk;
+        const visible = stripClassification(fullAssistant);
         setMensajes((prev) => {
           const copy = [...prev];
-          copy[copy.length - 1] = { role: "assistant", text: copy[copy.length - 1].text + chunk };
+          copy[copy.length - 1] = { role: "assistant", text: visible };
           return copy;
         });
       }
@@ -96,7 +103,7 @@ export default function ChatWidget() {
       {open && (
         <div className="chat-widget-panel">
           <div className="chat-widget-header">
-            <span>Rommi · Asistente InterRoom Murcia</span>
+            <span>Roomi · Asistente InterRoom Murcia</span>
             <button type="button" className="chat-widget-close" onClick={() => setOpen(false)} aria-label="Cerrar">
               ✕
             </button>
@@ -104,7 +111,7 @@ export default function ChatWidget() {
           <div className="chat-widget-messages" ref={listRef}>
             {mensajes.length === 0 && (
               <div className="chat-widget-msg assistant">
-                Hola, soy Rommi, el asistente de InterRoom Murcia. ¿Buscas habitación o quieres alquilar tu vivienda?
+                Hola, soy Roomi, el asistente de InterRoom Murcia. ¿Buscas habitación o quieres alquilar tu vivienda?
               </div>
             )}
             {mensajes.map((m, i) => (
@@ -131,7 +138,7 @@ export default function ChatWidget() {
         </div>
       )}
       <button type="button" className="chat-widget-button" onClick={() => setOpen((v) => !v)}>
-        {open ? "Cerrar chat" : "Habla con nosotros"}
+        {open ? "Cerrar chat" : "Habla con Roomi"}
       </button>
     </div>
   );

@@ -121,10 +121,10 @@ export default function ChatsManager() {
             {savingKb ? "Guardando..." : "Guardar"}
           </button>
           <label className="btn-ghost" style={{ cursor: uploadingPdf ? "wait" : "pointer" }}>
-            {uploadingPdf ? "Leyendo PDF..." : "Subir protocolo (PDF)"}
+            {uploadingPdf ? "Leyendo archivo..." : "Subir protocolo (PDF / Word)"}
             <input
               type="file"
-              accept="application/pdf"
+              accept="application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={subirPdf}
               disabled={uploadingPdf}
               style={{ display: "none" }}
