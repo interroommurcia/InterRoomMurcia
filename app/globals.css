@@ -89,6 +89,36 @@ nav {
   font-weight: 600;
 }
 
+.catalog-hero {
+  padding: 80px 0 40px;
+  text-align: center;
+}
+
+.catalog-hero-inner h1 {
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.catalog-hero-inner .hero-sub {
+  max-width: 540px;
+  margin: 16px auto 0;
+}
+
+.buscas-casa {
+  padding: 50px 0 10px;
+  text-align: center;
+}
+
+.buscas-casa-title {
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  font-weight: 800;
+  color: var(--orange);
+  letter-spacing: -0.02em;
+}
+
 .hero {
   padding: 90px 0 70px;
 }

@@ -15,6 +15,19 @@ export default async function CatalogoPage() {
 
   return (
     <>
+      <section className="catalog-hero">
+        <div className="wrap">
+          <Reveal direction="up">
+            <div className="catalog-hero-inner">
+              <h1>Más de 500 habitaciones gestionadas que rotan cada curso</h1>
+              <p className="hero-sub">
+                Alquileres verificados cerca de la UCAM, UMU y UPCT. Reserva la tuya para el curso que viene.
+              </p>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
       <section className="section" id="zonas">
         <div className="wrap">
           <Reveal direction="up">
@@ -79,6 +92,14 @@ export default async function CatalogoPage() {
           ) : (
             <p className="admin-empty">No hay alquileres publicados todavía.</p>
           )}
+        </div>
+      </section>
+
+      <section className="section buscas-casa">
+        <div className="wrap">
+          <Reveal direction="scale">
+            <h2 className="buscas-casa-title">¿Buscas casa?</h2>
+          </Reveal>
         </div>
       </section>
 

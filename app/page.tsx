@@ -134,6 +134,14 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="section buscas-casa">
+        <div className="wrap">
+          <Reveal direction="scale">
+            <h2 className="buscas-casa-title">¿Buscas casa?</h2>
+          </Reveal>
+        </div>
+      </section>
+
       <section className="catalog" id="compraventa">
         <div className="wrap">
           <Reveal direction="up">
