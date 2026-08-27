@@ -15,6 +15,8 @@ type PostHogData = {
   countries: { country: string; visits: number; visitors: number }[];
   realtime: { path: string; active: number }[];
   clicks: { element: string; clicks: number; users: number }[];
+  newUsersDaily: { day: string; newUsers: number }[];
+  referrers: { url: string; visits: number; visitors: number }[];
 };
 
 type LeadsData = {
@@ -66,8 +68,14 @@ export default function AnalyticsManager() {
   if (!data) return null;
 
   const maxDaily = Math.max(1, ...data.dailyViews.map((d) => d.pageviews));
+  const maxNewUsers = Math.max(1, ...data.newUsersDaily.map((d) => d.newUsers));
   const maxSource = Math.max(1, ...data.sources.map((s) => s.visits));
   const maxCountry = Math.max(1, ...data.countries.map((c) => c.visits));
+  const maxReferrer = Math.max(1, ...data.referrers.map((r) => r.visits));
+  const totalNewUsers7d = data.newUsersDaily
+    .filter((d) => new Date(d.day) >= new Date(Date.now() - 7 * 86400000))
+    .reduce((s, d) => s + d.newUsers, 0);
+  const totalNewUsers30d = data.newUsersDaily.reduce((s, d) => s + d.newUsers, 0);
 
   return (
     <div className="analytics-dashboard">
@@ -87,6 +95,14 @@ export default function AnalyticsManager() {
         <div className="analytics-stat">
           <div className="analytics-stat-value">{data.bounceRate}%</div>
           <div className="analytics-stat-label">Tasa de rebote (7d)</div>
+        </div>
+        <div className="analytics-stat">
+          <div className="analytics-stat-value">{totalNewUsers7d}</div>
+          <div className="analytics-stat-label">Usuarios nuevos (7d)</div>
+        </div>
+        <div className="analytics-stat">
+          <div className="analytics-stat-value">{totalNewUsers30d}</div>
+          <div className="analytics-stat-label">Usuarios nuevos (30d)</div>
         </div>
       </div>
 
@@ -139,6 +155,27 @@ export default function AnalyticsManager() {
       )}
 
       <div className="analytics-grid">
+        <div className="analytics-card">
+          <h3>Usuarios nuevos por día (30d)</h3>
+          <div className="analytics-daily-chart">
+            {data.newUsersDaily.map((d) => (
+              <div key={d.day} className="analytics-daily-col">
+                <div className="analytics-daily-bar analytics-daily-bar--new" style={{ height: `${Math.round((d.newUsers / maxNewUsers) * 100)}%` }} />
+                <span>{d.day.slice(5)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="analytics-card">
+          <h3>Referrers completos (30d)</h3>
+          {data.referrers.length === 0 ? (
+            <p className="admin-empty">Sin datos.</p>
+          ) : (
+            data.referrers.map((r) => <Bar key={r.url} label={r.url.length > 60 ? r.url.slice(0, 57) + "…" : r.url} value={r.visits} max={maxReferrer} />)
+          )}
+        </div>
+
         <div className="analytics-card">
           <h3>Fuentes de tráfico (30d)</h3>
           {data.sources.length === 0 ? (

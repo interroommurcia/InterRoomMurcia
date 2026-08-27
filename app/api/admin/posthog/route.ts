@@ -37,7 +37,7 @@ export async function GET() {
   }
 
   try {
-    const [r7d, r30d, rTop, rDaily, rBounce, rSources, rDevices, rEntry, rUtm, rCountries, rRealtime, rClicks] =
+    const [r7d, r30d, rTop, rDaily, rBounce, rSources, rDevices, rEntry, rUtm, rCountries, rRealtime, rClicks, rNewUsers, rReferrers] =
       await Promise.all([
         hogql(`
         SELECT count() AS pageviews, uniqExact(distinct_id) AS visitors, uniqExact(properties.$session_id) AS sessions
@@ -111,6 +111,22 @@ export async function GET() {
           AND timestamp >= now() - INTERVAL 30 DAY AND ${DOMAIN_FILTER}
         GROUP BY element HAVING element != '[sin texto]' ORDER BY clicks DESC LIMIT 15
       `),
+        hogql(`
+        SELECT toDate(first_seen) AS day, count() AS new_users
+        FROM (
+          SELECT distinct_id, min(timestamp) AS first_seen
+          FROM events WHERE event = '$pageview' AND ${DOMAIN_FILTER}
+          GROUP BY distinct_id
+          HAVING first_seen >= now() - INTERVAL 30 DAY
+        )
+        GROUP BY day ORDER BY day ASC
+      `),
+        hogql(`
+        SELECT if(properties.$referrer IS NULL OR properties.$referrer = '' OR properties.$referrer = '$direct', '(directo)', properties.$referrer) AS referrer,
+          count() AS visits, uniqExact(distinct_id) AS visitors
+        FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY AND ${DOMAIN_FILTER}
+        GROUP BY referrer ORDER BY visits DESC LIMIT 20
+      `),
       ]);
 
     const s7 = r7d.results?.[0] ?? [0, 0, 0];
@@ -130,6 +146,8 @@ export async function GET() {
       countries: (rCountries.results ?? []).map((r: unknown[]) => ({ country: String(r[0]), visits: Number(r[1]), visitors: Number(r[2]) })),
       realtime: (rRealtime.results ?? []).map((r: unknown[]) => ({ path: String(r[0] || "/"), active: Number(r[1]) })),
       clicks: (rClicks.results ?? []).map((r: unknown[]) => ({ element: String(r[0]), clicks: Number(r[1]), users: Number(r[2]) })),
+      newUsersDaily: (rNewUsers.results ?? []).map((r: unknown[]) => ({ day: String(r[0]), newUsers: Number(r[1]) })),
+      referrers: (rReferrers.results ?? []).map((r: unknown[]) => ({ url: String(r[0]), visits: Number(r[1]), visitors: Number(r[2]) })),
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Error desconocido";

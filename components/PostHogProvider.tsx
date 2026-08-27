@@ -13,8 +13,12 @@ function PostHogPageview() {
 
   useEffect(() => {
     if (!POSTHOG_KEY || !posthog.__loaded) return;
-    const url = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : "");
-    posthog.capture("$pageview", { $current_url: url });
+    const url = window.location.origin + pathname + (searchParams.toString() ? `?${searchParams.toString()}` : "");
+    posthog.capture("$pageview", {
+      $current_url: url,
+      $referrer: document.referrer || "$direct",
+      $referring_domain: document.referrer ? new URL(document.referrer).hostname : "",
+    });
   }, [pathname, searchParams]);
 
   return null;
