@@ -93,8 +93,10 @@ export default function ContactoPage() {
           <div className="hero-side">
             <div>
               <div className="tag">Comision, no cuota fija</div>
-              <div className="hero-side-title">15% + IVA</div>
+              <div className="hero-side-title">10-15% + IVA</div>
               <p style={{ marginTop: 10, fontSize: "0.85rem", opacity: 0.9 }}>
+                10% alquiler tradicional · 15% por habitaciones
+                <br />
                 solo sobre el beneficio que genera tu vivienda
               </p>
             </div>
@@ -177,17 +179,18 @@ export default function ContactoPage() {
             <h2 className="feature-subtitle">Cuanto más Ganas Tú, más ganamos Nosotros</h2>
             <p className="feature-lead">
               No existe conflicto de intereses. No cobramos una cuota fija la generes o no. Cobramos el{" "}
-              <b>15% + IVA</b> únicamente sobre el beneficio real que genera tu vivienda alquilada.
+              <b>10% + IVA</b> en alquiler tradicional o el <b>15% + IVA</b> en alquiler por habitaciones,
+              únicamente sobre el beneficio real que genera tu vivienda.
               Si tu piso no genera ingreso ese mes, nosotros tampoco cobramos. Así de simple.
             </p>
             <div className="price-example">
-              Ejemplo: si tu vivienda genera <b>900€/mes</b> de beneficio, nuestra comision es{" "}
-              <b>135€ + IVA</b>. El resto, <b>765€</b>, es para ti.
+              Ejemplo tradicional: si tu vivienda genera <b>900€/mes</b> de beneficio, nuestra comision es{" "}
+              <b>90€ + IVA</b>. El resto, <b>810€</b>, es para ti.
             </div>
           </Reveal>
           <Reveal delay={120}>
             <div className="feature-visual tone-solid price-visual">
-              <div className="price-big">15%</div>
+              <div className="price-big">10-15%</div>
               <div className="price-tag">+ IVA sobre el beneficio</div>
             </div>
           </Reveal>
