@@ -2,6 +2,7 @@ import Link from "next/link";
 import { zonas, getPisos } from "../lib/pisos";
 import { WHATSAPP_NUMBER } from "../lib/whatsapp";
 import Reveal, { RevealStagger } from "../components/Reveal";
+import PisoCard from "../components/PisoCard";
 
 export default async function HomePage() {
   const pisos = await getPisos();
@@ -106,26 +107,7 @@ export default async function HomePage() {
           {alquileres.length > 0 ? (
             <RevealStagger className="card-grid" stagger={90}>
               {alquileres.map((piso) => (
-                <Link href={`/habitaciones/${piso.zona}/${piso.slug}`} className="piso-card" key={piso.id}>
-                  <div
-                    className="piso-img"
-                    style={piso.imageUrl ? { backgroundImage: `url(${piso.imageUrl})` } : undefined}
-                  >
-                    <span className={`piso-badge ${piso.disponible ? "" : "no-disponible"}`}>
-                      {piso.disponible ? "Disponible" : "No disponible"}
-                    </span>
-                  </div>
-                  <div className="piso-body">
-                    <h4>{piso.titulo}</h4>
-                    <div className="loc">{piso.barrio}</div>
-                    <div className="piso-foot">
-                      <div className="piso-price">
-                        {piso.precioMes}€ <span>/mes</span>
-                      </div>
-                      <div className="piso-arrow">-&gt;</div>
-                    </div>
-                  </div>
-                </Link>
+                <PisoCard piso={piso} key={piso.id} />
               ))}
             </RevealStagger>
           ) : (
@@ -154,26 +136,7 @@ export default async function HomePage() {
           {compraventas.length > 0 ? (
             <RevealStagger className="card-grid" stagger={90}>
               {compraventas.map((piso) => (
-                <Link href={`/habitaciones/${piso.zona}/${piso.slug}`} className="piso-card" key={piso.id}>
-                  <div
-                    className="piso-img"
-                    style={piso.imageUrl ? { backgroundImage: `url(${piso.imageUrl})` } : undefined}
-                  >
-                    <span className={`piso-badge ${piso.disponible ? "" : "no-disponible"}`}>
-                      {piso.disponible ? "Disponible" : "No disponible"}
-                    </span>
-                  </div>
-                  <div className="piso-body">
-                    <h4>{piso.titulo}</h4>
-                    <div className="loc">{piso.barrio}</div>
-                    <div className="piso-foot">
-                      <div className="piso-price">
-                        {piso.precioMes.toLocaleString("es-ES")}€
-                      </div>
-                      <div className="piso-arrow">-&gt;</div>
-                    </div>
-                  </div>
-                </Link>
+                <PisoCard piso={piso} key={piso.id} />
               ))}
             </RevealStagger>
           ) : (

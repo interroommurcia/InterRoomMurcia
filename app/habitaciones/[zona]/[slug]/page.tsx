@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { pisoPorSlug, pisosPorZona, zonaPorSlug } from "../../../../lib/pisos";
 import { whatsappHref } from "../../../../lib/whatsapp";
 import FichaMedia from "../../../../components/FichaMedia";
+import PisoCard from "../../../../components/PisoCard";
 
 export async function generateMetadata({
   params,
@@ -108,26 +109,7 @@ export default async function PisoPage({ params }: { params: { zona: string; slu
             </div>
             <div className="card-grid">
               {otros.map((p) => (
-                <Link href={`/habitaciones/${p.zona}/${p.slug}`} className="piso-card" key={p.id}>
-                  <div
-                    className="piso-img"
-                    style={p.imageUrl ? { backgroundImage: `url(${p.imageUrl})` } : undefined}
-                  >
-                    <span className={`piso-badge ${p.disponible ? "" : "no-disponible"}`}>
-                      {p.disponible ? "Disponible" : "No disponible"}
-                    </span>
-                  </div>
-                  <div className="piso-body">
-                    <h4>{p.titulo}</h4>
-                    <div className="loc">{p.barrio}</div>
-                    <div className="piso-foot">
-                      <div className="piso-price">
-                        {p.categoria === "compraventa" ? `${p.precioMes.toLocaleString("es-ES")}€` : <>{p.precioMes}€ <span>/mes</span></>}
-                      </div>
-                      <div className="piso-arrow">-&gt;</div>
-                    </div>
-                  </div>
-                </Link>
+                <PisoCard piso={p} key={p.id} />
               ))}
             </div>
           </div>

@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { zonas, zonaPorSlug, pisosPorZona } from "../../../lib/pisos";
+import PisoCard from "../../../components/PisoCard";
 
 export function generateStaticParams() {
   return zonas.map((z) => ({ zona: z.slug }));
@@ -48,26 +48,7 @@ export default async function ZonaPage({ params }: { params: { zona: string } })
           </div>
           <div className="card-grid">
             {pisosZona.map((piso) => (
-              <Link href={`/habitaciones/${piso.zona}/${piso.slug}`} className="piso-card" key={piso.id}>
-                <div
-                  className="piso-img"
-                  style={piso.imageUrl ? { backgroundImage: `url(${piso.imageUrl})` } : undefined}
-                >
-                  <span className={`piso-badge ${piso.disponible ? "" : "no-disponible"}`}>
-                    {piso.disponible ? "Disponible" : "No disponible"}
-                  </span>
-                </div>
-                <div className="piso-body">
-                  <h4>{piso.titulo}</h4>
-                  <div className="loc">{piso.barrio}</div>
-                  <div className="piso-foot">
-                    <div className="piso-price">
-                      {piso.categoria === "compraventa" ? `${piso.precioMes.toLocaleString("es-ES")}€` : <>{piso.precioMes}€ <span>/mes</span></>}
-                    </div>
-                    <div className="piso-arrow">-&gt;</div>
-                  </div>
-                </div>
-              </Link>
+              <PisoCard piso={piso} key={piso.id} />
             ))}
           </div>
         </div>

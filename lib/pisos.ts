@@ -1,5 +1,4 @@
-import { unstable_noStore as noStore } from "next/cache";
-import { supabase } from "./supabaseClient";
+import { supabasePublic } from "./supabaseClient";
 
 export type ZonaAlquiler = "ucam" | "umu" | "upct";
 export type ZonaSlug = ZonaAlquiler | (string & {});
@@ -107,37 +106,56 @@ function mapPiso(row: PisoRow): Piso {
   };
 }
 
+function mapPisoCard(row: Pick<PisoRow, "id" | "slug" | "titulo" | "zona" | "barrio" | "precio_mes" | "disponible" | "image_url" | "categoria">): Piso {
+  return {
+    id: row.id,
+    slug: row.slug,
+    titulo: row.titulo,
+    zona: row.zona,
+    barrio: row.barrio,
+    precioMes: row.precio_mes,
+    metros: null,
+    descripcion: "",
+    disponible: row.disponible,
+    imageUrl: row.image_url,
+    gallery: [],
+    videoUrl: null,
+    categoria: row.categoria ?? "alquiler",
+  };
+}
+
+const CARD_COLS = "id,slug,titulo,zona,barrio,precio_mes,disponible,image_url,categoria" as const;
+
 export async function getPisos(): Promise<Piso[]> {
-  noStore();
-  const { data, error } = await supabase
+  const { data, error } = await supabasePublic
     .from("pisos")
-    .select("*")
+    .select(CARD_COLS)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(mapPiso);
+  return (data ?? []).map(mapPisoCard);
 }
 
 export async function pisosPorCategoria(categoria: CategoriaPiso): Promise<Piso[]> {
-  noStore();
-  const { data, error } = await supabase
+  const { data, error } = await supabasePublic
     .from("pisos")
-    .select("*")
+    .select(CARD_COLS)
     .eq("categoria", categoria)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(mapPiso);
+  return (data ?? []).map(mapPisoCard);
 }
 
 export async function pisosPorZona(zona: ZonaSlug): Promise<Piso[]> {
-  noStore();
-  const { data, error } = await supabase.from("pisos").select("*").eq("zona", zona);
+  const { data, error } = await supabasePublic
+    .from("pisos")
+    .select(CARD_COLS)
+    .eq("zona", zona);
   if (error) throw error;
-  return (data ?? []).map(mapPiso);
+  return (data ?? []).map(mapPisoCard);
 }
 
 export async function pisoPorSlug(zona: ZonaSlug, slug: string): Promise<Piso | null> {
-  noStore();
-  const { data, error } = await supabase
+  const { data, error } = await supabasePublic
     .from("pisos")
     .select("*")
     .eq("zona", zona)
