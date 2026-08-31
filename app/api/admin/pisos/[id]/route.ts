@@ -15,7 +15,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (typeof titulo === "string" && titulo.trim()) updates.titulo = titulo.trim().slice(0, 150);
 
   const zona = form.get("zona");
-  if (typeof zona === "string" && zona.length > 0 && zona.length <= 40) updates.zona = zona as ZonaSlug;
+  if (typeof zona === "string" && zona.length <= 40) updates.zona = (zona || "general") as ZonaSlug;
 
   const barrio = form.get("barrio");
   if (typeof barrio === "string" && barrio.trim()) updates.barrio = barrio.trim().slice(0, 120);

@@ -32,8 +32,8 @@ export async function POST(req: NextRequest) {
   const categoria = (categoriaRaw === "compraventa" ? "compraventa" : "alquiler") as import("../../../../lib/pisos").CategoriaPiso;
   const imagen = form.get("imagen");
 
-  const zonaValida = categoria === "alquiler" ? ZONAS_ALQUILER.includes(zona) : zona.length > 0 && zona.length <= 40;
-  if (!slug || !titulo || !zonaValida || !barrio || !precioMes || !descripcion) {
+  const zonaFinal = zona || slugify(barrio || "general").slice(0, 40) || "general";
+  if (!slug || !titulo || !barrio || !precioMes || !descripcion) {
     return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
   }
 
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     await crearPiso({
       slug,
       titulo,
-      zona: zona as ZonaSlug,
+      zona: zonaFinal as ZonaSlug,
       barrio,
       precioMes,
       metros,
