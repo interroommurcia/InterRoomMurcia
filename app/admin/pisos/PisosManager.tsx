@@ -433,9 +433,9 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
           />
         ) : (
           <div className="pf-field">
-            <span className="pf-label">Zona</span>
-            <select className="pf-select" name="zona" required defaultValue={piso?.zona || ""} key={categoria}>
-              <option value="" disabled>Selecciona...</option>
+            <span className="pf-label">Zona (opcional)</span>
+            <select className="pf-select" name="zona" defaultValue={piso?.zona || ""} key={categoria}>
+              <option value="">— Sin zona —</option>
               {ZONAS_ALQUILER.map((z) => (
                 <option key={z.slug} value={z.slug}>{z.label}</option>
               ))}

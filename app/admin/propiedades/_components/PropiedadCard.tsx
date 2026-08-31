@@ -235,6 +235,8 @@ export function PropiedadCard({
               habitacionId={null}
               label="Publicar propiedad entera en el catálogo"
               tipoProp={propView.tipo}
+              habitaciones={p.habitaciones}
+              media={p.media}
             />
           )}
 

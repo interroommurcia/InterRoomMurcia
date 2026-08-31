@@ -23,11 +23,9 @@ function slugify(s: string) {
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
-  const { habitacion_id, zona, slug, titulo, barrio, precio_mes, metros, descripcion, categoria: catRaw } = body as Record<string, unknown>;
+  const { habitacion_id, zona, slug, titulo, barrio, precio_mes, metros, descripcion, categoria: catRaw, foto_ids } = body as Record<string, unknown>;
   const categoria = catRaw === "compraventa" ? "compraventa" : "alquiler";
-  const zonaStr = String(zona || "");
-  const zonaValida = categoria === "alquiler" ? ZONAS_ALQUILER.includes(zonaStr) : zonaStr.length > 0 && zonaStr.length <= 40;
-  if (!zonaValida) return NextResponse.json({ error: "zona inválida" }, { status: 400 });
+  const zonaStr = String(zona || "") || slugify(String(barrio || "general")).slice(0, 40) || "general";
   if (!titulo || !barrio || !descripcion || !precio_mes) return NextResponse.json({ error: "faltan datos" }, { status: 400 });
 
   const admin = getSupabaseAdmin();
@@ -37,7 +35,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     else q = q.is("habitacion_id", null);
     return q;
   };
-  const { data: fotos } = await baseQ().eq("tipo", "foto").order("orden");
+
+  let fotos: { id: string }[] | null;
+  if (Array.isArray(foto_ids) && foto_ids.length > 0) {
+    const { data } = await admin.from("propiedad_media").select("id").eq("propiedad_id", params.id).eq("tipo", "foto").in("id", foto_ids as string[]).order("orden");
+    fotos = data;
+  } else {
+    const { data } = await baseQ().eq("tipo", "foto").order("orden");
+    fotos = data;
+  }
   const { data: videos } = await baseQ().eq("tipo", "video").order("orden");
 
   const gallery: string[] = [];
@@ -56,7 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     await crearPiso({
       slug: slugFinal,
       titulo: String(titulo),
-      zona: zona as ZonaSlug,
+      zona: zonaStr as ZonaSlug,
       barrio: String(barrio),
       precioMes: Number(precio_mes),
       metros: metros ? Number(metros) : null,
@@ -68,9 +74,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       categoria,
     });
     revalidatePath("/");
-    revalidatePath(`/habitaciones/${zona}`);
-    revalidatePath(`/habitaciones/${zona}/${slugFinal}`);
-    return NextResponse.json({ ok: true, slug: slugFinal, zona, url: `/habitaciones/${zona}/${slugFinal}` });
+    revalidatePath(`/habitaciones/${zonaStr}`);
+    revalidatePath(`/habitaciones/${zonaStr}/${slugFinal}`);
+    return NextResponse.json({ ok: true, slug: slugFinal, zona: zonaStr, url: `/habitaciones/${zonaStr}/${slugFinal}` });
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error" }, { status: 500 });
   }
