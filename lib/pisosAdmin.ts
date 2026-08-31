@@ -1,5 +1,5 @@
 import { getSupabaseAdmin } from "./supabaseAdmin";
-import type { ZonaSlug, CategoriaPiso } from "./pisos";
+import type { ZonaSlug, CategoriaPiso, TipoAlquiler } from "./pisos";
 
 const BUCKET = "pisos";
 
@@ -16,6 +16,7 @@ export type PisoInput = {
   gallery?: string[];
   videoUrl?: string | null;
   categoria?: CategoriaPiso;
+  tipoAlquiler?: TipoAlquiler;
 };
 
 function toRow(input: Partial<PisoInput>) {
@@ -32,6 +33,7 @@ function toRow(input: Partial<PisoInput>) {
   if (input.gallery !== undefined) row.gallery = input.gallery;
   if (input.videoUrl !== undefined) row.video_url = input.videoUrl;
   if (input.categoria !== undefined) row.categoria = input.categoria;
+  if (input.tipoAlquiler !== undefined) row.tipo_alquiler = input.tipoAlquiler;
   return row;
 }
 

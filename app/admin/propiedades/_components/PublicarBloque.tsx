@@ -96,6 +96,7 @@ export function PublicarBloque({
             precio_mes: hf.precio,
             descripcion,
             categoria,
+            tipo_alquiler: "habitacion",
             foto_ids: hf.fotoIds.length > 0 ? hf.fotoIds : undefined,
           }),
         });

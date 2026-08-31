@@ -23,8 +23,9 @@ function slugify(s: string) {
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
-  const { habitacion_id, zona, slug, titulo, barrio, precio_mes, metros, descripcion, categoria: catRaw, foto_ids } = body as Record<string, unknown>;
+  const { habitacion_id, zona, slug, titulo, barrio, precio_mes, metros, descripcion, categoria: catRaw, foto_ids, tipo_alquiler } = body as Record<string, unknown>;
   const categoria = catRaw === "compraventa" ? "compraventa" : "alquiler";
+  const tipoAlquiler = tipo_alquiler === "habitacion" ? "habitacion" : "completo";
   const zonaStr = String(zona || "") || slugify(String(barrio || "general")).slice(0, 40) || "general";
   if (!titulo || !barrio || !descripcion || !precio_mes) return NextResponse.json({ error: "faltan datos" }, { status: 400 });
 
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       gallery,
       videoUrl,
       categoria,
+      tipoAlquiler: categoria === "alquiler" ? tipoAlquiler as import("../../../../../../lib/pisos").TipoAlquiler : undefined,
     });
     revalidatePath("/");
     revalidatePath(`/habitaciones/${zonaStr}`);

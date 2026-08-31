@@ -30,6 +30,8 @@ export async function POST(req: NextRequest) {
   const disponible = form.get("disponible") === "true";
   const categoriaRaw = String(form.get("categoria") || "alquiler");
   const categoria = (categoriaRaw === "compraventa" ? "compraventa" : "alquiler") as import("../../../../lib/pisos").CategoriaPiso;
+  const tipoAlquilerRaw = String(form.get("tipo_alquiler") || "completo");
+  const tipoAlquiler = (tipoAlquilerRaw === "habitacion" ? "habitacion" : "completo") as import("../../../../lib/pisos").TipoAlquiler;
   const imagen = form.get("imagen");
 
   const zonaFinal = zona || slugify(barrio || "general").slice(0, 40) || "general";
@@ -66,6 +68,7 @@ export async function POST(req: NextRequest) {
       gallery,
       videoUrl,
       categoria,
+      tipoAlquiler: categoria === "alquiler" ? tipoAlquiler : undefined,
     });
     return NextResponse.json({ ok: true });
   } catch (err) {

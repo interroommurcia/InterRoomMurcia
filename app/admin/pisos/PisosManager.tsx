@@ -360,7 +360,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
                     {!piso.disponible && " · No disponible"}
                     {" · "}
                     <span style={{ fontWeight: 500, color: piso.categoria === "compraventa" ? "#7c3aed" : "#059669" }}>
-                      {piso.categoria === "compraventa" ? "Compraventa" : "Alquiler"}
+                      {piso.categoria === "compraventa" ? "Compraventa" : piso.tipoAlquiler === "habitacion" ? "Habitación" : "Piso completo"}
                     </span>
                   </div>
                 </div>
@@ -391,6 +391,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
 function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
   const [categoria, setCategoria] = useState<"alquiler" | "compraventa">(piso?.categoria || "alquiler");
   const esCompraventa = categoria === "compraventa";
+  const [tipoAlquiler, setTipoAlquiler] = useState(piso?.tipoAlquiler || "completo");
   const [galleryKeep, setGalleryKeep] = useState<string[]>(piso?.gallery ?? []);
   const [borrarVideo, setBorrarVideo] = useState(false);
 
@@ -422,6 +423,20 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
             <option value="compraventa">Compraventa</option>
           </select>
         </div>
+        {!esCompraventa && (
+          <div className="pf-field">
+            <span className="pf-label">Tipo de alquiler</span>
+            <select
+              className="pf-select"
+              name="tipo_alquiler"
+              value={tipoAlquiler}
+              onChange={(e) => setTipoAlquiler(e.target.value as "completo" | "habitacion")}
+            >
+              <option value="completo">Piso completo</option>
+              <option value="habitacion">Habitación</option>
+            </select>
+          </div>
+        )}
         {esCompraventa ? (
           <SearchSelect
             name="zona"
