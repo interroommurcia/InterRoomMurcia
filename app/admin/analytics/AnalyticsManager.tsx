@@ -68,7 +68,7 @@ function ReferrerCard({ referrers }: { referrers: { url: string; visits: number 
             style={{ cursor: g.urls.length > 1 ? "pointer" : "default" }}
             onClick={() => g.urls.length > 1 && setOpen(open === g.domain ? null : g.domain)}
           >
-            <span className="analytics-bar-label analytics-bar-label--wide">
+            <span className="analytics-bar-label">
               {g.urls.length > 1 && <span style={{ marginRight: 4, fontSize: "0.7rem" }}>{open === g.domain ? "▼" : "▶"}</span>}
               {g.domain}
             </span>
@@ -79,7 +79,7 @@ function ReferrerCard({ referrers }: { referrers: { url: string; visits: number 
           </div>
           {open === g.domain && g.urls.map((u) => (
             <div key={u.url} className="analytics-bar-row analytics-bar-row--sub">
-              <span className="analytics-bar-label analytics-bar-label--wide" title={u.url}>
+              <span className="analytics-bar-label" title={u.url}>
                 {(() => { try { return new URL(u.url).pathname; } catch { return u.url; } })()}
               </span>
               <div className="analytics-bar-track">

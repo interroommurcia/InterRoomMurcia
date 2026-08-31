@@ -1672,14 +1672,11 @@ button {
 }
 
 .analytics-bar-label {
-  width: 110px;
+  width: 200px;
   flex-shrink: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.analytics-bar-label--wide {
-  width: 200px;
 }
 .analytics-bar-row--sub {
   padding-left: 20px;
