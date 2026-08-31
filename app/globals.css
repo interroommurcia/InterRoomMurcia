@@ -1678,6 +1678,18 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.analytics-bar-label--wide {
+  width: 200px;
+}
+.analytics-bar-row--sub {
+  padding-left: 20px;
+  opacity: 0.8;
+  font-size: 0.75rem;
+}
+.analytics-bar-fill--sub {
+  background: var(--orange-dark);
+  opacity: 0.6;
+}
 
 .analytics-bar-track {
   flex: 1;

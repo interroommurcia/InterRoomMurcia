@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 type PostHogData = {
   stats7d: { pageviews: number; visitors: number; sessions: number };
@@ -38,6 +38,62 @@ function Bar({ label, value, max }: { label: string; value: number; max: number 
   );
 }
 
+type ReferrerGroup = { domain: string; total: number; urls: { url: string; visits: number }[] };
+
+function groupReferrers(referrers: { url: string; visits: number }[]): ReferrerGroup[] {
+  const map = new Map<string, ReferrerGroup>();
+  for (const r of referrers) {
+    let domain: string;
+    try { domain = new URL(r.url).hostname.replace(/^www\./, ""); } catch { domain = r.url; }
+    const g = map.get(domain);
+    if (g) { g.total += r.visits; g.urls.push({ url: r.url, visits: r.visits }); }
+    else map.set(domain, { domain, total: r.visits, urls: [{ url: r.url, visits: r.visits }] });
+  }
+  return Array.from(map.values()).sort((a, b) => b.total - a.total);
+}
+
+function ReferrerCard({ referrers }: { referrers: { url: string; visits: number }[] }) {
+  const groups = useMemo(() => groupReferrers(referrers), [referrers]);
+  const [open, setOpen] = useState<string | null>(null);
+  const maxVal = Math.max(1, ...groups.map((g) => g.total));
+
+  if (groups.length === 0) return <p className="admin-empty">Sin datos.</p>;
+
+  return (
+    <div>
+      {groups.map((g) => (
+        <div key={g.domain}>
+          <div
+            className="analytics-bar-row"
+            style={{ cursor: g.urls.length > 1 ? "pointer" : "default" }}
+            onClick={() => g.urls.length > 1 && setOpen(open === g.domain ? null : g.domain)}
+          >
+            <span className="analytics-bar-label analytics-bar-label--wide">
+              {g.urls.length > 1 && <span style={{ marginRight: 4, fontSize: "0.7rem" }}>{open === g.domain ? "▼" : "▶"}</span>}
+              {g.domain}
+            </span>
+            <div className="analytics-bar-track">
+              <div className="analytics-bar-fill" style={{ width: `${Math.round((g.total / maxVal) * 100)}%` }} />
+            </div>
+            <span className="analytics-bar-value">{g.total}</span>
+          </div>
+          {open === g.domain && g.urls.map((u) => (
+            <div key={u.url} className="analytics-bar-row analytics-bar-row--sub">
+              <span className="analytics-bar-label analytics-bar-label--wide" title={u.url}>
+                {(() => { try { return new URL(u.url).pathname; } catch { return u.url; } })()}
+              </span>
+              <div className="analytics-bar-track">
+                <div className="analytics-bar-fill analytics-bar-fill--sub" style={{ width: `${Math.round((u.visits / maxVal) * 100)}%` }} />
+              </div>
+              <span className="analytics-bar-value">{u.visits}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AnalyticsManager() {
   const [data, setData] = useState<PostHogData | null>(null);
   const [error, setError] = useState("");
@@ -71,7 +127,6 @@ export default function AnalyticsManager() {
   const maxNewUsers = Math.max(1, ...data.newUsersDaily.map((d) => d.newUsers));
   const maxSource = Math.max(1, ...data.sources.map((s) => s.visits));
   const maxCountry = Math.max(1, ...data.countries.map((c) => c.visits));
-  const maxReferrer = Math.max(1, ...data.referrers.map((r) => r.visits));
   const totalNewUsers7d = data.newUsersDaily
     .filter((d) => new Date(d.day) >= new Date(Date.now() - 7 * 86400000))
     .reduce((s, d) => s + d.newUsers, 0);
@@ -168,12 +223,8 @@ export default function AnalyticsManager() {
         </div>
 
         <div className="analytics-card">
-          <h3>Referrers completos (30d)</h3>
-          {data.referrers.length === 0 ? (
-            <p className="admin-empty">Sin datos.</p>
-          ) : (
-            data.referrers.map((r) => <Bar key={r.url} label={r.url.length > 60 ? r.url.slice(0, 57) + "…" : r.url} value={r.visits} max={maxReferrer} />)
-          )}
+          <h3>Referrers (30d)</h3>
+          <ReferrerCard referrers={data.referrers} />
         </div>
 
         <div className="analytics-card">
