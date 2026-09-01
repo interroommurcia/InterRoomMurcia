@@ -451,13 +451,14 @@ export default function AnalyticsManager() {
           <div className="analytics-card">
             <h3>Páginas más vistas</h3>
             {data.topPages.map((p) => {
-              const path = p.path || "/";
-              const name = path === "/" ? "Inicio"
-                : path.startsWith("/habitaciones/") ? path.replace("/habitaciones/", "Zona: ").replace(/\//g, " → ")
-                : path.startsWith("/blog/") ? path.replace("/blog/", "Blog: ")
-                : path.replace(/^\//, "").replace(/\//g, " → ") || path;
+              const raw = p.path || "/";
+              const clean = raw.split("?")[0] || "/";
+              const name = clean === "/" ? "Inicio"
+                : clean.startsWith("/habitaciones/") ? clean.replace("/habitaciones/", "Zona: ").replace(/\//g, " → ")
+                : clean.startsWith("/blog/") ? clean.replace("/blog/", "Blog: ")
+                : clean.replace(/^\//, "").replace(/\//g, " → ") || clean;
               return (
-                <div key={path} className="analytics-row"><span title={path}>{name}</span><span>{p.views}</span></div>
+                <div key={raw} className="analytics-row"><span title={raw}>{name}</span><span>{p.views}</span></div>
               );
             })}
           </div>
@@ -465,13 +466,14 @@ export default function AnalyticsManager() {
             <h3>Primera página que ven</h3>
             <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 8px" }}>Por dónde entran los visitantes</p>
             {data.entryPages.map((e) => {
-              const path = e.path || "/";
-              const name = path === "/" ? "Inicio"
-                : path.startsWith("/habitaciones/") ? path.replace("/habitaciones/", "Zona: ").replace(/\//g, " → ")
-                : path.startsWith("/blog/") ? path.replace("/blog/", "Blog: ")
-                : path.replace(/^\//, "").replace(/\//g, " → ") || path;
+              const raw = e.path || "/";
+              const clean = raw.split("?")[0] || "/";
+              const name = clean === "/" ? "Inicio"
+                : clean.startsWith("/habitaciones/") ? clean.replace("/habitaciones/", "Zona: ").replace(/\//g, " → ")
+                : clean.startsWith("/blog/") ? clean.replace("/blog/", "Blog: ")
+                : clean.replace(/^\//, "").replace(/\//g, " → ") || clean;
               return (
-                <div key={path} className="analytics-row"><span title={path}>{name}</span><span>{e.sessions}</span></div>
+                <div key={raw} className="analytics-row"><span title={raw}>{name}</span><span>{e.sessions}</span></div>
               );
             })}
           </div>
@@ -482,7 +484,7 @@ export default function AnalyticsManager() {
               <p className="admin-empty">Sin datos.</p>
             ) : (
               data.clicks.map((c) => (
-                <div key={c.element} className="analytics-row"><span title={c.element}>{c.element}</span><span>{c.clicks} clics</span></div>
+                <div key={c.element} className="analytics-row"><span title={c.element}>{c.element.length > 50 ? c.element.slice(0, 50) + "…" : c.element}</span><span>{c.clicks}</span></div>
               ))
             )}
           </div>
