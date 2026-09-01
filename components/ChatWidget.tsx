@@ -77,18 +77,40 @@ export default function ChatWidget() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let fullAssistant = "";
+      let displayedLen = 0;
+      let typingTimer: ReturnType<typeof setInterval> | null = null;
+
+      function startTyping() {
+        if (typingTimer) return;
+        typingTimer = setInterval(() => {
+          const visible = stripClassification(fullAssistant);
+          if (displayedLen >= visible.length) {
+            return;
+          }
+          displayedLen = Math.min(displayedLen + 2, visible.length);
+          const shown = visible.slice(0, displayedLen);
+          setMensajes((prev) => {
+            const copy = [...prev];
+            copy[copy.length - 1] = { role: "assistant", text: shown };
+            return copy;
+          });
+        }, 18);
+      }
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        fullAssistant += chunk;
-        const visible = stripClassification(fullAssistant);
-        setMensajes((prev) => {
-          const copy = [...prev];
-          copy[copy.length - 1] = { role: "assistant", text: visible };
-          return copy;
-        });
+        fullAssistant += decoder.decode(value, { stream: true });
+        startTyping();
       }
+
+      if (typingTimer) clearInterval(typingTimer);
+      const finalVisible = stripClassification(fullAssistant);
+      setMensajes((prev) => {
+        const copy = [...prev];
+        copy[copy.length - 1] = { role: "assistant", text: finalVisible };
+        return copy;
+      });
     } catch {
       setMensajes((prev) => [...prev, { role: "assistant", text: "Error de conexión, prueba de nuevo." }]);
     } finally {
