@@ -147,6 +147,7 @@ export default function AnalyticsManager() {
   const [leads, setLeads] = useState<LeadsData | null>(null);
 
   const [periodo, setPeriodo] = useState<Periodo>("30d");
+  const [excluirAdmin, setExcluirAdmin] = useState(true);
   const now = new Date();
   const [mesVal, setMesVal] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
   const [anioVal, setAnioVal] = useState(now.getFullYear());
@@ -164,7 +165,10 @@ export default function AnalyticsManager() {
   const loadData = useCallback(() => {
     setLoading(true);
     const range = calcRange(periodo, mesVal, anioVal, customDesde, customHasta);
-    const params = range ? `?desde=${range.desde}&hasta=${range.hasta}` : "";
+    const qs = new URLSearchParams();
+    if (range) { qs.set("desde", range.desde); qs.set("hasta", range.hasta); }
+    if (excluirAdmin) qs.set("excluirAdmin", "1");
+    const params = qs.toString() ? `?${qs}` : "";
     fetch(`/api/admin/posthog${params}`)
       .then(async (res) => {
         if (!res.ok) {
@@ -177,7 +181,7 @@ export default function AnalyticsManager() {
       })
       .catch(() => setError("Error de red cargando analytics"))
       .finally(() => setLoading(false));
-  }, [periodo, mesVal, anioVal, customDesde, customHasta]);
+  }, [periodo, mesVal, anioVal, customDesde, customHasta, excluirAdmin]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -245,6 +249,10 @@ export default function AnalyticsManager() {
           </>
         )}
         {loading && <span style={{ fontSize: 12, color: "#9ca3af" }}>Cargando...</span>}
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", marginLeft: "auto" }}>
+          <input type="checkbox" checked={excluirAdmin} onChange={(e) => setExcluirAdmin(e.target.checked)} />
+          Excluir mis visitas (admin)
+        </label>
       </div>
 
       {/* ── En directo ── */}

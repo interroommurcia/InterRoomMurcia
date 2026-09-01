@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
 
   const desde = req.nextUrl.searchParams.get("desde");
   const hasta = req.nextUrl.searchParams.get("hasta");
+  const excluirAdmin = req.nextUrl.searchParams.get("excluirAdmin") === "1";
 
   let dateFilter: string;
   if (desde && hasta) {
@@ -49,48 +50,52 @@ export async function GET(req: NextRequest) {
     dateFilter = `timestamp >= now() - INTERVAL 30 DAY`;
   }
 
+  const adminFilter = excluirAdmin
+    ? `AND distinct_id NOT IN (SELECT DISTINCT distinct_id FROM events WHERE ${DOMAIN_FILTER} AND properties.$current_url LIKE '%/admin%')`
+    : "";
+
   try {
     const [rStats, rTop, rDaily, rBounce, rSources, rDevices, rEntry, rUtm, rCountries, rRealtime, rClicks, rNewUsers, rReferrers, rPeakDaily, rNewVsReturn, rSessionDuration] =
       await Promise.all([
         hogql(`
         SELECT count() AS pageviews, uniqExact(distinct_id) AS visitors, uniqExact(properties.$session_id) AS sessions
-        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
+        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
       `),
         hogql(`
         SELECT replaceRegexpOne(properties.$current_url, 'https?://[^/]+', '') AS path, count() AS views, uniqExact(distinct_id) AS uniq
-        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
+        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY path ORDER BY views DESC LIMIT 10
       `),
         hogql(`
         SELECT toDate(timestamp) AS day, count() AS pageviews, uniqExact(distinct_id) AS visitors
-        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
+        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY day ORDER BY day ASC
       `),
         hogql(`
         SELECT countIf(total = 1) AS bounced, count() AS total_sessions
         FROM (
           SELECT properties.$session_id AS sid, count() AS total
-          FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
+          FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
           GROUP BY sid
         )
       `),
         hogql(`
         SELECT if(properties.$referring_domain IS NULL OR properties.$referring_domain = '', '(directo)', properties.$referring_domain) AS source,
           count() AS visits, uniqExact(distinct_id) AS visitors
-        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
+        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY source ORDER BY visits DESC LIMIT 15
       `),
         hogql(`
         SELECT if(properties.$device_type IS NULL OR properties.$device_type = '', 'Unknown', properties.$device_type) AS device,
           count() AS visits, uniqExact(distinct_id) AS visitors
-        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
+        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY device ORDER BY visits DESC
       `),
         hogql(`
         SELECT replaceRegexpOne(first_url, 'https?://[^/]+', '') AS entry_path, count() AS sessions
         FROM (
           SELECT properties.$session_id AS sid, argMin(properties.$current_url, timestamp) AS first_url
-          FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
+          FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
           GROUP BY sid
         )
         GROUP BY entry_path ORDER BY sessions DESC LIMIT 8
@@ -99,33 +104,33 @@ export async function GET(req: NextRequest) {
         SELECT if(properties.utm_source IS NULL OR properties.utm_source = '', '(sin UTM)', properties.utm_source) AS utm_source,
           if(properties.utm_medium IS NULL OR properties.utm_medium = '', '', properties.utm_medium) AS utm_medium,
           count() AS visits, uniqExact(distinct_id) AS visitors
-        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
+        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY utm_source, utm_medium ORDER BY visits DESC LIMIT 12
       `),
         hogql(`
         SELECT if(properties.$geoip_country_name IS NULL OR properties.$geoip_country_name = '', 'Unknown', properties.$geoip_country_name) AS country,
           count() AS visits, uniqExact(distinct_id) AS visitors
-        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
+        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY country ORDER BY visits DESC LIMIT 10
       `),
         // Realtime siempre últimos 5 min
         hogql(`
         SELECT replaceRegexpOne(properties.$current_url, 'https?://[^/]+', '') AS path, uniqExact(distinct_id) AS active_users
-        FROM events WHERE timestamp >= now() - INTERVAL 5 MINUTE AND ${DOMAIN_FILTER}
+        FROM events WHERE timestamp >= now() - INTERVAL 5 MINUTE AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY path ORDER BY active_users DESC LIMIT 10
       `),
         hogql(`
         SELECT coalesce(nullIf(trim(properties.$el_text), ''), '[sin texto]') AS element, count() AS clicks, uniqExact(distinct_id) AS unique_users
         FROM events WHERE event = '$autocapture' AND properties.$event_type = 'click'
           AND properties.$current_url NOT LIKE '%/admin%'
-          AND ${dateFilter} AND ${DOMAIN_FILTER}
+          AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY element HAVING element != '[sin texto]' ORDER BY clicks DESC LIMIT 15
       `),
         hogql(`
         SELECT toDate(first_seen) AS day, count() AS new_users
         FROM (
           SELECT distinct_id, min(timestamp) AS first_seen
-          FROM events WHERE event = '$pageview' AND ${DOMAIN_FILTER}
+          FROM events WHERE event = '$pageview' AND ${DOMAIN_FILTER} ${adminFilter}
           GROUP BY distinct_id
           HAVING ${desde && hasta ? `first_seen >= '${desde}' AND first_seen <= '${hasta} 23:59:59'` : `first_seen >= now() - INTERVAL 30 DAY`}
         )
@@ -134,14 +139,14 @@ export async function GET(req: NextRequest) {
         hogql(`
         SELECT if(properties.$referrer IS NULL OR properties.$referrer = '' OR properties.$referrer = '$direct', '(directo)', properties.$referrer) AS referrer,
           count() AS visits, uniqExact(distinct_id) AS visitors
-        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
+        FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY referrer ORDER BY visits DESC LIMIT 20
       `),
         hogql(`
         SELECT day, max(concurrent) AS peak
         FROM (
           SELECT toDate(timestamp) AS day, toStartOfHour(timestamp) AS hour, uniqExact(distinct_id) AS concurrent
-          FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
+          FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
           GROUP BY day, hour
         )
         GROUP BY day ORDER BY day ASC
@@ -154,10 +159,10 @@ export async function GET(req: NextRequest) {
         FROM events AS e
         INNER JOIN (
           SELECT distinct_id, min(timestamp) AS first_seen
-          FROM events WHERE event = '$pageview' AND ${DOMAIN_FILTER}
+          FROM events WHERE event = '$pageview' AND ${DOMAIN_FILTER} ${adminFilter}
           GROUP BY distinct_id
         ) AS f ON e.distinct_id = f.distinct_id
-        WHERE e.event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
+        WHERE e.event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY day ORDER BY day ASC
       `),
         // Duración media de sesión y páginas/sesión
@@ -167,7 +172,7 @@ export async function GET(req: NextRequest) {
           SELECT properties.$session_id AS sid,
             dateDiff('second', min(timestamp), max(timestamp)) AS duration,
             count() AS pages
-          FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
+          FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
           GROUP BY sid HAVING pages > 1
         )
       `),
