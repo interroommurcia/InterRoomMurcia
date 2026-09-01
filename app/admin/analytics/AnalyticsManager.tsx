@@ -126,11 +126,21 @@ export default function AnalyticsManager() {
     contenido: true,
     historico: true,
   });
-  const [histAnio, setHistAnio] = useState(new Date().getFullYear());
   const [histData, setHistData] = useState<MonthSnapshot[]>([]);
+  const [histAniosDisp, setHistAniosDisp] = useState<number[]>([]);
   const [histLoading, setHistLoading] = useState(false);
   const [histSaving, setHistSaving] = useState(false);
   const [histMesDetalle, setHistMesDetalle] = useState<string | null>(null);
+  const [histMode, setHistMode] = useState<"anio" | "periodo">("anio");
+  const [histAnio, setHistAnio] = useState(new Date().getFullYear());
+  const [histDesde, setHistDesde] = useState(() => {
+    const n = new Date();
+    return `${n.getFullYear()}-01`;
+  });
+  const [histHasta, setHistHasta] = useState(() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [histMesGuardar, setHistMesGuardar] = useState(() => {
     const n = new Date();
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
@@ -155,24 +165,26 @@ export default function AnalyticsManager() {
       .catch(() => {});
   }, []);
 
-  function loadHist(anio: number) {
+  function loadHist() {
     setHistLoading(true);
-    fetch(`/api/admin/analytics-history?anio=${anio}`)
-      .then((r) => (r.ok ? r.json() : { meses: [] }))
-      .then((d) => setHistData(d.meses ?? []))
+    const params = histMode === "anio" ? `anio=${histAnio}` : `desde=${histDesde}&hasta=${histHasta}`;
+    fetch(`/api/admin/analytics-history?${params}`)
+      .then((r) => (r.ok ? r.json() : { meses: [], aniosDisponibles: [] }))
+      .then((d) => {
+        setHistData(d.meses ?? []);
+        if (d.aniosDisponibles?.length) setHistAniosDisp(d.aniosDisponibles);
+      })
       .catch(() => setHistData([]))
       .finally(() => setHistLoading(false));
   }
 
-  useEffect(() => { loadHist(histAnio); }, [histAnio]);
+  useEffect(() => { loadHist(); }, [histAnio, histMode, histDesde, histHasta]);
 
   async function guardarSnapshot(mes: string) {
     setHistSaving(true);
     const res = await fetch("/api/admin/analytics-history", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mes }) });
-    if (res.ok) {
-      const anioMes = Number(mes.split("-")[0]);
-      if (anioMes === histAnio) loadHist(histAnio);
-    } else alert("Error guardando snapshot");
+    if (res.ok) loadHist();
+    else alert("Error guardando snapshot");
     setHistSaving(false);
   }
 
@@ -444,17 +456,38 @@ export default function AnalyticsManager() {
       {openSections.historico && (
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Ver año:</span>
+            {/* Modo de vista */}
+            <select
+              value={histMode}
+              onChange={(e) => setHistMode(e.target.value as "anio" | "periodo")}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}
+            >
+              <option value="anio">Por año</option>
+              <option value="periodo">Periodo personalizado</option>
+            </select>
+
+            {histMode === "anio" ? (
               <select value={histAnio} onChange={(e) => setHistAnio(Number(e.target.value))} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}>
-                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                {(histAniosDisp.length > 0
+                  ? histAniosDisp
+                  : Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i)
+                ).map((y) => (
                   <option key={y} value={y}>{y}</option>
                 ))}
               </select>
-            </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 13 }}>Desde:</span>
+                <input type="month" value={histDesde} onChange={(e) => setHistDesde(e.target.value)} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }} />
+                <span style={{ fontSize: 13 }}>Hasta:</span>
+                <input type="month" value={histHasta} onChange={(e) => setHistHasta(e.target.value)} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }} />
+              </div>
+            )}
+
             <div style={{ borderLeft: "1px solid #d1d5db", height: 24 }} />
+
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Guardar:</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Generar:</span>
               <input
                 type="month"
                 value={histMesGuardar}
@@ -472,10 +505,14 @@ export default function AnalyticsManager() {
             </div>
           </div>
 
+          <p style={{ fontSize: 12, color: "#9ca3af", marginBottom: 12 }}>
+            Los snapshots se guardan automáticamente cada día 2 del mes. También puedes generar cualquier mes manualmente.
+          </p>
+
           {histLoading ? (
             <p className="admin-empty">Cargando histórico...</p>
           ) : histData.length === 0 ? (
-            <p className="admin-empty">Sin datos para {histAnio}. Pulsa &quot;Guardar mes actual&quot; para empezar.</p>
+            <p className="admin-empty">Sin datos para este periodo. Genera snapshots de los meses que quieras consultar.</p>
           ) : (
             <>
               <div style={{ overflowX: "auto" }}>

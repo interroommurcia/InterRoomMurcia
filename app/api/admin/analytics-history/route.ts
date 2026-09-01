@@ -26,17 +26,33 @@ async function hogql(query: string) {
 }
 
 export async function GET(req: NextRequest) {
-  const anio = req.nextUrl.searchParams.get("anio") || new Date().getFullYear().toString();
   const admin = getSupabaseAdmin();
-  const { data, error } = await admin
+  const desde = req.nextUrl.searchParams.get("desde");
+  const hasta = req.nextUrl.searchParams.get("hasta");
+  const anio = req.nextUrl.searchParams.get("anio");
+
+  // Años disponibles
+  const { data: allRows } = await admin
     .from("analytics_monthly")
-    .select("*")
-    .gte("mes", `${anio}-01`)
-    .lte("mes", `${anio}-12`)
+    .select("mes")
     .order("mes", { ascending: true });
 
+  const aniosDisponibles = [...new Set((allRows ?? []).map((r: { mes: string }) => r.mes.split("-")[0]))].map(Number);
+
+  let query = admin.from("analytics_monthly").select("*").order("mes", { ascending: true });
+
+  if (desde && hasta) {
+    query = query.gte("mes", desde).lte("mes", hasta);
+  } else if (anio) {
+    query = query.gte("mes", `${anio}-01`).lte("mes", `${anio}-12`);
+  } else {
+    const y = new Date().getFullYear().toString();
+    query = query.gte("mes", `${y}-01`).lte("mes", `${y}-12`);
+  }
+
+  const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ anio, meses: data ?? [] });
+  return NextResponse.json({ meses: data ?? [], aniosDisponibles });
 }
 
 export async function POST(req: NextRequest) {
