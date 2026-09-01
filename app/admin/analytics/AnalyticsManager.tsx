@@ -26,6 +26,24 @@ type LeadsData = {
   byOrigen: { origen: string; count: number }[];
 };
 
+type MonthSnapshot = {
+  mes: string;
+  pageviews: number;
+  visitors: number;
+  sessions: number;
+  new_users: number;
+  bounce_rate: number;
+  peak_concurrent: number;
+  leads: number;
+  top_sources: { source: string; visits: number }[];
+  top_countries: { country: string; visits: number }[];
+  top_pages: { path: string; views: number }[];
+  devices: { device: string; visits: number }[];
+  daily_data: { day: string; pageviews: number; visitors: number }[];
+};
+
+const MESES_NOMBRE = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
 function Bar({ label, value, max }: { label: string; value: number; max: number }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
@@ -106,7 +124,13 @@ export default function AnalyticsManager() {
     audiencia: true,
     trafico: true,
     contenido: true,
+    historico: true,
   });
+  const [histAnio, setHistAnio] = useState(new Date().getFullYear());
+  const [histData, setHistData] = useState<MonthSnapshot[]>([]);
+  const [histLoading, setHistLoading] = useState(false);
+  const [histSaving, setHistSaving] = useState(false);
+  const [histMesDetalle, setHistMesDetalle] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/posthog")
@@ -126,6 +150,25 @@ export default function AnalyticsManager() {
       .then((d) => setLeads(d))
       .catch(() => {});
   }, []);
+
+  function loadHist(anio: number) {
+    setHistLoading(true);
+    fetch(`/api/admin/analytics-history?anio=${anio}`)
+      .then((r) => (r.ok ? r.json() : { meses: [] }))
+      .then((d) => setHistData(d.meses ?? []))
+      .catch(() => setHistData([]))
+      .finally(() => setHistLoading(false));
+  }
+
+  useEffect(() => { loadHist(histAnio); }, [histAnio]);
+
+  async function guardarMesActual() {
+    setHistSaving(true);
+    const res = await fetch("/api/admin/analytics-history", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+    if (res.ok) loadHist(histAnio);
+    else alert("Error guardando snapshot");
+    setHistSaving(false);
+  }
 
   if (loading) return <p className="admin-empty">Cargando analytics...</p>;
   if (error) return <p className="lead-form-error">{error}</p>;
@@ -385,6 +428,151 @@ export default function AnalyticsManager() {
               ))
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── Histórico mensual ── */}
+      <SectionHead id="historico" title="Histórico mensual" />
+      {openSections.historico && (
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+            <select value={histAnio} onChange={(e) => setHistAnio(Number(e.target.value))} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}>
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={guardarMesActual}
+              disabled={histSaving}
+              style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid var(--orange)", background: "var(--orange)", color: "#fff", cursor: histSaving ? "wait" : "pointer", fontSize: 13, fontWeight: 500 }}
+            >
+              {histSaving ? "Guardando…" : "Guardar mes actual"}
+            </button>
+          </div>
+
+          {histLoading ? (
+            <p className="admin-empty">Cargando histórico...</p>
+          ) : histData.length === 0 ? (
+            <p className="admin-empty">Sin datos para {histAnio}. Pulsa &quot;Guardar mes actual&quot; para empezar.</p>
+          ) : (
+            <>
+              <div style={{ overflowX: "auto" }}>
+                <table className="analytics-hist-table">
+                  <thead>
+                    <tr>
+                      <th>Mes</th>
+                      <th>Pageviews</th>
+                      <th>Visitantes</th>
+                      <th>Nuevos</th>
+                      <th>Sesiones</th>
+                      <th>Rebote</th>
+                      <th>Pico conc.</th>
+                      <th>Leads</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {histData.map((m) => {
+                      const mesIdx = Number(m.mes.split("-")[1]) - 1;
+                      return (
+                        <tr key={m.mes} style={{ cursor: "pointer" }} onClick={() => setHistMesDetalle(histMesDetalle === m.mes ? null : m.mes)}>
+                          <td style={{ fontWeight: 600 }}>{MESES_NOMBRE[mesIdx]} {m.mes.split("-")[0]}</td>
+                          <td>{m.pageviews.toLocaleString()}</td>
+                          <td>{m.visitors.toLocaleString()}</td>
+                          <td>{m.new_users.toLocaleString()}</td>
+                          <td>{m.sessions.toLocaleString()}</td>
+                          <td>{m.bounce_rate}%</td>
+                          <td>{m.peak_concurrent}</td>
+                          <td>{m.leads}</td>
+                          <td style={{ fontSize: "0.7rem", opacity: 0.5 }}>{histMesDetalle === m.mes ? "▼" : "▶"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {(() => {
+                const det = histData.find((m) => m.mes === histMesDetalle);
+                if (!det) return null;
+                const mesIdx = Number(det.mes.split("-")[1]) - 1;
+                const maxDailyH = Math.max(1, ...det.daily_data.map((d) => d.pageviews));
+                const maxSrcH = Math.max(1, ...det.top_sources.map((s) => s.visits));
+                return (
+                  <div style={{ marginTop: 14 }}>
+                    <h3 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: 12 }}>Detalle: {MESES_NOMBRE[mesIdx]} {det.mes.split("-")[0]}</h3>
+                    <div className="analytics-grid">
+                      <div className="analytics-card">
+                        <h3>Pageviews diarios</h3>
+                        <div className="analytics-daily-chart analytics-daily-chart--tall">
+                          {det.daily_data.map((d) => (
+                            <div key={d.day} className="analytics-daily-col">
+                              <span className="analytics-daily-number">{d.pageviews}</span>
+                              <div className="analytics-daily-bar" style={{ height: `${Math.round((d.pageviews / maxDailyH) * 100)}%` }} />
+                              <span>{d.day.slice(8)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="analytics-card">
+                        <h3>Fuentes</h3>
+                        {det.top_sources.map((s) => (
+                          <Bar key={s.source} label={s.source} value={s.visits} max={maxSrcH} />
+                        ))}
+                      </div>
+                      <div className="analytics-card">
+                        <h3>Páginas más vistas</h3>
+                        {det.top_pages.map((p) => (
+                          <div key={p.path} className="analytics-row">
+                            <span>{p.path || "/"}</span>
+                            <span>{p.views}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="analytics-card">
+                        <h3>Dispositivos</h3>
+                        {det.devices.map((d) => (
+                          <div key={d.device} className="analytics-row">
+                            <span>{d.device}</span>
+                            <span>{d.visits}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="analytics-card">
+                        <h3>Países</h3>
+                        {det.top_countries.map((c) => (
+                          <div key={c.country} className="analytics-row">
+                            <span>{c.country}</span>
+                            <span>{c.visits}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {histData.length >= 2 && (
+                <div className="analytics-card" style={{ marginTop: 16 }}>
+                  <h3>Evolución mensual</h3>
+                  <div className="analytics-daily-chart" style={{ height: 120 }}>
+                    {histData.map((m) => {
+                      const mesIdx = Number(m.mes.split("-")[1]) - 1;
+                      const maxPv = Math.max(1, ...histData.map((x) => x.pageviews));
+                      return (
+                        <div key={m.mes} className="analytics-daily-col">
+                          <span className="analytics-daily-number">{m.pageviews}</span>
+                          <div className="analytics-daily-bar" style={{ height: `${Math.round((m.pageviews / maxPv) * 100)}%` }} />
+                          <span>{MESES_NOMBRE[mesIdx]}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
