@@ -37,7 +37,7 @@ export async function GET() {
   }
 
   try {
-    const [r7d, r30d, rTop, rDaily, rBounce, rSources, rDevices, rEntry, rUtm, rCountries, rRealtime, rClicks, rNewUsers, rReferrers] =
+    const [r7d, r30d, rTop, rDaily, rBounce, rSources, rDevices, rEntry, rUtm, rCountries, rRealtime, rClicks, rNewUsers, rReferrers, rPeakDaily] =
       await Promise.all([
         hogql(`
         SELECT count() AS pageviews, uniqExact(distinct_id) AS visitors, uniqExact(properties.$session_id) AS sessions
@@ -127,6 +127,15 @@ export async function GET() {
         FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY AND ${DOMAIN_FILTER}
         GROUP BY referrer ORDER BY visits DESC LIMIT 20
       `),
+        hogql(`
+        SELECT day, max(concurrent) AS peak
+        FROM (
+          SELECT toDate(timestamp) AS day, toStartOfHour(timestamp) AS hour, uniqExact(distinct_id) AS concurrent
+          FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY AND ${DOMAIN_FILTER}
+          GROUP BY day, hour
+        )
+        GROUP BY day ORDER BY day ASC
+      `),
       ]);
 
     const s7 = r7d.results?.[0] ?? [0, 0, 0];
@@ -148,6 +157,7 @@ export async function GET() {
       clicks: (rClicks.results ?? []).map((r: unknown[]) => ({ element: String(r[0]), clicks: Number(r[1]), users: Number(r[2]) })),
       newUsersDaily: (rNewUsers.results ?? []).map((r: unknown[]) => ({ day: String(r[0]), newUsers: Number(r[1]) })),
       referrers: (rReferrers.results ?? []).map((r: unknown[]) => ({ url: String(r[0]), visits: Number(r[1]), visitors: Number(r[2]) })),
+      peakConcurrentDaily: (rPeakDaily.results ?? []).map((r: unknown[]) => ({ day: String(r[0]), peak: Number(r[1]) })),
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Error desconocido";

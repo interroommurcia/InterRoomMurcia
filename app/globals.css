@@ -1735,6 +1735,9 @@ button {
 .analytics-daily-bar--new {
   background: #22c55e;
 }
+.analytics-daily-bar--peak {
+  background: #6366f1;
+}
 
 .analytics-daily-col span {
   font-size: 0.6rem;

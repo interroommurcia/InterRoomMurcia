@@ -17,6 +17,7 @@ type PostHogData = {
   clicks: { element: string; clicks: number; users: number }[];
   newUsersDaily: { day: string; newUsers: number }[];
   referrers: { url: string; visits: number; visitors: number }[];
+  peakConcurrentDaily: { day: string; peak: number }[];
 };
 
 type LeadsData = {
@@ -138,6 +139,8 @@ export default function AnalyticsManager() {
     .filter((d) => new Date(d.day) >= new Date(Date.now() - 7 * 86400000))
     .reduce((s, d) => s + d.newUsers, 0);
   const totalNewUsers30d = data.newUsersDaily.reduce((s, d) => s + d.newUsers, 0);
+  const peakAll = Math.max(0, ...data.peakConcurrentDaily.map((d) => d.peak));
+  const maxPeak = Math.max(1, peakAll);
 
   function toggleSection(key: string) {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -186,6 +189,10 @@ export default function AnalyticsManager() {
             <div className="analytics-stat">
               <div className="analytics-stat-value">{totalNewUsers30d}</div>
               <div className="analytics-stat-label">Usuarios nuevos (30d)</div>
+            </div>
+            <div className="analytics-stat">
+              <div className="analytics-stat-value">{peakAll}</div>
+              <div className="analytics-stat-label">Pico concurrentes/hora (30d)</div>
             </div>
           </div>
 
@@ -290,6 +297,19 @@ export default function AnalyticsManager() {
             {data.countries.map((c) => (
               <Bar key={c.country} label={c.country} value={c.visits} max={maxCountry} />
             ))}
+          </div>
+
+          <div className="analytics-card">
+            <h3>Pico de usuarios simultáneos por día (30d)</h3>
+            <div className="analytics-daily-chart analytics-daily-chart--tall">
+              {data.peakConcurrentDaily.map((d) => (
+                <div key={d.day} className="analytics-daily-col">
+                  <span className="analytics-daily-number">{d.peak}</span>
+                  <div className="analytics-daily-bar analytics-daily-bar--peak" style={{ height: `${Math.round((d.peak / maxPeak) * 100)}%` }} />
+                  <span>{d.day.slice(5)}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
