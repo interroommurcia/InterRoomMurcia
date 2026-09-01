@@ -99,6 +99,13 @@ export default function AnalyticsManager() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<LeadsData | null>(null);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    resumen: true,
+    leads: true,
+    audiencia: true,
+    trafico: true,
+    contenido: true,
+  });
 
   useEffect(() => {
     fetch("/api/admin/posthog")
@@ -131,14 +138,6 @@ export default function AnalyticsManager() {
     .filter((d) => new Date(d.day) >= new Date(Date.now() - 7 * 86400000))
     .reduce((s, d) => s + d.newUsers, 0);
   const totalNewUsers30d = data.newUsersDaily.reduce((s, d) => s + d.newUsers, 0);
-
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    resumen: true,
-    leads: true,
-    audiencia: true,
-    trafico: true,
-    contenido: true,
-  });
 
   function toggleSection(key: string) {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
