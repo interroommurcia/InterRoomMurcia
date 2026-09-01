@@ -158,10 +158,10 @@ export async function GET(req: NextRequest) {
           uniqExactIf(e.distinct_id, f.first_seen < ${desde ? `'${desde}'` : `now() - INTERVAL 30 DAY`}) AS returning_users
         FROM events AS e
         INNER JOIN (
-          SELECT distinct_id, min(timestamp) AS first_seen
+          SELECT distinct_id AS did, min(timestamp) AS first_seen
           FROM events WHERE event = '$pageview' AND ${DOMAIN_FILTER} ${adminFilter}
-          GROUP BY distinct_id
-        ) AS f ON e.distinct_id = f.distinct_id
+          GROUP BY did
+        ) AS f ON e.distinct_id = f.did
         WHERE e.event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY day ORDER BY day ASC
       `),
