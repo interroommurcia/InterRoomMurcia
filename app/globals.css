@@ -1755,6 +1755,38 @@ button {
   height: 150px;
 }
 
+.analytics-realtime-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  flex-wrap: wrap;
+}
+.analytics-realtime-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: realtime-pulse 2s ease-in-out infinite;
+}
+@keyframes realtime-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.analytics-realtime-count {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #15803d;
+}
+.analytics-realtime-pages {
+  font-size: 0.8rem;
+  color: #166534;
+  opacity: 0.7;
+}
+
 .analytics-section-head {
   display: flex;
   align-items: center;

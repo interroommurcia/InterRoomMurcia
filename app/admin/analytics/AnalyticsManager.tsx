@@ -131,6 +131,10 @@ export default function AnalyticsManager() {
   const [histLoading, setHistLoading] = useState(false);
   const [histSaving, setHistSaving] = useState(false);
   const [histMesDetalle, setHistMesDetalle] = useState<string | null>(null);
+  const [histMesGuardar, setHistMesGuardar] = useState(() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
+  });
 
   useEffect(() => {
     fetch("/api/admin/posthog")
@@ -162,11 +166,13 @@ export default function AnalyticsManager() {
 
   useEffect(() => { loadHist(histAnio); }, [histAnio]);
 
-  async function guardarMesActual() {
+  async function guardarSnapshot(mes: string) {
     setHistSaving(true);
-    const res = await fetch("/api/admin/analytics-history", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
-    if (res.ok) loadHist(histAnio);
-    else alert("Error guardando snapshot");
+    const res = await fetch("/api/admin/analytics-history", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mes }) });
+    if (res.ok) {
+      const anioMes = Number(mes.split("-")[0]);
+      if (anioMes === histAnio) loadHist(histAnio);
+    } else alert("Error guardando snapshot");
     setHistSaving(false);
   }
 
@@ -204,6 +210,19 @@ export default function AnalyticsManager() {
 
   return (
     <div className="analytics-dashboard">
+      {/* ── En directo ── */}
+      <div className="analytics-realtime-banner">
+        <div className="analytics-realtime-dot" />
+        <span className="analytics-realtime-count">
+          {data.realtime.reduce((s, r) => s + r.active, 0)} {data.realtime.reduce((s, r) => s + r.active, 0) === 1 ? "usuario" : "usuarios"} ahora mismo
+        </span>
+        {data.realtime.length > 0 && (
+          <span className="analytics-realtime-pages">
+            {data.realtime.map((r) => `${r.path || "/"} (${r.active})`).join(" · ")}
+          </span>
+        )}
+      </div>
+
       {/* ── Resumen ── */}
       <SectionHead id="resumen" title="Resumen" />
       {openSections.resumen && (
@@ -239,17 +258,6 @@ export default function AnalyticsManager() {
             </div>
           </div>
 
-          {data.realtime.length > 0 && (
-            <div className="analytics-card">
-              <h3>En este momento</h3>
-              {data.realtime.map((r) => (
-                <div key={r.path} className="analytics-row">
-                  <span>{r.path || "/"}</span>
-                  <span>{r.active} activos</span>
-                </div>
-              ))}
-            </div>
-          )}
         </>
       )}
 
@@ -436,19 +444,32 @@ export default function AnalyticsManager() {
       {openSections.historico && (
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
-            <select value={histAnio} onChange={(e) => setHistAnio(Number(e.target.value))} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}>
-              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={guardarMesActual}
-              disabled={histSaving}
-              style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid var(--orange)", background: "var(--orange)", color: "#fff", cursor: histSaving ? "wait" : "pointer", fontSize: 13, fontWeight: 500 }}
-            >
-              {histSaving ? "Guardando…" : "Guardar mes actual"}
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Ver año:</span>
+              <select value={histAnio} onChange={(e) => setHistAnio(Number(e.target.value))} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}>
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ borderLeft: "1px solid #d1d5db", height: 24 }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Guardar:</span>
+              <input
+                type="month"
+                value={histMesGuardar}
+                onChange={(e) => setHistMesGuardar(e.target.value)}
+                style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}
+              />
+              <button
+                type="button"
+                onClick={() => guardarSnapshot(histMesGuardar)}
+                disabled={histSaving}
+                style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid var(--orange)", background: "var(--orange)", color: "#fff", cursor: histSaving ? "wait" : "pointer", fontSize: 13, fontWeight: 500 }}
+              >
+                {histSaving ? "Guardando…" : "Guardar snapshot"}
+              </button>
+            </div>
           </div>
 
           {histLoading ? (
