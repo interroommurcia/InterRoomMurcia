@@ -70,11 +70,10 @@ export async function POST(req: NextRequest) {
 
   if (!extraido) return NextResponse.json({ error: "No se pudo extraer texto del archivo" }, { status: 422 });
 
-  const actual = await getKnowledgeBase();
   const ext = isPdf ? "PDF" : "DOCX";
-  const cabecera = `\n\n### Protocolo: ${file.name} [${ext}] (${new Date().toLocaleDateString("es-ES")})\n`;
-  const combinado = (actual + cabecera + extraido).slice(0, KNOWLEDGE_BASE_MAX_CHARS);
-  await setKnowledgeBase(combinado);
+  const cabecera = `### Protocolo: ${file.name} [${ext}] (${new Date().toLocaleDateString("es-ES")})\n`;
+  const nuevo = (cabecera + extraido).slice(0, KNOWLEDGE_BASE_MAX_CHARS);
+  await setKnowledgeBase(nuevo);
 
-  return NextResponse.json({ ok: true, knowledgeBase: combinado });
+  return NextResponse.json({ ok: true, knowledgeBase: nuevo });
 }
