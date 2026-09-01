@@ -12,18 +12,23 @@ const PH_PROJ = process.env.POSTHOG_PROJECT_ID ?? "";
 const DOMAIN_FILTER =
   "(properties.$current_url LIKE '%inter-room-murcia%' OR properties.$current_url LIKE '%interroommurcia%')";
 
-async function hogql(query: string) {
-  const res = await fetch(`${PH_API}/api/projects/${PH_PROJ}/query/`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${PH_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ query: { kind: "HogQLQuery", query } }),
-    cache: "no-store",
-  });
-  if (!res.ok) {
+async function hogql(query: string, retries = 3): Promise<Record<string, unknown>> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const res = await fetch(`${PH_API}/api/projects/${PH_PROJ}/query/`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${PH_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ query: { kind: "HogQLQuery", query } }),
+      cache: "no-store",
+    });
+    if (res.ok) return res.json();
+    if (res.status >= 500 && attempt < retries - 1) {
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+      continue;
+    }
     const txt = await res.text();
     throw new Error(`PostHog ${res.status}: ${txt.slice(0, 300)}`);
   }
-  return res.json();
+  throw new Error("PostHog: reintentos agotados");
 }
 
 export const maxDuration = 60;
