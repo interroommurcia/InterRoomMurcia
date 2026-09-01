@@ -272,42 +272,25 @@ export default function AnalyticsManager() {
       <SectionHead id="resumen" title={`Resumen — ${pLabel}`} />
       {openSections.resumen && (
         <div className="analytics-stat-row">
-          <div className="analytics-stat">
-            <div className="analytics-stat-value">{data.stats.pageviews.toLocaleString()}</div>
-            <div className="analytics-stat-label">Pageviews</div>
-          </div>
-          <div className="analytics-stat">
-            <div className="analytics-stat-value">{data.stats.visitors.toLocaleString()}</div>
-            <div className="analytics-stat-label">Visitantes</div>
-          </div>
-          <div className="analytics-stat">
-            <div className="analytics-stat-value">{data.stats.sessions.toLocaleString()}</div>
-            <div className="analytics-stat-label">Sesiones</div>
-          </div>
-          <div className="analytics-stat">
-            <div className="analytics-stat-value">{data.bounceRate}%</div>
-            <div className="analytics-stat-label">Tasa de rebote</div>
-          </div>
-          <div className="analytics-stat">
-            <div className="analytics-stat-value">{data.totalNewUsers.toLocaleString()}</div>
-            <div className="analytics-stat-label">Usuarios nuevos</div>
-          </div>
-          <div className="analytics-stat">
-            <div className="analytics-stat-value">{totalReturning.toLocaleString()}</div>
-            <div className="analytics-stat-label">Usuarios recurrentes</div>
-          </div>
-          <div className="analytics-stat">
-            <div className="analytics-stat-value">{peakAll}</div>
-            <div className="analytics-stat-label">Pico concurrentes/hora</div>
-          </div>
-          <div className="analytics-stat">
-            <div className="analytics-stat-value">{data.avgSessionDuration >= 60 ? `${Math.floor(data.avgSessionDuration / 60)}m ${data.avgSessionDuration % 60}s` : `${data.avgSessionDuration}s`}</div>
-            <div className="analytics-stat-label">Tiempo medio visita</div>
-          </div>
-          <div className="analytics-stat">
-            <div className="analytics-stat-value">{data.avgPagesPerSession}</div>
-            <div className="analytics-stat-label">Páginas / sesión</div>
-          </div>
+          {[
+            { value: data.stats.pageviews.toLocaleString(), label: "Pageviews", tip: "Total de páginas vistas en el periodo seleccionado" },
+            { value: data.stats.visitors.toLocaleString(), label: "Visitantes", tip: "Usuarios únicos que visitaron la web" },
+            { value: data.stats.sessions.toLocaleString(), label: "Sesiones", tip: "Número de sesiones de navegación (un usuario puede tener varias)" },
+            { value: `${data.bounceRate}%`, label: "Tasa de rebote", tip: "Porcentaje de sesiones en las que el usuario solo vio una página y se fue" },
+            { value: data.totalNewUsers.toLocaleString(), label: "Usuarios nuevos", tip: "Usuarios que visitaron la web por primera vez en este periodo" },
+            { value: totalReturning.toLocaleString(), label: "Usuarios recurrentes", tip: "Usuarios que ya habían visitado la web antes de este periodo" },
+            { value: String(peakAll), label: "Pico concurrentes/hora", tip: "Máximo de usuarios únicos activos en la misma hora durante el periodo" },
+            { value: data.avgSessionDuration >= 60 ? `${Math.floor(data.avgSessionDuration / 60)}m ${data.avgSessionDuration % 60}s` : `${data.avgSessionDuration}s`, label: "Tiempo medio visita", tip: "Duración media de las sesiones con más de una página vista" },
+            { value: String(data.avgPagesPerSession), label: "Páginas / sesión", tip: "Media de páginas vistas por sesión (solo sesiones con más de 1 página)" },
+          ].map((s) => (
+            <div className="analytics-stat" key={s.label}>
+              <div className="analytics-stat-value">{s.value}</div>
+              <div className="analytics-stat-label">
+                {s.label}
+                <span className="analytics-stat-help" data-tip={s.tip}>❓</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

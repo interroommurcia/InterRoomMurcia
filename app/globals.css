@@ -1631,6 +1631,44 @@ button {
   font-size: 0.72rem;
   opacity: 0.6;
   margin-top: 4px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.analytics-stat-help {
+  font-size: 0.7rem;
+  cursor: help;
+  position: relative;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.analytics-stat-help:hover {
+  opacity: 1;
+}
+.analytics-stat-help::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  white-space: normal;
+  width: max-content;
+  max-width: 220px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 10;
+  line-height: 1.3;
+}
+.analytics-stat-help:hover::after {
+  opacity: 1;
 }
 
 .analytics-grid {
