@@ -78,39 +78,47 @@ export default function ChatWidget() {
       const decoder = new TextDecoder();
       let fullAssistant = "";
       let displayedLen = 0;
-      let typingTimer: ReturnType<typeof setInterval> | null = null;
+      let typing = false;
+      let streamDone = false;
 
-      function startTyping() {
-        if (typingTimer) return;
-        typingTimer = setInterval(() => {
+      function updateDisplay(text: string) {
+        setMensajes((prev) => {
+          const copy = [...prev];
+          copy[copy.length - 1] = { role: "assistant", text };
+          return copy;
+        });
+      }
+
+      async function typeLoop() {
+        if (typing) return;
+        typing = true;
+        while (true) {
           const visible = stripClassification(fullAssistant);
           if (displayedLen >= visible.length) {
-            return;
+            if (streamDone) break;
+            await new Promise((r) => setTimeout(r, 30));
+            continue;
           }
-          displayedLen = Math.min(displayedLen + 2, visible.length);
-          const shown = visible.slice(0, displayedLen);
-          setMensajes((prev) => {
-            const copy = [...prev];
-            copy[copy.length - 1] = { role: "assistant", text: shown };
-            return copy;
-          });
-        }, 18);
+          const nextSpace = visible.indexOf(" ", displayedLen + 1);
+          const wordEnd = nextSpace === -1 ? visible.length : nextSpace + 1;
+          displayedLen = wordEnd;
+          updateDisplay(visible.slice(0, displayedLen));
+          const delay = 25 + Math.random() * 35;
+          await new Promise((r) => setTimeout(r, delay));
+        }
+        updateDisplay(stripClassification(fullAssistant));
+        typing = false;
       }
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         fullAssistant += decoder.decode(value, { stream: true });
-        startTyping();
+        typeLoop();
       }
-
-      if (typingTimer) clearInterval(typingTimer);
-      const finalVisible = stripClassification(fullAssistant);
-      setMensajes((prev) => {
-        const copy = [...prev];
-        copy[copy.length - 1] = { role: "assistant", text: finalVisible };
-        return copy;
-      });
+      streamDone = true;
+      if (!typing) typeLoop();
+      else while (typing) await new Promise((r) => setTimeout(r, 20));
     } catch {
       setMensajes((prev) => [...prev, { role: "assistant", text: "Error de conexión, prueba de nuevo." }]);
     } finally {
