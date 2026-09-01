@@ -1741,6 +1741,33 @@ button {
   opacity: 0.5;
 }
 
+.analytics-daily-number {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--orange-dark);
+  opacity: 1;
+}
+
+.analytics-daily-chart--tall {
+  height: 150px;
+}
+
+.analytics-section-head {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 2px solid rgba(26, 26, 26, 0.08);
+  margin-bottom: 14px;
+  margin-top: 10px;
+  user-select: none;
+}
+
+.analytics-section-head h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
 @media (max-width: 860px) {
   .analytics-stat-row,
   .analytics-grid {
