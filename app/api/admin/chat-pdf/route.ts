@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import mammoth from "mammoth";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
 import { getKnowledgeBase, setKnowledgeBase, KNOWLEDGE_BASE_MAX_CHARS } from "../../../../lib/chat";
 
 export const dynamic = "force-dynamic";
@@ -76,4 +77,32 @@ export async function POST(req: NextRequest) {
   await setKnowledgeBase(nuevo);
 
   return NextResponse.json({ ok: true, knowledgeBase: nuevo });
+}
+
+export async function GET() {
+  const kb = await getKnowledgeBase();
+  if (!kb.trim()) return NextResponse.json({ error: "No hay protocolo guardado" }, { status: 404 });
+
+  const lines = kb.split("\n");
+  const children = lines.map((line) => {
+    const trimmed = line.trim();
+    if (/^#{1,3}\s/.test(trimmed)) {
+      return new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 200, after: 100 },
+        children: [new TextRun({ text: trimmed.replace(/^#{1,3}\s*/, ""), bold: true })],
+      });
+    }
+    return new Paragraph({ spacing: { after: 60 }, children: [new TextRun({ text: trimmed })] });
+  });
+
+  const doc = new Document({ sections: [{ children }] });
+  const buffer = await Packer.toBuffer(doc);
+
+  return new Response(Buffer.from(buffer), {
+    headers: {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "Content-Disposition": "attachment; filename=Protocolo_Roomi.docx",
+    },
+  });
 }

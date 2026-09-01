@@ -77,6 +77,13 @@ export default function ChatsManager() {
     }
   }
 
+  function descargarProtocolo() {
+    const a = document.createElement("a");
+    a.href = "/api/admin/chat-pdf";
+    a.download = "Protocolo_Roomi.docx";
+    a.click();
+  }
+
   async function subirPdf(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -130,6 +137,9 @@ export default function ChatsManager() {
               style={{ display: "none" }}
             />
           </label>
+          <button type="button" className="btn-ghost" onClick={descargarProtocolo} disabled={!knowledgeBase.trim()}>
+            Descargar protocolo (.docx)
+          </button>
           {kbSaved && <span>Guardado</span>}
         </div>
         {pdfError && <p className="lead-form-error">{pdfError}</p>}
