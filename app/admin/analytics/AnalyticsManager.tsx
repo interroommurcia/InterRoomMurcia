@@ -409,26 +409,29 @@ export default function AnalyticsManager() {
         </div>
       )}
 
-      {/* ── Tráfico ── */}
-      <SectionHead id="trafico" title="Fuentes de tráfico" />
+      {/* ── De dónde vienen ── */}
+      <SectionHead id="trafico" title="De dónde vienen" />
       {openSections.trafico && (
         <div className="analytics-grid">
           <div className="analytics-card">
-            <h3>Fuentes de tráfico</h3>
+            <h3>Origen del tráfico</h3>
+            <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 8px" }}>Google, directo, redes sociales…</p>
             {data.sources.length === 0 ? (
               <p className="admin-empty">Sin datos.</p>
             ) : (
-              data.sources.map((s) => <Bar key={s.source} label={s.source} value={s.visits} max={maxSource} />)
+              data.sources.map((s) => <Bar key={s.source} label={s.source === "(directo)" ? "Directo (escriben la URL)" : s.source} value={s.visits} max={maxSource} />)
             )}
           </div>
           <div className="analytics-card">
-            <h3>Referrers</h3>
+            <h3>Webs que nos enlazan</h3>
+            <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 8px" }}>Páginas desde las que llegan</p>
             <ReferrerCard referrers={data.referrers} />
           </div>
           <div className="analytics-card">
-            <h3>UTM</h3>
+            <h3>Campañas (UTM)</h3>
+            <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 8px" }}>Tráfico de campañas con parámetros UTM</p>
             {data.utmSources.length === 0 ? (
-              <p className="admin-empty">Sin datos.</p>
+              <p className="admin-empty">Sin campañas activas.</p>
             ) : (
               data.utmSources.map((u) => (
                 <div key={u.source + u.medium} className="analytics-row">
@@ -440,29 +443,45 @@ export default function AnalyticsManager() {
         </div>
       )}
 
-      {/* ── Contenido ── */}
-      <SectionHead id="contenido" title="Contenido" />
+      {/* ── Qué ven y qué hacen ── */}
+      <SectionHead id="contenido" title="Qué páginas visitan" />
       {openSections.contenido && (
         <div className="analytics-grid">
           <div className="analytics-card">
             <h3>Páginas más vistas</h3>
-            {data.topPages.map((p) => (
-              <div key={p.path} className="analytics-row"><span>{p.path || "/"}</span><span>{p.views}</span></div>
-            ))}
+            {data.topPages.map((p) => {
+              const path = p.path || "/";
+              const name = path === "/" ? "Inicio"
+                : path.startsWith("/habitaciones/") ? path.replace("/habitaciones/", "Zona: ").replace(/\//g, " → ")
+                : path.startsWith("/blog/") ? path.replace("/blog/", "Blog: ")
+                : path.replace(/^\//, "").replace(/\//g, " → ") || path;
+              return (
+                <div key={path} className="analytics-row"><span title={path}>{name}</span><span>{p.views}</span></div>
+              );
+            })}
           </div>
           <div className="analytics-card">
-            <h3>Páginas de entrada</h3>
-            {data.entryPages.map((e) => (
-              <div key={e.path} className="analytics-row"><span>{e.path || "/"}</span><span>{e.sessions}</span></div>
-            ))}
+            <h3>Primera página que ven</h3>
+            <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 8px" }}>Por dónde entran los visitantes</p>
+            {data.entryPages.map((e) => {
+              const path = e.path || "/";
+              const name = path === "/" ? "Inicio"
+                : path.startsWith("/habitaciones/") ? path.replace("/habitaciones/", "Zona: ").replace(/\//g, " → ")
+                : path.startsWith("/blog/") ? path.replace("/blog/", "Blog: ")
+                : path.replace(/^\//, "").replace(/\//g, " → ") || path;
+              return (
+                <div key={path} className="analytics-row"><span title={path}>{name}</span><span>{e.sessions}</span></div>
+              );
+            })}
           </div>
           <div className="analytics-card">
-            <h3>Clicks en botones</h3>
+            <h3>En qué hacen clic</h3>
+            <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 8px" }}>Botones y enlaces más pulsados</p>
             {data.clicks.length === 0 ? (
               <p className="admin-empty">Sin datos.</p>
             ) : (
               data.clicks.map((c) => (
-                <div key={c.element} className="analytics-row"><span>{c.element}</span><span>{c.clicks}</span></div>
+                <div key={c.element} className="analytics-row"><span>{c.element}</span><span>{c.clicks} clics</span></div>
               ))
             )}
           </div>
