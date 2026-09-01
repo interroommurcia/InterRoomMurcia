@@ -1755,6 +1755,14 @@ button {
   height: 150px;
 }
 
+.analytics-periodo-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+}
+
 .analytics-realtime-banner {
   display: flex;
   align-items: center;
@@ -1803,28 +1811,6 @@ button {
   margin: 0;
 }
 
-.analytics-hist-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.82rem;
-}
-.analytics-hist-table th {
-  text-align: left;
-  padding: 8px 10px;
-  border-bottom: 2px solid rgba(26, 26, 26, 0.1);
-  font-weight: 600;
-  font-size: 0.75rem;
-  opacity: 0.7;
-  white-space: nowrap;
-}
-.analytics-hist-table td {
-  padding: 8px 10px;
-  border-bottom: 1px solid rgba(26, 26, 26, 0.05);
-  white-space: nowrap;
-}
-.analytics-hist-table tr:hover td {
-  background: var(--paper-dim);
-}
 
 @media (max-width: 860px) {
   .analytics-stat-row,

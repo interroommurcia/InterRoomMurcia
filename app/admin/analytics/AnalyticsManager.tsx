@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 
 type PostHogData = {
-  stats7d: { pageviews: number; visitors: number; sessions: number };
-  stats30d: { pageviews: number; visitors: number };
+  stats: { pageviews: number; visitors: number; sessions: number };
   bounceRate: number;
+  totalNewUsers: number;
   topPages: { path: string; views: number; uniq: number }[];
   dailyViews: { day: string; pageviews: number; visitors: number }[];
   sources: { source: string; visits: number; visitors: number }[];
@@ -18,6 +18,7 @@ type PostHogData = {
   newUsersDaily: { day: string; newUsers: number }[];
   referrers: { url: string; visits: number; visitors: number }[];
   peakConcurrentDaily: { day: string; peak: number }[];
+  newVsReturn: { day: string; newUsers: number; returning: number }[];
 };
 
 type LeadsData = {
@@ -26,23 +27,34 @@ type LeadsData = {
   byOrigen: { origen: string; count: number }[];
 };
 
-type MonthSnapshot = {
-  mes: string;
-  pageviews: number;
-  visitors: number;
-  sessions: number;
-  new_users: number;
-  bounce_rate: number;
-  peak_concurrent: number;
-  leads: number;
-  top_sources: { source: string; visits: number }[];
-  top_countries: { country: string; visits: number }[];
-  top_pages: { path: string; views: number }[];
-  devices: { device: string; visits: number }[];
-  daily_data: { day: string; pageviews: number; visitors: number }[];
-};
-
 const MESES_NOMBRE = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+type Periodo = "7d" | "30d" | "mes" | "anio" | "custom";
+
+function fmtDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function calcRange(periodo: Periodo, mesVal: string, anioVal: number, customDesde: string, customHasta: string): { desde: string; hasta: string } | null {
+  const now = new Date();
+  if (periodo === "7d") {
+    const d = new Date(now); d.setDate(d.getDate() - 7);
+    return { desde: fmtDate(d), hasta: fmtDate(now) };
+  }
+  if (periodo === "30d") return null; // API default
+  if (periodo === "mes") {
+    const [y, m] = mesVal.split("-").map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    return { desde: `${mesVal}-01`, hasta: `${mesVal}-${String(lastDay).padStart(2, "0")}` };
+  }
+  if (periodo === "anio") {
+    return { desde: `${anioVal}-01-01`, hasta: `${anioVal}-12-31` };
+  }
+  if (periodo === "custom") {
+    return { desde: customDesde, hasta: customHasta };
+  }
+  return null;
+}
 
 function Bar({ label, value, max }: { label: string; value: number; max: number }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
@@ -113,41 +125,45 @@ function ReferrerCard({ referrers }: { referrers: { url: string; visits: number 
   );
 }
 
+function periodoLabel(p: Periodo, mesVal: string, anioVal: number) {
+  if (p === "7d") return "últimos 7 días";
+  if (p === "30d") return "últimos 30 días";
+  if (p === "mes") {
+    const [y, m] = mesVal.split("-").map(Number);
+    return `${MESES_NOMBRE[m - 1]} ${y}`;
+  }
+  if (p === "anio") return `Año ${anioVal}`;
+  return "periodo personalizado";
+}
+
+const inputStyle: React.CSSProperties = { padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 };
+
 export default function AnalyticsManager() {
   const [data, setData] = useState<PostHogData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<LeadsData | null>(null);
+
+  const [periodo, setPeriodo] = useState<Periodo>("30d");
+  const now = new Date();
+  const [mesVal, setMesVal] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+  const [anioVal, setAnioVal] = useState(now.getFullYear());
+  const [customDesde, setCustomDesde] = useState(fmtDate(new Date(now.getFullYear(), now.getMonth() - 2, 1)));
+  const [customHasta, setCustomHasta] = useState(fmtDate(now));
+
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     resumen: true,
     leads: true,
     audiencia: true,
     trafico: true,
     contenido: true,
-    historico: true,
-  });
-  const [histData, setHistData] = useState<MonthSnapshot[]>([]);
-  const [histAniosDisp, setHistAniosDisp] = useState<number[]>([]);
-  const [histLoading, setHistLoading] = useState(false);
-  const [histSaving, setHistSaving] = useState(false);
-  const [histMesDetalle, setHistMesDetalle] = useState<string | null>(null);
-  const [histMode, setHistMode] = useState<"anio" | "periodo">("anio");
-  const [histAnio, setHistAnio] = useState(new Date().getFullYear());
-  const [histDesde, setHistDesde] = useState(() => {
-    const n = new Date();
-    return `${n.getFullYear()}-01`;
-  });
-  const [histHasta, setHistHasta] = useState(() => {
-    const n = new Date();
-    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
-  });
-  const [histMesGuardar, setHistMesGuardar] = useState(() => {
-    const n = new Date();
-    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
   });
 
-  useEffect(() => {
-    fetch("/api/admin/posthog")
+  const loadData = useCallback(() => {
+    setLoading(true);
+    const range = calcRange(periodo, mesVal, anioVal, customDesde, customHasta);
+    const params = range ? `?desde=${range.desde}&hasta=${range.hasta}` : "";
+    fetch(`/api/admin/posthog${params}`)
       .then(async (res) => {
         if (!res.ok) {
           const d = await res.json().catch(() => ({ error: "Error cargando analytics" }));
@@ -155,53 +171,20 @@ export default function AnalyticsManager() {
           return;
         }
         setData(await res.json());
+        setError("");
       })
       .catch(() => setError("Error de red cargando analytics"))
       .finally(() => setLoading(false));
+  }, [periodo, mesVal, anioVal, customDesde, customHasta]);
 
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
     fetch("/api/admin/leads-stats")
       .then((res) => (res.ok ? res.json() : null))
       .then((d) => setLeads(d))
       .catch(() => {});
   }, []);
-
-  function loadHist() {
-    setHistLoading(true);
-    const params = histMode === "anio" ? `anio=${histAnio}` : `desde=${histDesde}&hasta=${histHasta}`;
-    fetch(`/api/admin/analytics-history?${params}`)
-      .then((r) => (r.ok ? r.json() : { meses: [], aniosDisponibles: [] }))
-      .then((d) => {
-        setHistData(d.meses ?? []);
-        if (d.aniosDisponibles?.length) setHistAniosDisp(d.aniosDisponibles);
-      })
-      .catch(() => setHistData([]))
-      .finally(() => setHistLoading(false));
-  }
-
-  useEffect(() => { loadHist(); }, [histAnio, histMode, histDesde, histHasta]);
-
-  async function guardarSnapshot(mes: string) {
-    setHistSaving(true);
-    const res = await fetch("/api/admin/analytics-history", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mes }) });
-    if (res.ok) loadHist();
-    else alert("Error guardando snapshot");
-    setHistSaving(false);
-  }
-
-  if (loading) return <p className="admin-empty">Cargando analytics...</p>;
-  if (error) return <p className="lead-form-error">{error}</p>;
-  if (!data) return null;
-
-  const maxDaily = Math.max(1, ...data.dailyViews.map((d) => d.pageviews));
-  const maxNewUsers = Math.max(1, ...data.newUsersDaily.map((d) => d.newUsers));
-  const maxSource = Math.max(1, ...data.sources.map((s) => s.visits));
-  const maxCountry = Math.max(1, ...data.countries.map((c) => c.visits));
-  const totalNewUsers7d = data.newUsersDaily
-    .filter((d) => new Date(d.day) >= new Date(Date.now() - 7 * 86400000))
-    .reduce((s, d) => s + d.newUsers, 0);
-  const totalNewUsers30d = data.newUsersDaily.reduce((s, d) => s + d.newUsers, 0);
-  const peakAll = Math.max(0, ...data.peakConcurrentDaily.map((d) => d.peak));
-  const maxPeak = Math.max(1, peakAll);
 
   function toggleSection(key: string) {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -209,19 +192,59 @@ export default function AnalyticsManager() {
 
   function SectionHead({ id, title }: { id: string; title: string }) {
     return (
-      <div
-        className="analytics-section-head"
-        onClick={() => toggleSection(id)}
-        style={{ cursor: "pointer" }}
-      >
+      <div className="analytics-section-head" onClick={() => toggleSection(id)} style={{ cursor: "pointer" }}>
         <span style={{ fontSize: "0.75rem", marginRight: 6, opacity: 0.5 }}>{openSections[id] ? "▼" : "▶"}</span>
         <h2>{title}</h2>
       </div>
     );
   }
 
+  const pLabel = periodoLabel(periodo, mesVal, anioVal);
+
+  if (loading && !data) return <p className="admin-empty">Cargando analytics...</p>;
+  if (error && !data) return <p className="lead-form-error">{error}</p>;
+  if (!data) return null;
+
+  const maxDaily = Math.max(1, ...data.dailyViews.map((d) => d.pageviews));
+  const maxNewUsers = Math.max(1, ...data.newUsersDaily.map((d) => d.newUsers));
+  const maxSource = Math.max(1, ...data.sources.map((s) => s.visits));
+  const maxCountry = Math.max(1, ...data.countries.map((c) => c.visits));
+  const peakAll = Math.max(0, ...data.peakConcurrentDaily.map((d) => d.peak));
+  const maxPeak = Math.max(1, peakAll);
+  const maxNvR = Math.max(1, ...data.newVsReturn.map((d) => d.newUsers + d.returning));
+  const totalReturning = data.newVsReturn.reduce((s, d) => s + d.returning, 0);
+
   return (
     <div className="analytics-dashboard">
+      {/* ── Selector de periodo ── */}
+      <div className="analytics-periodo-bar">
+        <select value={periodo} onChange={(e) => setPeriodo(e.target.value as Periodo)} style={inputStyle}>
+          <option value="7d">Últimos 7 días</option>
+          <option value="30d">Últimos 30 días</option>
+          <option value="mes">Mes concreto</option>
+          <option value="anio">Año completo</option>
+          <option value="custom">Periodo personalizado</option>
+        </select>
+        {periodo === "mes" && (
+          <input type="month" value={mesVal} onChange={(e) => setMesVal(e.target.value)} style={inputStyle} />
+        )}
+        {periodo === "anio" && (
+          <select value={anioVal} onChange={(e) => setAnioVal(Number(e.target.value))} style={inputStyle}>
+            {Array.from({ length: 5 }, (_, i) => now.getFullYear() - i).map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        )}
+        {periodo === "custom" && (
+          <>
+            <input type="date" value={customDesde} onChange={(e) => setCustomDesde(e.target.value)} style={inputStyle} />
+            <span style={{ fontSize: 13, color: "#6b7280" }}>→</span>
+            <input type="date" value={customHasta} onChange={(e) => setCustomHasta(e.target.value)} style={inputStyle} />
+          </>
+        )}
+        {loading && <span style={{ fontSize: 12, color: "#9ca3af" }}>Cargando...</span>}
+      </div>
+
       {/* ── En directo ── */}
       <div className="analytics-realtime-banner">
         <div className="analytics-realtime-dot" />
@@ -236,41 +259,38 @@ export default function AnalyticsManager() {
       </div>
 
       {/* ── Resumen ── */}
-      <SectionHead id="resumen" title="Resumen" />
+      <SectionHead id="resumen" title={`Resumen — ${pLabel}`} />
       {openSections.resumen && (
-        <>
-          <div className="analytics-stat-row">
-            <div className="analytics-stat">
-              <div className="analytics-stat-value">{data.stats7d.pageviews}</div>
-              <div className="analytics-stat-label">Pageviews (7d)</div>
-            </div>
-            <div className="analytics-stat">
-              <div className="analytics-stat-value">{data.stats7d.visitors}</div>
-              <div className="analytics-stat-label">Visitantes (7d)</div>
-            </div>
-            <div className="analytics-stat">
-              <div className="analytics-stat-value">{data.stats30d.pageviews}</div>
-              <div className="analytics-stat-label">Pageviews (30d)</div>
-            </div>
-            <div className="analytics-stat">
-              <div className="analytics-stat-value">{data.bounceRate}%</div>
-              <div className="analytics-stat-label">Tasa de rebote (7d)</div>
-            </div>
-            <div className="analytics-stat">
-              <div className="analytics-stat-value">{totalNewUsers7d}</div>
-              <div className="analytics-stat-label">Usuarios nuevos (7d)</div>
-            </div>
-            <div className="analytics-stat">
-              <div className="analytics-stat-value">{totalNewUsers30d}</div>
-              <div className="analytics-stat-label">Usuarios nuevos (30d)</div>
-            </div>
-            <div className="analytics-stat">
-              <div className="analytics-stat-value">{peakAll}</div>
-              <div className="analytics-stat-label">Pico concurrentes/hora (30d)</div>
-            </div>
+        <div className="analytics-stat-row">
+          <div className="analytics-stat">
+            <div className="analytics-stat-value">{data.stats.pageviews.toLocaleString()}</div>
+            <div className="analytics-stat-label">Pageviews</div>
           </div>
-
-        </>
+          <div className="analytics-stat">
+            <div className="analytics-stat-value">{data.stats.visitors.toLocaleString()}</div>
+            <div className="analytics-stat-label">Visitantes</div>
+          </div>
+          <div className="analytics-stat">
+            <div className="analytics-stat-value">{data.stats.sessions.toLocaleString()}</div>
+            <div className="analytics-stat-label">Sesiones</div>
+          </div>
+          <div className="analytics-stat">
+            <div className="analytics-stat-value">{data.bounceRate}%</div>
+            <div className="analytics-stat-label">Tasa de rebote</div>
+          </div>
+          <div className="analytics-stat">
+            <div className="analytics-stat-value">{data.totalNewUsers.toLocaleString()}</div>
+            <div className="analytics-stat-label">Usuarios nuevos</div>
+          </div>
+          <div className="analytics-stat">
+            <div className="analytics-stat-value">{totalReturning.toLocaleString()}</div>
+            <div className="analytics-stat-label">Usuarios recurrentes</div>
+          </div>
+          <div className="analytics-stat">
+            <div className="analytics-stat-value">{peakAll}</div>
+            <div className="analytics-stat-label">Pico concurrentes/hora</div>
+          </div>
+        </div>
       )}
 
       {/* ── Leads ── */}
@@ -281,32 +301,22 @@ export default function AnalyticsManager() {
             <div className="analytics-grid">
               <div className="analytics-card">
                 <h3>Leads y conversión</h3>
-                <div className="analytics-row">
-                  <span>Leads (7d)</span>
-                  <span>{leads.total7d}</span>
-                </div>
-                <div className="analytics-row">
-                  <span>Leads (30d)</span>
-                  <span>{leads.total30d}</span>
-                </div>
-                {data && data.stats30d.visitors > 0 && (
+                <div className="analytics-row"><span>Leads (7d)</span><span>{leads.total7d}</span></div>
+                <div className="analytics-row"><span>Leads (30d)</span><span>{leads.total30d}</span></div>
+                {data.stats.visitors > 0 && (
                   <div className="analytics-row">
-                    <span>Conversión visitantes → lead (30d)</span>
-                    <span>{((leads.total30d / data.stats30d.visitors) * 100).toFixed(1)}%</span>
+                    <span>Conversión visitantes → lead</span>
+                    <span>{((leads.total30d / data.stats.visitors) * 100).toFixed(1)}%</span>
                   </div>
                 )}
               </div>
-
               <div className="analytics-card">
                 <h3>Leads por origen (30d)</h3>
                 {leads.byOrigen.length === 0 ? (
                   <p className="admin-empty">Sin leads todavía.</p>
                 ) : (
                   leads.byOrigen.map((o) => (
-                    <div key={o.origen} className="analytics-row">
-                      <span>{o.origen}</span>
-                      <span>{o.count}</span>
-                    </div>
+                    <div key={o.origen} className="analytics-row"><span>{o.origen}</span><span>{o.count}</span></div>
                   ))
                 )}
               </div>
@@ -320,7 +330,32 @@ export default function AnalyticsManager() {
       {openSections.audiencia && (
         <div className="analytics-grid">
           <div className="analytics-card">
-            <h3>Usuarios nuevos por día (30d)</h3>
+            <h3>Nuevos vs recurrentes por día</h3>
+            <div style={{ display: "flex", gap: 16, fontSize: 12, marginBottom: 8, color: "#6b7280" }}>
+              <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#22c55e", marginRight: 4 }} />Nuevos</span>
+              <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#6366f1", marginRight: 4 }} />Recurrentes</span>
+            </div>
+            <div className="analytics-daily-chart analytics-daily-chart--tall">
+              {data.newVsReturn.map((d) => {
+                const total = d.newUsers + d.returning;
+                const pctNew = maxNvR > 0 ? Math.round((d.newUsers / maxNvR) * 100) : 0;
+                const pctRet = maxNvR > 0 ? Math.round((d.returning / maxNvR) * 100) : 0;
+                return (
+                  <div key={d.day} className="analytics-daily-col">
+                    <span className="analytics-daily-number">{total}</span>
+                    <div style={{ width: "100%", display: "flex", flexDirection: "column", justifyContent: "flex-end", flex: 1 }}>
+                      <div className="analytics-daily-bar" style={{ height: `${pctRet}%`, background: "#6366f1", borderRadius: "3px 3px 0 0", minHeight: d.returning > 0 ? 2 : 0 }} />
+                      <div className="analytics-daily-bar analytics-daily-bar--new" style={{ height: `${pctNew}%`, borderRadius: d.returning > 0 ? "0" : "3px 3px 0 0", minHeight: d.newUsers > 0 ? 2 : 0 }} />
+                    </div>
+                    <span>{d.day.slice(5)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="analytics-card">
+            <h3>Usuarios nuevos por día</h3>
             <div className="analytics-daily-chart analytics-daily-chart--tall">
               {data.newUsersDaily.map((d) => (
                 <div key={d.day} className="analytics-daily-col">
@@ -333,7 +368,7 @@ export default function AnalyticsManager() {
           </div>
 
           <div className="analytics-card">
-            <h3>Pageviews por día (30d)</h3>
+            <h3>Pageviews por día</h3>
             <div className="analytics-daily-chart analytics-daily-chart--tall">
               {data.dailyViews.map((d) => (
                 <div key={d.day} className="analytics-daily-col">
@@ -346,24 +381,7 @@ export default function AnalyticsManager() {
           </div>
 
           <div className="analytics-card">
-            <h3>Dispositivos (30d)</h3>
-            {data.devices.map((d) => (
-              <div key={d.device} className="analytics-row">
-                <span>{d.device}</span>
-                <span>{d.visits}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="analytics-card">
-            <h3>Países (30d)</h3>
-            {data.countries.map((c) => (
-              <Bar key={c.country} label={c.country} value={c.visits} max={maxCountry} />
-            ))}
-          </div>
-
-          <div className="analytics-card">
-            <h3>Pico de usuarios simultáneos por día (30d)</h3>
+            <h3>Pico concurrentes por día</h3>
             <div className="analytics-daily-chart analytics-daily-chart--tall">
               {data.peakConcurrentDaily.map((d) => (
                 <div key={d.day} className="analytics-daily-col">
@@ -374,6 +392,20 @@ export default function AnalyticsManager() {
               ))}
             </div>
           </div>
+
+          <div className="analytics-card">
+            <h3>Dispositivos</h3>
+            {data.devices.map((d) => (
+              <div key={d.device} className="analytics-row"><span>{d.device}</span><span>{d.visits}</span></div>
+            ))}
+          </div>
+
+          <div className="analytics-card">
+            <h3>Países</h3>
+            {data.countries.map((c) => (
+              <Bar key={c.country} label={c.country} value={c.visits} max={maxCountry} />
+            ))}
+          </div>
         </div>
       )}
 
@@ -382,28 +414,25 @@ export default function AnalyticsManager() {
       {openSections.trafico && (
         <div className="analytics-grid">
           <div className="analytics-card">
-            <h3>Fuentes de tráfico (30d)</h3>
+            <h3>Fuentes de tráfico</h3>
             {data.sources.length === 0 ? (
               <p className="admin-empty">Sin datos.</p>
             ) : (
               data.sources.map((s) => <Bar key={s.source} label={s.source} value={s.visits} max={maxSource} />)
             )}
           </div>
-
           <div className="analytics-card">
-            <h3>Referrers (30d)</h3>
+            <h3>Referrers</h3>
             <ReferrerCard referrers={data.referrers} />
           </div>
-
           <div className="analytics-card">
-            <h3>UTM (30d)</h3>
+            <h3>UTM</h3>
             {data.utmSources.length === 0 ? (
               <p className="admin-empty">Sin datos.</p>
             ) : (
               data.utmSources.map((u) => (
                 <div key={u.source + u.medium} className="analytics-row">
-                  <span>{u.medium ? `${u.source} / ${u.medium}` : u.source}</span>
-                  <span>{u.visits}</span>
+                  <span>{u.medium ? `${u.source} / ${u.medium}` : u.source}</span><span>{u.visits}</span>
                 </div>
               ))
             )}
@@ -416,221 +445,27 @@ export default function AnalyticsManager() {
       {openSections.contenido && (
         <div className="analytics-grid">
           <div className="analytics-card">
-            <h3>Páginas más vistas (30d)</h3>
+            <h3>Páginas más vistas</h3>
             {data.topPages.map((p) => (
-              <div key={p.path} className="analytics-row">
-                <span>{p.path || "/"}</span>
-                <span>{p.views}</span>
-              </div>
+              <div key={p.path} className="analytics-row"><span>{p.path || "/"}</span><span>{p.views}</span></div>
             ))}
           </div>
-
           <div className="analytics-card">
-            <h3>Páginas de entrada (30d)</h3>
+            <h3>Páginas de entrada</h3>
             {data.entryPages.map((e) => (
-              <div key={e.path} className="analytics-row">
-                <span>{e.path || "/"}</span>
-                <span>{e.sessions}</span>
-              </div>
+              <div key={e.path} className="analytics-row"><span>{e.path || "/"}</span><span>{e.sessions}</span></div>
             ))}
           </div>
-
           <div className="analytics-card">
-            <h3>Clicks en botones (30d)</h3>
+            <h3>Clicks en botones</h3>
             {data.clicks.length === 0 ? (
               <p className="admin-empty">Sin datos.</p>
             ) : (
               data.clicks.map((c) => (
-                <div key={c.element} className="analytics-row">
-                  <span>{c.element}</span>
-                  <span>{c.clicks}</span>
-                </div>
+                <div key={c.element} className="analytics-row"><span>{c.element}</span><span>{c.clicks}</span></div>
               ))
             )}
           </div>
-        </div>
-      )}
-
-      {/* ── Histórico mensual ── */}
-      <SectionHead id="historico" title="Histórico mensual" />
-      {openSections.historico && (
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
-            {/* Modo de vista */}
-            <select
-              value={histMode}
-              onChange={(e) => setHistMode(e.target.value as "anio" | "periodo")}
-              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}
-            >
-              <option value="anio">Por año</option>
-              <option value="periodo">Periodo personalizado</option>
-            </select>
-
-            {histMode === "anio" ? (
-              <select value={histAnio} onChange={(e) => setHistAnio(Number(e.target.value))} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}>
-                {(histAniosDisp.length > 0
-                  ? histAniosDisp
-                  : Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i)
-                ).map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 13 }}>Desde:</span>
-                <input type="month" value={histDesde} onChange={(e) => setHistDesde(e.target.value)} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }} />
-                <span style={{ fontSize: 13 }}>Hasta:</span>
-                <input type="month" value={histHasta} onChange={(e) => setHistHasta(e.target.value)} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }} />
-              </div>
-            )}
-
-            <div style={{ borderLeft: "1px solid #d1d5db", height: 24 }} />
-
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Generar:</span>
-              <input
-                type="month"
-                value={histMesGuardar}
-                onChange={(e) => setHistMesGuardar(e.target.value)}
-                style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}
-              />
-              <button
-                type="button"
-                onClick={() => guardarSnapshot(histMesGuardar)}
-                disabled={histSaving}
-                style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid var(--orange)", background: "var(--orange)", color: "#fff", cursor: histSaving ? "wait" : "pointer", fontSize: 13, fontWeight: 500 }}
-              >
-                {histSaving ? "Guardando…" : "Guardar snapshot"}
-              </button>
-            </div>
-          </div>
-
-          <p style={{ fontSize: 12, color: "#9ca3af", marginBottom: 12 }}>
-            Los snapshots se guardan automáticamente cada día 2 del mes. También puedes generar cualquier mes manualmente.
-          </p>
-
-          {histLoading ? (
-            <p className="admin-empty">Cargando histórico...</p>
-          ) : histData.length === 0 ? (
-            <p className="admin-empty">Sin datos para este periodo. Genera snapshots de los meses que quieras consultar.</p>
-          ) : (
-            <>
-              <div style={{ overflowX: "auto" }}>
-                <table className="analytics-hist-table">
-                  <thead>
-                    <tr>
-                      <th>Mes</th>
-                      <th>Pageviews</th>
-                      <th>Visitantes</th>
-                      <th>Nuevos</th>
-                      <th>Sesiones</th>
-                      <th>Rebote</th>
-                      <th>Pico conc.</th>
-                      <th>Leads</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {histData.map((m) => {
-                      const mesIdx = Number(m.mes.split("-")[1]) - 1;
-                      return (
-                        <tr key={m.mes} style={{ cursor: "pointer" }} onClick={() => setHistMesDetalle(histMesDetalle === m.mes ? null : m.mes)}>
-                          <td style={{ fontWeight: 600 }}>{MESES_NOMBRE[mesIdx]} {m.mes.split("-")[0]}</td>
-                          <td>{m.pageviews.toLocaleString()}</td>
-                          <td>{m.visitors.toLocaleString()}</td>
-                          <td>{m.new_users.toLocaleString()}</td>
-                          <td>{m.sessions.toLocaleString()}</td>
-                          <td>{m.bounce_rate}%</td>
-                          <td>{m.peak_concurrent}</td>
-                          <td>{m.leads}</td>
-                          <td style={{ fontSize: "0.7rem", opacity: 0.5 }}>{histMesDetalle === m.mes ? "▼" : "▶"}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {(() => {
-                const det = histData.find((m) => m.mes === histMesDetalle);
-                if (!det) return null;
-                const mesIdx = Number(det.mes.split("-")[1]) - 1;
-                const maxDailyH = Math.max(1, ...det.daily_data.map((d) => d.pageviews));
-                const maxSrcH = Math.max(1, ...det.top_sources.map((s) => s.visits));
-                return (
-                  <div style={{ marginTop: 14 }}>
-                    <h3 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: 12 }}>Detalle: {MESES_NOMBRE[mesIdx]} {det.mes.split("-")[0]}</h3>
-                    <div className="analytics-grid">
-                      <div className="analytics-card">
-                        <h3>Pageviews diarios</h3>
-                        <div className="analytics-daily-chart analytics-daily-chart--tall">
-                          {det.daily_data.map((d) => (
-                            <div key={d.day} className="analytics-daily-col">
-                              <span className="analytics-daily-number">{d.pageviews}</span>
-                              <div className="analytics-daily-bar" style={{ height: `${Math.round((d.pageviews / maxDailyH) * 100)}%` }} />
-                              <span>{d.day.slice(8)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="analytics-card">
-                        <h3>Fuentes</h3>
-                        {det.top_sources.map((s) => (
-                          <Bar key={s.source} label={s.source} value={s.visits} max={maxSrcH} />
-                        ))}
-                      </div>
-                      <div className="analytics-card">
-                        <h3>Páginas más vistas</h3>
-                        {det.top_pages.map((p) => (
-                          <div key={p.path} className="analytics-row">
-                            <span>{p.path || "/"}</span>
-                            <span>{p.views}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="analytics-card">
-                        <h3>Dispositivos</h3>
-                        {det.devices.map((d) => (
-                          <div key={d.device} className="analytics-row">
-                            <span>{d.device}</span>
-                            <span>{d.visits}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="analytics-card">
-                        <h3>Países</h3>
-                        {det.top_countries.map((c) => (
-                          <div key={c.country} className="analytics-row">
-                            <span>{c.country}</span>
-                            <span>{c.visits}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {histData.length >= 2 && (
-                <div className="analytics-card" style={{ marginTop: 16 }}>
-                  <h3>Evolución mensual</h3>
-                  <div className="analytics-daily-chart" style={{ height: 120 }}>
-                    {histData.map((m) => {
-                      const mesIdx = Number(m.mes.split("-")[1]) - 1;
-                      const maxPv = Math.max(1, ...histData.map((x) => x.pageviews));
-                      return (
-                        <div key={m.mes} className="analytics-daily-col">
-                          <span className="analytics-daily-number">{m.pageviews}</span>
-                          <div className="analytics-daily-bar" style={{ height: `${Math.round((m.pageviews / maxPv) * 100)}%` }} />
-                          <span>{MESES_NOMBRE[mesIdx]}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
         </div>
       )}
     </div>
