@@ -19,6 +19,8 @@ type PostHogData = {
   referrers: { url: string; visits: number; visitors: number }[];
   peakConcurrentDaily: { day: string; peak: number }[];
   newVsReturn: { day: string; newUsers: number; returning: number }[];
+  avgSessionDuration: number;
+  avgPagesPerSession: number;
 };
 
 type LeadsData = {
@@ -290,6 +292,14 @@ export default function AnalyticsManager() {
             <div className="analytics-stat-value">{peakAll}</div>
             <div className="analytics-stat-label">Pico concurrentes/hora</div>
           </div>
+          <div className="analytics-stat">
+            <div className="analytics-stat-value">{data.avgSessionDuration >= 60 ? `${Math.floor(data.avgSessionDuration / 60)}m ${data.avgSessionDuration % 60}s` : `${data.avgSessionDuration}s`}</div>
+            <div className="analytics-stat-label">Tiempo medio visita</div>
+          </div>
+          <div className="analytics-stat">
+            <div className="analytics-stat-value">{data.avgPagesPerSession}</div>
+            <div className="analytics-stat-label">Páginas / sesión</div>
+          </div>
         </div>
       )}
 
@@ -481,7 +491,7 @@ export default function AnalyticsManager() {
               <p className="admin-empty">Sin datos.</p>
             ) : (
               data.clicks.map((c) => (
-                <div key={c.element} className="analytics-row"><span>{c.element}</span><span>{c.clicks} clics</span></div>
+                <div key={c.element} className="analytics-row"><span title={c.element}>{c.element}</span><span>{c.clicks} clics</span></div>
               ))
             )}
           </div>

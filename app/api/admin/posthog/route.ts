@@ -12,7 +12,8 @@ const PH_PROJ = process.env.POSTHOG_PROJECT_ID ?? "";
 const DOMAIN_FILTER =
   "(properties.$current_url LIKE '%inter-room-murcia%' OR properties.$current_url LIKE '%interroommurcia%')";
 
-async function hogql(query: string, retries = 3): Promise<Record<string, unknown>> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function hogql(query: string, retries = 3): Promise<any> {
   for (let attempt = 0; attempt < retries; attempt++) {
     const res = await fetch(`${PH_API}/api/projects/${PH_PROJ}/query/`, {
       method: "POST",
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [rStats, rTop, rDaily, rBounce, rSources, rDevices, rEntry, rUtm, rCountries, rRealtime, rClicks, rNewUsers, rReferrers, rPeakDaily, rNewVsReturn] =
+    const [rStats, rTop, rDaily, rBounce, rSources, rDevices, rEntry, rUtm, rCountries, rRealtime, rClicks, rNewUsers, rReferrers, rPeakDaily, rNewVsReturn, rSessionDuration] =
       await Promise.all([
         hogql(`
         SELECT count() AS pageviews, uniqExact(distinct_id) AS visitors, uniqExact(properties.$session_id) AS sessions
@@ -159,10 +160,22 @@ export async function GET(req: NextRequest) {
         WHERE e.event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
         GROUP BY day ORDER BY day ASC
       `),
+        // Duración media de sesión y páginas/sesión
+        hogql(`
+        SELECT avg(duration) AS avg_duration, avg(pages) AS avg_pages
+        FROM (
+          SELECT properties.$session_id AS sid,
+            dateDiff('second', min(timestamp), max(timestamp)) AS duration,
+            count() AS pages
+          FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER}
+          GROUP BY sid HAVING pages > 1
+        )
+      `),
       ]);
 
     const s = rStats.results?.[0] ?? [0, 0, 0];
     const sb = rBounce.results?.[0] ?? [0, 1];
+    const sd = rSessionDuration.results?.[0] ?? [0, 0];
 
     const newUsersDaily = (rNewUsers.results ?? []).map((r: unknown[]) => ({ day: String(r[0]), newUsers: Number(r[1]) }));
     const totalNewUsers = newUsersDaily.reduce((sum: number, d: { newUsers: number }) => sum + d.newUsers, 0);
@@ -184,6 +197,8 @@ export async function GET(req: NextRequest) {
       referrers: (rReferrers.results ?? []).map((r: unknown[]) => ({ url: String(r[0]), visits: Number(r[1]), visitors: Number(r[2]) })),
       peakConcurrentDaily: (rPeakDaily.results ?? []).map((r: unknown[]) => ({ day: String(r[0]), peak: Number(r[1]) })),
       newVsReturn: (rNewVsReturn.results ?? []).map((r: unknown[]) => ({ day: String(r[0]), newUsers: Number(r[1]), returning: Number(r[2]) })),
+      avgSessionDuration: Math.round(Number(sd[0])),
+      avgPagesPerSession: Math.round(Number(sd[1]) * 10) / 10,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Error desconocido";

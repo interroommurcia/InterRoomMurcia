@@ -1654,9 +1654,23 @@ button {
 .analytics-row {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
   font-size: 0.82rem;
   padding: 6px 0;
   border-bottom: 1px solid rgba(26, 26, 26, 0.05);
+}
+
+.analytics-row > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.analytics-row > span:last-child {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .analytics-row:last-child {
