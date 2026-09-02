@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 type Cliente = {
   id: string;
@@ -156,6 +156,14 @@ type GastoEmpresa = {
   notas: string | null;
 };
 
+type Liquidacion = {
+  id: string;
+  persona: string;
+  importe: number;
+  fecha: string;
+  concepto: string | null;
+};
+
 const NOMBRES_MES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 function porcentaje(parte: number, total: number) {
@@ -250,6 +258,11 @@ export default function ContabilidadManager() {
   const [gastosEmpresa, setGastosEmpresa] = useState<GastoEmpresa[]>([]);
   const [mostrarNuevoGastoEmpresa, setMostrarNuevoGastoEmpresa] = useState(false);
   const [nuevoGastoEmpresa, setNuevoGastoEmpresa] = useState({ concepto: "", importe: "", fecha: new Date().toISOString().slice(0, 10), categoria: "otros", pagado_por: "" });
+
+  const [liquidaciones, setLiquidaciones] = useState<Liquidacion[]>([]);
+  const [nuevaLiquidacion, setNuevaLiquidacion] = useState({ persona: "", importe: "", fecha: new Date().toISOString().slice(0, 10), concepto: "" });
+  const [mostrarNuevaLiquidacion, setMostrarNuevaLiquidacion] = useState(false);
+  const [personaExpandida, setPersonaExpandida] = useState<string | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [operaciones, setOperaciones] = useState<Operacion[]>([]);
   const [balance, setBalance] = useState<Balance | null>(null);
@@ -301,13 +314,14 @@ export default function ContabilidadManager() {
   const [edicionOp, setEdicionOp] = useState({ comision_calculada: "", comision_pct: "", precio_venta: "" });
 
   async function cargarTodo() {
-    const [c, o, cr, b, gf, ge] = await Promise.all([
+    const [c, o, cr, b, gf, ge, lq] = await Promise.all([
       fetch("/api/admin/clientes").then((r) => r.json()),
       fetch("/api/admin/operaciones").then((r) => r.json()),
       fetch("/api/admin/creditos").then((r) => r.json()),
       fetch("/api/admin/contabilidad/balance").then((r) => r.json()),
       fetch("/api/admin/gastos-fijos").then((r) => r.json()),
       fetch("/api/admin/gastos-empresa").then((r) => r.json()),
+      fetch("/api/admin/liquidaciones").then((r) => r.json()),
     ]);
     setClientes(Array.isArray(c) ? c : []);
     setOperaciones(Array.isArray(o) ? o : []);
@@ -315,6 +329,7 @@ export default function ContabilidadManager() {
     setBalance(b?.comisionBrutaTotal !== undefined ? b : null);
     setGastosFijos(Array.isArray(gf) ? gf : []);
     setGastosEmpresa(Array.isArray(ge) ? ge : []);
+    setLiquidaciones(Array.isArray(lq) ? lq : []);
     setLoading(false);
   }
 
@@ -354,15 +369,6 @@ export default function ContabilidadManager() {
     cargarTodo();
   }
 
-  async function toggleLiquidadoFijo(id: string, liquidado: boolean) {
-    await fetch(`/api/admin/gastos-fijos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ liquidado }),
-    });
-    cargarTodo();
-  }
-
   async function crearGastoEmpresaFn(e: React.FormEvent) {
     e.preventDefault();
     if (!nuevoGastoEmpresa.concepto || !nuevoGastoEmpresa.importe) return;
@@ -382,18 +388,33 @@ export default function ContabilidadManager() {
     cargarTodo();
   }
 
-  async function toggleLiquidadoEmpresa(id: string, liquidado: boolean) {
-    await fetch(`/api/admin/gastos-empresa/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ liquidado }),
-    });
-    cargarTodo();
-  }
-
   async function eliminarGastoEmpresaFn(id: string) {
     if (!confirm("¿Borrar este gasto?")) return;
     await fetch(`/api/admin/gastos-empresa/${id}`, { method: "DELETE" });
+    cargarTodo();
+  }
+
+  async function crearLiquidacionFn(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nuevaLiquidacion.persona || !nuevaLiquidacion.importe) return;
+    await fetch("/api/admin/liquidaciones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        persona: nuevaLiquidacion.persona,
+        importe: Number(nuevaLiquidacion.importe),
+        fecha: nuevaLiquidacion.fecha,
+        concepto: nuevaLiquidacion.concepto || null,
+      }),
+    });
+    setNuevaLiquidacion({ persona: "", importe: "", fecha: new Date().toISOString().slice(0, 10), concepto: "" });
+    setMostrarNuevaLiquidacion(false);
+    cargarTodo();
+  }
+
+  async function eliminarLiquidacionFn(id: string) {
+    if (!confirm("¿Borrar esta liquidación?")) return;
+    await fetch(`/api/admin/liquidaciones/${id}`, { method: "DELETE" });
     cargarTodo();
   }
 
@@ -1430,27 +1451,67 @@ export default function ContabilidadManager() {
 
       {tab === "gastos" && (() => {
         const hoy = new Date();
-        const deudaPorPersona: Record<string, { total: number; liquidado: number }> = {};
-        const sumar = (persona: string | null, importe: number, liq: boolean) => {
+        const deudaPorPersona: Record<string, number> = {};
+        const sumar = (persona: string | null, importe: number) => {
           if (!persona) return;
-          if (!deudaPorPersona[persona]) deudaPorPersona[persona] = { total: 0, liquidado: 0 };
-          deudaPorPersona[persona].total += importe;
-          if (liq) deudaPorPersona[persona].liquidado += importe;
+          if (!deudaPorPersona[persona]) deudaPorPersona[persona] = 0;
+          deudaPorPersona[persona] += importe;
         };
+        // Solo gastos fijos (NO impuestos) computan en la deuda
         for (const g of gastosFijos) {
-          if (!g.pagado_por) continue;
+          if (!g.pagado_por || g.tipo === "impuesto") continue;
           const inicio = new Date(g.fecha_inicio);
           const fin = g.fecha_fin ? new Date(g.fecha_fin) : hoy;
           const hasta = fin < hoy ? fin : hoy;
           if (hasta < inicio) continue;
           const meses = (hasta.getUTCFullYear() - inicio.getUTCFullYear()) * 12 + (hasta.getUTCMonth() - inicio.getUTCMonth()) + 1;
-          const mensual = g.tipo === "impuesto" ? g.importe_mensual / 3 : g.importe_mensual;
-          sumar(g.pagado_por, mensual * Math.max(meses, 0), g.liquidado);
+          sumar(g.pagado_por, g.importe_mensual * Math.max(meses, 0));
         }
         for (const g of gastosEmpresa) {
-          sumar(g.pagado_por, g.importe, g.liquidado);
+          sumar(g.pagado_por, g.importe);
         }
-        const personas = Object.entries(deudaPorPersona).map(([nombre, v]) => ({ nombre, total: v.total, liquidado: v.liquidado, pendiente: v.total - v.liquidado })).filter((p) => p.total > 0);
+        // Liquidaciones restan de la deuda
+        const liquidadoPorPersona: Record<string, number> = {};
+        for (const l of liquidaciones) {
+          if (!liquidadoPorPersona[l.persona]) liquidadoPorPersona[l.persona] = 0;
+          liquidadoPorPersona[l.persona] += Number(l.importe);
+        }
+        const todasPersonas = new Set([...Object.keys(deudaPorPersona), ...Object.keys(liquidadoPorPersona)]);
+        const personas = Array.from(todasPersonas).map((nombre) => {
+          const total = deudaPorPersona[nombre] || 0;
+          const liquidado = liquidadoPorPersona[nombre] || 0;
+          return { nombre, total, liquidado, pendiente: total - liquidado };
+        }).filter((p) => p.total > 0 || p.liquidado > 0);
+
+        const MESES_NOMBRE = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        type LineaDesglose = { key: string; concepto: string; periodo: string; importe: number; tipo: "fijo" | "puntual" | "pago" };
+        function desglosePersona(nombre: string): LineaDesglose[] {
+          const lineas: LineaDesglose[] = [];
+          for (const g of gastosFijos) {
+            if (g.pagado_por !== nombre || g.tipo === "impuesto") continue;
+            const inicio = new Date(g.fecha_inicio);
+            const fin = g.fecha_fin ? new Date(g.fecha_fin) : hoy;
+            const hasta = fin < hoy ? fin : hoy;
+            if (hasta < inicio) continue;
+            const cursor = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth(), 1));
+            const limiteMs = Date.UTC(hasta.getUTCFullYear(), hasta.getUTCMonth(), 1);
+            while (cursor.getTime() <= limiteMs) {
+              const m = cursor.getUTCMonth();
+              const y = cursor.getUTCFullYear();
+              lineas.push({ key: `${g.id}-${y}-${m}`, concepto: g.concepto, periodo: `${MESES_NOMBRE[m]} ${String(y).slice(2)}`, importe: g.importe_mensual, tipo: "fijo" });
+              cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+            }
+          }
+          for (const g of gastosEmpresa) {
+            if (g.pagado_por !== nombre) continue;
+            lineas.push({ key: `emp-${g.id}`, concepto: g.concepto, periodo: new Date(g.fecha).toLocaleDateString("es-ES"), importe: g.importe, tipo: "puntual" });
+          }
+          for (const l of liquidaciones) {
+            if (l.persona !== nombre) continue;
+            lineas.push({ key: `liq-${l.id}`, concepto: l.concepto || "Pago", periodo: new Date(l.fecha).toLocaleDateString("es-ES"), importe: -Number(l.importe), tipo: "pago" });
+          }
+          return lineas;
+        }
 
         return (
         <div className="articulos-list-section" style={{ marginTop: 20 }}>
@@ -1630,16 +1691,9 @@ export default function ContabilidadManager() {
                     {g.pagado_por && <span style={{ fontSize: 12, marginLeft: 6, padding: "1px 6px", background: "#e0e7ff", color: "#3730a3", borderRadius: 4 }}>Paga: {g.pagado_por}</span>}
                     <br />
                     <span style={{ opacity: 0.5, fontSize: 11 }}>desde {g.fecha_inicio}{g.fecha_fin && ` · hasta ${g.fecha_fin}`}</span>
-                    {g.liquidado && <span style={{ marginLeft: 6, padding: "1px 6px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11 }}>Liquidado</span>}
                   </span>
                   <span style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
                     <button type="button" className="btn-ghost" onClick={() => { setEditandoFijo(g.id); setEdicionFijo({ concepto: g.concepto, importe_mensual: String(g.importe_mensual), categoria: g.categoria, tipo: g.tipo, pagado_por: g.pagado_por || "" }); }}>Editar</button>
-                    {g.pagado_por && !g.liquidado && (
-                      <button type="button" className="btn-ghost" onClick={() => toggleLiquidadoFijo(g.id, true)}>Liquidar</button>
-                    )}
-                    {g.liquidado && (
-                      <button type="button" className="btn-ghost" onClick={() => toggleLiquidadoFijo(g.id, false)}>Desliquidar</button>
-                    )}
                     {!g.fecha_fin && (
                       <button type="button" className="btn-ghost" onClick={() => terminarGastoFijo(g.id)}>Finalizar</button>
                     )}
@@ -1669,21 +1723,14 @@ export default function ContabilidadManager() {
               <p className="admin-empty" style={{ margin: 0 }}>Sin gastos puntuales. Usa el botón "Gasto puntual" para añadir uno.</p>
             ) : (
               gastosEmpresa.map((g) => (
-                <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", opacity: g.liquidado ? 0.5 : 1 }}>
+                <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                   <span>
                     <b>{fmt(g.importe)}</b> · {g.concepto} · <span style={{ opacity: 0.6 }}>{g.categoria}</span>
                     <br />
                     <span style={{ opacity: 0.5, fontSize: 11 }}>{new Date(g.fecha).toLocaleDateString("es-ES")}</span>
                     {g.pagado_por && <span style={{ fontSize: 12, marginLeft: 6, padding: "1px 6px", background: "#e0e7ff", color: "#3730a3", borderRadius: 4 }}>Paga: {g.pagado_por}</span>}
-                    {g.liquidado && <span style={{ marginLeft: 6, padding: "1px 6px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11 }}>Liquidado{g.fecha_liquidacion && ` ${g.fecha_liquidacion}`}</span>}
                   </span>
                   <span style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
-                    {g.pagado_por && !g.liquidado && (
-                      <button type="button" className="btn-ghost" onClick={() => toggleLiquidadoEmpresa(g.id, true)}>Liquidar</button>
-                    )}
-                    {g.liquidado && (
-                      <button type="button" className="btn-ghost" onClick={() => toggleLiquidadoEmpresa(g.id, false)}>Desliquidar</button>
-                    )}
                     <button type="button" className="btn-ghost" onClick={() => eliminarGastoEmpresaFn(g.id)}>Borrar</button>
                   </span>
                 </div>
@@ -1691,32 +1738,116 @@ export default function ContabilidadManager() {
             )}
           </div>
 
-          {/* Resumen de deuda por persona */}
-          {personas.length > 0 && (
+          {/* Resumen de deuda por persona + liquidaciones */}
+          {(personas.length > 0 || liquidaciones.length > 0) && (
             <div style={{ marginTop: 24, border: "2px solid #c7d2fe", borderRadius: 12, padding: 16, background: "#eef2ff" }}>
-              <h3 style={{ marginTop: 0, fontSize: 15, color: "#3730a3" }}>Deuda por persona</h3>
-              <div className="admin-table-wrap">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>Persona</th>
-                      <th>Total pagado</th>
-                      <th>Liquidado</th>
-                      <th>Pendiente de devolver</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {personas.map((p) => (
-                      <tr key={p.nombre}>
-                        <td><b>{p.nombre}</b></td>
-                        <td>{fmt(p.total)}</td>
-                        <td>{fmt(p.liquidado)}</td>
-                        <td style={{ fontWeight: 700, color: p.pendiente > 0 ? "#c2410c" : "#059669" }}>{fmt(p.pendiente)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h3 style={{ margin: 0, fontSize: 15, color: "#3730a3" }}>Deuda por persona</h3>
+                <button type="button" className="btn-primary" onClick={() => setMostrarNuevaLiquidacion((v) => !v)}>
+                  {mostrarNuevaLiquidacion ? "Cancelar" : "Registrar pago"}
+                </button>
               </div>
+              {mostrarNuevaLiquidacion && (
+                <form className="piso-form" style={{ marginBottom: 12 }} onSubmit={crearLiquidacionFn}>
+                  <div className="lead-form-row">
+                    <label>
+                      Persona
+                      <input required value={nuevaLiquidacion.persona} onChange={(e) => setNuevaLiquidacion({ ...nuevaLiquidacion, persona: e.target.value })} placeholder="Nombre" list="personas-deuda" />
+                      <datalist id="personas-deuda">
+                        {personas.map((p) => <option key={p.nombre} value={p.nombre} />)}
+                      </datalist>
+                    </label>
+                    <label>
+                      Importe (€)
+                      <input type="number" min={0} step="0.01" required value={nuevaLiquidacion.importe} onChange={(e) => setNuevaLiquidacion({ ...nuevaLiquidacion, importe: e.target.value })} />
+                    </label>
+                    <label>
+                      Fecha
+                      <input type="date" required value={nuevaLiquidacion.fecha} onChange={(e) => setNuevaLiquidacion({ ...nuevaLiquidacion, fecha: e.target.value })} />
+                    </label>
+                    <label>
+                      Concepto
+                      <input value={nuevaLiquidacion.concepto} onChange={(e) => setNuevaLiquidacion({ ...nuevaLiquidacion, concepto: e.target.value })} placeholder="Transferencia, efectivo..." />
+                    </label>
+                  </div>
+                  <div className="lead-form-actions">
+                    <button type="submit" className="btn-primary">Guardar pago</button>
+                  </div>
+                </form>
+              )}
+              {personas.length > 0 && (
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Persona</th>
+                        <th>Total acumulado</th>
+                        <th>Pagos realizados</th>
+                        <th>Pendiente de devolver</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {personas.map((p) => (
+                        <React.Fragment key={p.nombre}>
+                          <tr style={{ cursor: "pointer" }} onClick={() => setPersonaExpandida(personaExpandida === p.nombre ? null : p.nombre)}>
+                            <td><b>{personaExpandida === p.nombre ? "▼" : "▶"} {p.nombre}</b></td>
+                            <td>{fmt(p.total)}</td>
+                            <td>{fmt(p.liquidado)}</td>
+                            <td style={{ fontWeight: 700, color: p.pendiente > 0 ? "#c2410c" : "#059669" }}>{fmt(p.pendiente)}</td>
+                          </tr>
+                          {personaExpandida === p.nombre && (() => {
+                            const lineas = desglosePersona(p.nombre);
+                            return (
+                              <tr>
+                                <td colSpan={4} style={{ padding: 0, background: "#f5f3ff" }}>
+                                  <div style={{ padding: "8px 16px" }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                      <span style={{ fontSize: 13, fontWeight: 600, color: "#4338ca" }}>Desglose de {p.nombre}</span>
+                                      {p.pendiente > 0 && (
+                                        <button type="button" className="btn-primary" style={{ fontSize: 12, padding: "4px 10px" }} onClick={async () => {
+                                          if (!confirm(`¿Estás seguro de que quieres liquidar todos los pagos pendientes de ${p.nombre} por ${fmt(p.pendiente)}?`)) return;
+                                          await fetch("/api/admin/liquidaciones", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ persona: p.nombre, importe: p.pendiente, fecha: new Date().toISOString().slice(0, 10), concepto: "Liquidación total" }),
+                                          });
+                                          cargarTodo();
+                                        }}>
+                                          Liquidar todo ({fmt(p.pendiente)})
+                                        </button>
+                                      )}
+                                    </div>
+                                    <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
+                                      <tbody>
+                                        {lineas.map((l) => (
+                                          <tr key={l.key} style={{ borderBottom: "1px solid #e0e7ff" }}>
+                                            <td style={{ padding: "4px 0", width: "40%" }}>
+                                              {l.tipo === "pago" ? <span style={{ color: "#059669" }}>{l.concepto}</span> : l.concepto}
+                                              {l.tipo === "puntual" && <span style={{ opacity: 0.5, marginLeft: 4, fontSize: 11 }}>(puntual)</span>}
+                                            </td>
+                                            <td style={{ padding: "4px 8px", opacity: 0.7, width: "30%" }}>{l.periodo}</td>
+                                            <td style={{ padding: "4px 0", textAlign: "right", fontWeight: 600, color: l.tipo === "pago" ? "#059669" : undefined }}>
+                                              {l.tipo === "pago" ? `- ${fmt(Math.abs(l.importe))}` : fmt(l.importe)}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                        <tr style={{ borderTop: "2px solid #c7d2fe" }}>
+                                          <td colSpan={2} style={{ padding: "6px 0", fontWeight: 700 }}>Pendiente</td>
+                                          <td style={{ padding: "6px 0", textAlign: "right", fontWeight: 700, color: p.pendiente > 0 ? "#c2410c" : "#059669" }}>{fmt(p.pendiente)}</td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })()}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </div>

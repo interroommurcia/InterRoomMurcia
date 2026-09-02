@@ -1370,3 +1370,50 @@ export async function eliminarGastoEmpresa(id: string) {
   const { error } = await admin.from("gastos_empresa").delete().eq("id", id);
   if (error) throw error;
 }
+
+// ============================================================
+// Liquidaciones: pagos parciales a personas que adelantaron gastos
+// ============================================================
+
+export type Liquidacion = {
+  id: string;
+  persona: string;
+  importe: number;
+  fecha: string;
+  concepto: string | null;
+  created_at: string;
+};
+
+export async function listarLiquidaciones(): Promise<Liquidacion[]> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin.from("liquidaciones").select("*").order("fecha", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Liquidacion[];
+}
+
+export async function crearLiquidacion(input: {
+  persona: string;
+  importe: number;
+  fecha?: string;
+  concepto?: string | null;
+}): Promise<Liquidacion> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("liquidaciones")
+    .insert({
+      persona: input.persona,
+      importe: input.importe,
+      fecha: input.fecha || new Date().toISOString().slice(0, 10),
+      concepto: input.concepto || null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Liquidacion;
+}
+
+export async function eliminarLiquidacion(id: string) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("liquidaciones").delete().eq("id", id);
+  if (error) throw error;
+}
