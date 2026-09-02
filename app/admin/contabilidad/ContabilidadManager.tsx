@@ -139,6 +139,21 @@ type GastoFijo = {
   fecha_inicio: string;
   fecha_fin: string | null;
   notas: string | null;
+  pagado_por: string | null;
+  liquidado: boolean;
+  fecha_liquidacion: string | null;
+};
+
+type GastoEmpresa = {
+  id: string;
+  concepto: string;
+  importe: number;
+  fecha: string;
+  categoria: string;
+  pagado_por: string | null;
+  liquidado: boolean;
+  fecha_liquidacion: string | null;
+  notas: string | null;
 };
 
 const NOMBRES_MES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -228,7 +243,13 @@ export default function ContabilidadManager() {
   const [tab, setTab] = useState<"metricas" | "creditos" | "alquileres" | "compraventas" | "gastos">("creditos");
   const [gastosFijos, setGastosFijos] = useState<GastoFijo[]>([]);
   const [mostrarNuevoFijo, setMostrarNuevoFijo] = useState(false);
-  const [nuevoFijo, setNuevoFijo] = useState({ concepto: "", importe_mensual: "", categoria: "otros", tipo: "fijo" as "fijo" | "impuesto", fecha_inicio: new Date().toISOString().slice(0, 10) });
+  const [nuevoFijo, setNuevoFijo] = useState({ concepto: "", importe_mensual: "", categoria: "otros", tipo: "fijo" as "fijo" | "impuesto", fecha_inicio: new Date().toISOString().slice(0, 10), pagado_por: "" });
+  const [editandoFijo, setEditandoFijo] = useState<string | null>(null);
+  const [edicionFijo, setEdicionFijo] = useState({ concepto: "", importe_mensual: "", categoria: "", tipo: "fijo" as "fijo" | "impuesto", pagado_por: "" });
+
+  const [gastosEmpresa, setGastosEmpresa] = useState<GastoEmpresa[]>([]);
+  const [mostrarNuevoGastoEmpresa, setMostrarNuevoGastoEmpresa] = useState(false);
+  const [nuevoGastoEmpresa, setNuevoGastoEmpresa] = useState({ concepto: "", importe: "", fecha: new Date().toISOString().slice(0, 10), categoria: "otros", pagado_por: "" });
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [operaciones, setOperaciones] = useState<Operacion[]>([]);
   const [balance, setBalance] = useState<Balance | null>(null);
@@ -280,18 +301,20 @@ export default function ContabilidadManager() {
   const [edicionOp, setEdicionOp] = useState({ comision_calculada: "", comision_pct: "", precio_venta: "" });
 
   async function cargarTodo() {
-    const [c, o, cr, b, gf] = await Promise.all([
+    const [c, o, cr, b, gf, ge] = await Promise.all([
       fetch("/api/admin/clientes").then((r) => r.json()),
       fetch("/api/admin/operaciones").then((r) => r.json()),
       fetch("/api/admin/creditos").then((r) => r.json()),
       fetch("/api/admin/contabilidad/balance").then((r) => r.json()),
       fetch("/api/admin/gastos-fijos").then((r) => r.json()),
+      fetch("/api/admin/gastos-empresa").then((r) => r.json()),
     ]);
     setClientes(Array.isArray(c) ? c : []);
     setOperaciones(Array.isArray(o) ? o : []);
     setCreditos(Array.isArray(cr) ? cr : []);
     setBalance(b?.comisionBrutaTotal !== undefined ? b : null);
     setGastosFijos(Array.isArray(gf) ? gf : []);
+    setGastosEmpresa(Array.isArray(ge) ? ge : []);
     setLoading(false);
   }
 
@@ -307,10 +330,70 @@ export default function ContabilidadManager() {
         categoria: nuevoFijo.categoria,
         tipo: nuevoFijo.tipo,
         fecha_inicio: nuevoFijo.fecha_inicio,
+        pagado_por: nuevoFijo.pagado_por || null,
       }),
     });
-    setNuevoFijo({ concepto: "", importe_mensual: "", categoria: "otros", tipo: "fijo", fecha_inicio: new Date().toISOString().slice(0, 10) });
+    setNuevoFijo({ concepto: "", importe_mensual: "", categoria: "otros", tipo: "fijo", fecha_inicio: new Date().toISOString().slice(0, 10), pagado_por: "" });
     setMostrarNuevoFijo(false);
+    cargarTodo();
+  }
+
+  async function guardarEdicionFijo(id: string) {
+    await fetch(`/api/admin/gastos-fijos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        concepto: edicionFijo.concepto,
+        importe_mensual: Number(edicionFijo.importe_mensual),
+        categoria: edicionFijo.categoria,
+        tipo: edicionFijo.tipo,
+        pagado_por: edicionFijo.pagado_por || null,
+      }),
+    });
+    setEditandoFijo(null);
+    cargarTodo();
+  }
+
+  async function toggleLiquidadoFijo(id: string, liquidado: boolean) {
+    await fetch(`/api/admin/gastos-fijos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ liquidado }),
+    });
+    cargarTodo();
+  }
+
+  async function crearGastoEmpresaFn(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nuevoGastoEmpresa.concepto || !nuevoGastoEmpresa.importe) return;
+    await fetch("/api/admin/gastos-empresa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        concepto: nuevoGastoEmpresa.concepto,
+        importe: Number(nuevoGastoEmpresa.importe),
+        fecha: nuevoGastoEmpresa.fecha,
+        categoria: nuevoGastoEmpresa.categoria,
+        pagado_por: nuevoGastoEmpresa.pagado_por || null,
+      }),
+    });
+    setNuevoGastoEmpresa({ concepto: "", importe: "", fecha: new Date().toISOString().slice(0, 10), categoria: "otros", pagado_por: "" });
+    setMostrarNuevoGastoEmpresa(false);
+    cargarTodo();
+  }
+
+  async function toggleLiquidadoEmpresa(id: string, liquidado: boolean) {
+    await fetch(`/api/admin/gastos-empresa/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ liquidado }),
+    });
+    cargarTodo();
+  }
+
+  async function eliminarGastoEmpresaFn(id: string) {
+    if (!confirm("¿Borrar este gasto?")) return;
+    await fetch(`/api/admin/gastos-empresa/${id}`, { method: "DELETE" });
     cargarTodo();
   }
 
@@ -1345,17 +1428,43 @@ export default function ContabilidadManager() {
         </div>
       )}
 
-      {tab === "gastos" && (
+      {tab === "gastos" && (() => {
+        const hoy = new Date();
+        const deudaPorPersona: Record<string, { total: number; liquidado: number }> = {};
+        const sumar = (persona: string | null, importe: number, liq: boolean) => {
+          if (!persona) return;
+          if (!deudaPorPersona[persona]) deudaPorPersona[persona] = { total: 0, liquidado: 0 };
+          deudaPorPersona[persona].total += importe;
+          if (liq) deudaPorPersona[persona].liquidado += importe;
+        };
+        for (const g of gastosFijos) {
+          if (!g.pagado_por) continue;
+          const inicio = new Date(g.fecha_inicio);
+          const fin = g.fecha_fin ? new Date(g.fecha_fin) : hoy;
+          const hasta = fin < hoy ? fin : hoy;
+          if (hasta < inicio) continue;
+          const meses = (hasta.getUTCFullYear() - inicio.getUTCFullYear()) * 12 + (hasta.getUTCMonth() - inicio.getUTCMonth()) + 1;
+          const mensual = g.tipo === "impuesto" ? g.importe_mensual / 3 : g.importe_mensual;
+          sumar(g.pagado_por, mensual * Math.max(meses, 0), g.liquidado);
+        }
+        for (const g of gastosEmpresa) {
+          sumar(g.pagado_por, g.importe, g.liquidado);
+        }
+        const personas = Object.entries(deudaPorPersona).map(([nombre, v]) => ({ nombre, total: v.total, liquidado: v.liquidado, pendiente: v.total - v.liquidado })).filter((p) => p.total > 0);
+
+        return (
         <div className="articulos-list-section" style={{ marginTop: 20 }}>
           <div className="section-head">
-            <h2>Gastos ({gastosFijos.filter((g) => !g.fecha_fin).length} activos)</h2>
-            <button type="button" className="btn-primary" onClick={() => setMostrarNuevoFijo((v) => !v)}>
-              {mostrarNuevoFijo ? "Cancelar" : "Nuevo gasto"}
-            </button>
+            <h2>Gastos ({gastosFijos.filter((g) => !g.fecha_fin).length} fijos activos · {gastosEmpresa.length} puntuales)</h2>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" className="btn-primary" onClick={() => { setMostrarNuevoFijo((v) => !v); setMostrarNuevoGastoEmpresa(false); }}>
+                {mostrarNuevoFijo ? "Cancelar" : "Nuevo gasto fijo"}
+              </button>
+              <button type="button" className="btn-ghost" onClick={() => { setMostrarNuevoGastoEmpresa((v) => !v); setMostrarNuevoFijo(false); }}>
+                {mostrarNuevoGastoEmpresa ? "Cancelar" : "Gasto puntual"}
+              </button>
+            </div>
           </div>
-          <p className="admin-empty" style={{ margin: "0 0 12px" }}>
-            Gastos fijos mensuales (suscripciones, hosting...) e impuestos trimestrales. Ambos se prorratean por mes activo y se restan del beneficio en Métricas.
-          </p>
 
           {mostrarNuevoFijo && (
             <form className="piso-form" onSubmit={crearGastoFijo}>
@@ -1375,6 +1484,8 @@ export default function ContabilidadManager() {
                   {nuevoFijo.tipo === "impuesto" ? "Importe trimestral (€)" : "Importe mensual (€)"}
                   <input type="number" min={0} step="0.01" required value={nuevoFijo.importe_mensual} onChange={(e) => setNuevoFijo({ ...nuevoFijo, importe_mensual: e.target.value })} />
                 </label>
+              </div>
+              <div className="lead-form-row">
                 <label>
                   Categoría
                   <select value={nuevoFijo.categoria} onChange={(e) => setNuevoFijo({ ...nuevoFijo, categoria: e.target.value })}>
@@ -1390,6 +1501,10 @@ export default function ContabilidadManager() {
                   </select>
                 </label>
                 <label>
+                  Pagado por
+                  <input value={nuevoFijo.pagado_por} onChange={(e) => setNuevoFijo({ ...nuevoFijo, pagado_por: e.target.value })} placeholder="Nombre de quien paga" />
+                </label>
+                <label>
                   Desde
                   <input type="date" value={nuevoFijo.fecha_inicio} onChange={(e) => setNuevoFijo({ ...nuevoFijo, fecha_inicio: e.target.value })} />
                 </label>
@@ -1400,66 +1515,213 @@ export default function ContabilidadManager() {
             </form>
           )}
 
-          {gastosFijos.length === 0 ? (
-            <p className="admin-empty">Aún no hay gastos registrados.</p>
-          ) : (
-            <>
-              {(() => {
-                const activos = gastosFijos.filter((g) => !g.fecha_fin);
-                const fijosAct = activos.filter((g) => (g.tipo ?? "fijo") === "fijo");
-                const impAct = activos.filter((g) => g.tipo === "impuesto");
-                const totalFijoMes = fijosAct.reduce((s, g) => s + Number(g.importe_mensual), 0);
-                const totalImpTrim = impAct.reduce((s, g) => s + Number(g.importe_mensual), 0);
+          {mostrarNuevoGastoEmpresa && (
+            <form className="piso-form" onSubmit={crearGastoEmpresaFn}>
+              <div className="lead-form-row">
+                <label>
+                  Concepto
+                  <input required value={nuevoGastoEmpresa.concepto} onChange={(e) => setNuevoGastoEmpresa({ ...nuevoGastoEmpresa, concepto: e.target.value })} placeholder="Material, desplazamiento..." />
+                </label>
+                <label>
+                  Importe (€)
+                  <input type="number" min={0} step="0.01" required value={nuevoGastoEmpresa.importe} onChange={(e) => setNuevoGastoEmpresa({ ...nuevoGastoEmpresa, importe: e.target.value })} />
+                </label>
+                <label>
+                  Fecha
+                  <input type="date" required value={nuevoGastoEmpresa.fecha} onChange={(e) => setNuevoGastoEmpresa({ ...nuevoGastoEmpresa, fecha: e.target.value })} />
+                </label>
+              </div>
+              <div className="lead-form-row">
+                <label>
+                  Categoría
+                  <select value={nuevoGastoEmpresa.categoria} onChange={(e) => setNuevoGastoEmpresa({ ...nuevoGastoEmpresa, categoria: e.target.value })}>
+                    <option value="material">Material</option>
+                    <option value="desplazamiento">Desplazamiento</option>
+                    <option value="comida">Comida / Dietas</option>
+                    <option value="software">Software</option>
+                    <option value="marketing">Marketing</option>
+                    <option value="mantenimiento">Mantenimiento</option>
+                    <option value="legal">Legal / Asesoría</option>
+                    <option value="otros">Otros</option>
+                  </select>
+                </label>
+                <label>
+                  Pagado por
+                  <input value={nuevoGastoEmpresa.pagado_por} onChange={(e) => setNuevoGastoEmpresa({ ...nuevoGastoEmpresa, pagado_por: e.target.value })} placeholder="Nombre de quien paga" />
+                </label>
+              </div>
+              <div className="lead-form-actions">
+                <button type="submit" className="btn-primary">Guardar gasto</button>
+              </div>
+            </form>
+          )}
+
+          {/* Resumen */}
+          {(() => {
+            const activos = gastosFijos.filter((g) => !g.fecha_fin);
+            const fijosAct = activos.filter((g) => (g.tipo ?? "fijo") === "fijo");
+            const impAct = activos.filter((g) => g.tipo === "impuesto");
+            const totalFijoMes = fijosAct.reduce((s, g) => s + Number(g.importe_mensual), 0);
+            const totalImpTrim = impAct.reduce((s, g) => s + Number(g.importe_mensual), 0);
+            const totalPuntuales = gastosEmpresa.reduce((s, g) => s + Number(g.importe), 0);
+            return (
+              <div className="pnl-card" style={{ marginBottom: 12 }}>
+                <div><b>{fmt(totalFijoMes)}</b><span>Fijos /mes</span></div>
+                <div><b>{fmt(totalImpTrim)}</b><span>Impuestos /trim</span></div>
+                <div><b>{fmt(totalFijoMes * 12 + totalImpTrim * 4)}</b><span>Anualizado total</span></div>
+                <div><b>{fmt(totalPuntuales)}</b><span>Puntuales total</span></div>
+              </div>
+            );
+          })()}
+
+          {/* Gastos fijos e impuestos en grid 2 columnas */}
+          {(() => {
+            const fijosList = gastosFijos.filter((g) => (g.tipo ?? "fijo") === "fijo");
+            const impList = gastosFijos.filter((g) => g.tipo === "impuesto");
+            const renderItem = (g: GastoFijo) => {
+              const esImpuesto = g.tipo === "impuesto";
+              if (editandoFijo === g.id) {
                 return (
-                  <div className="pnl-card" style={{ marginBottom: 12 }}>
-                    <div><b>{fmt(totalFijoMes)}</b><span>Fijos /mes</span></div>
-                    <div><b>{fmt(totalImpTrim)}</b><span>Impuestos /trim</span></div>
-                    <div><b>{fmt(totalFijoMes * 12 + totalImpTrim * 4)}</b><span>Anualizado total</span></div>
-                    <div><b>{activos.length}</b><span>Activos</span></div>
+                  <div key={g.id} className="chat-widget-msg assistant" style={{ padding: 10 }}>
+                    <div className="lead-form-row" style={{ marginBottom: 6 }}>
+                      <label style={{ flex: 2 }}>
+                        Concepto
+                        <input value={edicionFijo.concepto} onChange={(e) => setEdicionFijo({ ...edicionFijo, concepto: e.target.value })} />
+                      </label>
+                      <label style={{ flex: 1 }}>
+                        {edicionFijo.tipo === "impuesto" ? "€/trim" : "€/mes"}
+                        <input type="number" min={0} step="0.01" value={edicionFijo.importe_mensual} onChange={(e) => setEdicionFijo({ ...edicionFijo, importe_mensual: e.target.value })} />
+                      </label>
+                    </div>
+                    <div className="lead-form-row" style={{ marginBottom: 6 }}>
+                      <label style={{ flex: 1 }}>
+                        Pagado por
+                        <input value={edicionFijo.pagado_por} onChange={(e) => setEdicionFijo({ ...edicionFijo, pagado_por: e.target.value })} placeholder="Nombre" />
+                      </label>
+                      <label style={{ flex: 1 }}>
+                        Categoría
+                        <select value={edicionFijo.categoria} onChange={(e) => setEdicionFijo({ ...edicionFijo, categoria: e.target.value })}>
+                          <option value="software">Software / SaaS</option>
+                          <option value="hosting">Hosting / Infra</option>
+                          <option value="marketing">Marketing / Ads</option>
+                          <option value="salarios">Salarios / Freelance</option>
+                          <option value="oficina">Oficina</option>
+                          <option value="iva">IVA</option>
+                          <option value="irpf">IRPF</option>
+                          <option value="sociedades">Impuesto sociedades</option>
+                          <option value="otros">Otros</option>
+                        </select>
+                      </label>
+                    </div>
+                    <div className="lead-form-actions">
+                      <button type="button" className="btn-primary" onClick={() => guardarEdicionFijo(g.id)}>Guardar</button>
+                      <button type="button" className="btn-ghost" onClick={() => setEditandoFijo(null)}>Cancelar</button>
+                    </div>
                   </div>
                 );
-              })()}
-              {(() => {
-                const fijosList = gastosFijos.filter((g) => (g.tipo ?? "fijo") === "fijo");
-                const impList = gastosFijos.filter((g) => g.tipo === "impuesto");
-                const renderItem = (g: GastoFijo) => {
-                  const esImpuesto = g.tipo === "impuesto";
-                  return (
-                    <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", opacity: g.fecha_fin ? 0.5 : 1 }}>
-                      <span>
-                        <b>{fmt(g.importe_mensual)}{esImpuesto ? "/trim" : "/mes"}</b>
-                        {esImpuesto && <span style={{ opacity: 0.6, marginLeft: 6, fontSize: 12 }}>(≈{fmt(g.importe_mensual / 3)}/mes)</span>}
-                        <br />
-                        <span style={{ fontSize: 13 }}>{g.concepto} · <span style={{ opacity: 0.6 }}>{g.categoria}</span></span>
-                        <br />
-                        <span style={{ opacity: 0.5, fontSize: 11 }}>desde {g.fecha_inicio}{g.fecha_fin && ` · hasta ${g.fecha_fin}`}</span>
-                      </span>
-                      <span style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {!g.fecha_fin && (
-                          <button type="button" className="btn-ghost" onClick={() => terminarGastoFijo(g.id)}>Finalizar</button>
-                        )}
-                        <button type="button" className="btn-ghost" onClick={() => eliminarGastoFijo(g.id)}>Borrar</button>
-                      </span>
-                    </div>
-                  );
-                };
-                return (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                    <div style={{ border: "1px solid #dbeafe", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
-                      <h3 style={{ marginTop: 0, fontSize: 15, color: "#1e40af" }}>Gastos fijos mensuales ({fijosList.length})</h3>
-                      {fijosList.length === 0 ? <p className="admin-empty" style={{ margin: 0 }}>Sin gastos fijos.</p> : fijosList.map(renderItem)}
-                    </div>
-                    <div style={{ border: "1px solid #fde68a", borderRadius: 12, padding: 12, background: "#fffbeb" }}>
-                      <h3 style={{ marginTop: 0, fontSize: 15, color: "#b45309" }}>Impuestos trimestrales ({impList.length})</h3>
-                      {impList.length === 0 ? <p className="admin-empty" style={{ margin: 0 }}>Sin impuestos.</p> : impList.map(renderItem)}
-                    </div>
-                  </div>
-                );
-              })()}
-            </>
+              }
+              return (
+                <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", opacity: g.fecha_fin ? 0.5 : 1 }}>
+                  <span>
+                    <b>{fmt(g.importe_mensual)}{esImpuesto ? "/trim" : "/mes"}</b>
+                    {esImpuesto && <span style={{ opacity: 0.6, marginLeft: 6, fontSize: 12 }}>(≈{fmt(g.importe_mensual / 3)}/mes)</span>}
+                    <br />
+                    <span style={{ fontSize: 13 }}>{g.concepto} · <span style={{ opacity: 0.6 }}>{g.categoria}</span></span>
+                    {g.pagado_por && <span style={{ fontSize: 12, marginLeft: 6, padding: "1px 6px", background: "#e0e7ff", color: "#3730a3", borderRadius: 4 }}>Paga: {g.pagado_por}</span>}
+                    <br />
+                    <span style={{ opacity: 0.5, fontSize: 11 }}>desde {g.fecha_inicio}{g.fecha_fin && ` · hasta ${g.fecha_fin}`}</span>
+                    {g.liquidado && <span style={{ marginLeft: 6, padding: "1px 6px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11 }}>Liquidado</span>}
+                  </span>
+                  <span style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                    <button type="button" className="btn-ghost" onClick={() => { setEditandoFijo(g.id); setEdicionFijo({ concepto: g.concepto, importe_mensual: String(g.importe_mensual), categoria: g.categoria, tipo: g.tipo, pagado_por: g.pagado_por || "" }); }}>Editar</button>
+                    {g.pagado_por && !g.liquidado && (
+                      <button type="button" className="btn-ghost" onClick={() => toggleLiquidadoFijo(g.id, true)}>Liquidar</button>
+                    )}
+                    {g.liquidado && (
+                      <button type="button" className="btn-ghost" onClick={() => toggleLiquidadoFijo(g.id, false)}>Desliquidar</button>
+                    )}
+                    {!g.fecha_fin && (
+                      <button type="button" className="btn-ghost" onClick={() => terminarGastoFijo(g.id)}>Finalizar</button>
+                    )}
+                    <button type="button" className="btn-ghost" onClick={() => eliminarGastoFijo(g.id)}>Borrar</button>
+                  </span>
+                </div>
+              );
+            };
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div style={{ border: "1px solid #dbeafe", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
+                  <h3 style={{ marginTop: 0, fontSize: 15, color: "#1e40af" }}>Gastos fijos mensuales ({fijosList.length})</h3>
+                  {fijosList.length === 0 ? <p className="admin-empty" style={{ margin: 0 }}>Sin gastos fijos.</p> : fijosList.map(renderItem)}
+                </div>
+                <div style={{ border: "1px solid #fde68a", borderRadius: 12, padding: 12, background: "#fffbeb" }}>
+                  <h3 style={{ marginTop: 0, fontSize: 15, color: "#b45309" }}>Impuestos trimestrales ({impList.length})</h3>
+                  {impList.length === 0 ? <p className="admin-empty" style={{ margin: 0 }}>Sin impuestos.</p> : impList.map(renderItem)}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Gastos puntuales */}
+          <div style={{ marginTop: 24, border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, background: "#fafafa" }}>
+            <h3 style={{ marginTop: 0, fontSize: 15 }}>Gastos puntuales ({gastosEmpresa.length})</h3>
+            {gastosEmpresa.length === 0 ? (
+              <p className="admin-empty" style={{ margin: 0 }}>Sin gastos puntuales. Usa el botón "Gasto puntual" para añadir uno.</p>
+            ) : (
+              gastosEmpresa.map((g) => (
+                <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", opacity: g.liquidado ? 0.5 : 1 }}>
+                  <span>
+                    <b>{fmt(g.importe)}</b> · {g.concepto} · <span style={{ opacity: 0.6 }}>{g.categoria}</span>
+                    <br />
+                    <span style={{ opacity: 0.5, fontSize: 11 }}>{new Date(g.fecha).toLocaleDateString("es-ES")}</span>
+                    {g.pagado_por && <span style={{ fontSize: 12, marginLeft: 6, padding: "1px 6px", background: "#e0e7ff", color: "#3730a3", borderRadius: 4 }}>Paga: {g.pagado_por}</span>}
+                    {g.liquidado && <span style={{ marginLeft: 6, padding: "1px 6px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11 }}>Liquidado{g.fecha_liquidacion && ` ${g.fecha_liquidacion}`}</span>}
+                  </span>
+                  <span style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                    {g.pagado_por && !g.liquidado && (
+                      <button type="button" className="btn-ghost" onClick={() => toggleLiquidadoEmpresa(g.id, true)}>Liquidar</button>
+                    )}
+                    {g.liquidado && (
+                      <button type="button" className="btn-ghost" onClick={() => toggleLiquidadoEmpresa(g.id, false)}>Desliquidar</button>
+                    )}
+                    <button type="button" className="btn-ghost" onClick={() => eliminarGastoEmpresaFn(g.id)}>Borrar</button>
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Resumen de deuda por persona */}
+          {personas.length > 0 && (
+            <div style={{ marginTop: 24, border: "2px solid #c7d2fe", borderRadius: 12, padding: 16, background: "#eef2ff" }}>
+              <h3 style={{ marginTop: 0, fontSize: 15, color: "#3730a3" }}>Deuda por persona</h3>
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Persona</th>
+                      <th>Total pagado</th>
+                      <th>Liquidado</th>
+                      <th>Pendiente de devolver</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {personas.map((p) => (
+                      <tr key={p.nombre}>
+                        <td><b>{p.nombre}</b></td>
+                        <td>{fmt(p.total)}</td>
+                        <td>{fmt(p.liquidado)}</td>
+                        <td style={{ fontWeight: 700, color: p.pendiente > 0 ? "#c2410c" : "#059669" }}>{fmt(p.pendiente)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {tab === "compraventas" && (
         <div className="articulos-list-section" style={{ marginTop: 20 }}>

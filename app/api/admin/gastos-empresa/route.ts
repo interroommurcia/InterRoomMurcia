@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listarGastosFijos, crearGastoFijo } from "../../../../lib/contabilidad";
+import { listarGastosEmpresa, crearGastoEmpresa } from "../../../../lib/contabilidad";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    return NextResponse.json(await listarGastosFijos());
+    return NextResponse.json(await listarGastosEmpresa());
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error" }, { status: 500 });
   }
@@ -13,16 +13,15 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
-  if (!body?.concepto || !Number.isFinite(Number(body?.importe_mensual))) {
-    return NextResponse.json({ error: "concepto e importe_mensual requeridos" }, { status: 400 });
+  if (!body?.concepto || !Number.isFinite(Number(body?.importe))) {
+    return NextResponse.json({ error: "concepto e importe requeridos" }, { status: 400 });
   }
   try {
-    const g = await crearGastoFijo({
+    const g = await crearGastoEmpresa({
       concepto: String(body.concepto),
-      importe_mensual: Number(body.importe_mensual),
+      importe: Number(body.importe),
+      fecha: body.fecha || new Date().toISOString().slice(0, 10),
       categoria: body.categoria,
-      tipo: body.tipo === "impuesto" ? "impuesto" : "fijo",
-      fecha_inicio: body.fecha_inicio,
       pagado_por: body.pagado_por,
       notas: body.notas,
     });

@@ -774,6 +774,22 @@ export type GastoFijo = {
   fecha_inicio: string;
   fecha_fin: string | null;
   notas: string | null;
+  pagado_por: string | null;
+  liquidado: boolean;
+  fecha_liquidacion: string | null;
+  created_at: string;
+};
+
+export type GastoEmpresa = {
+  id: string;
+  concepto: string;
+  importe: number;
+  fecha: string;
+  categoria: string;
+  pagado_por: string | null;
+  liquidado: boolean;
+  fecha_liquidacion: string | null;
+  notas: string | null;
   created_at: string;
 };
 
@@ -797,6 +813,7 @@ export async function crearGastoFijo(input: {
   categoria?: string;
   tipo?: TipoGastoRecurrente;
   fecha_inicio?: string;
+  pagado_por?: string | null;
   notas?: string;
 }): Promise<GastoFijo> {
   const admin = getSupabaseAdmin();
@@ -808,12 +825,33 @@ export async function crearGastoFijo(input: {
       categoria: input.categoria || "otros",
       tipo: input.tipo || "fijo",
       fecha_inicio: input.fecha_inicio || new Date().toISOString().slice(0, 10),
+      pagado_por: input.pagado_por || null,
       notas: input.notas || null,
     })
     .select()
     .single();
   if (error) throw error;
   return data as GastoFijo;
+}
+
+export async function actualizarGastoFijo(
+  id: string,
+  patch: Partial<{
+    concepto: string;
+    importe_mensual: number;
+    categoria: string;
+    tipo: TipoGastoRecurrente;
+    fecha_inicio: string;
+    fecha_fin: string | null;
+    pagado_por: string | null;
+    liquidado: boolean;
+    fecha_liquidacion: string | null;
+    notas: string | null;
+  }>
+) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("gastos_fijos").update(patch).eq("id", id);
+  if (error) throw error;
 }
 
 export async function terminarGastoFijo(id: string, fechaFin: string) {
@@ -1270,5 +1308,65 @@ export async function marcarCreditoCobrado(id: string, cobrado: boolean) {
     .from("operaciones_creditos")
     .update({ cobrado, fecha_cobro: cobrado ? new Date().toISOString().slice(0, 10) : null })
     .eq("id", id);
+  if (error) throw error;
+}
+
+// ============================================================
+// Gastos puntuales de empresa (no recurrentes)
+// ============================================================
+
+export async function listarGastosEmpresa(): Promise<GastoEmpresa[]> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin.from("gastos_empresa").select("*").order("fecha", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as GastoEmpresa[];
+}
+
+export async function crearGastoEmpresa(input: {
+  concepto: string;
+  importe: number;
+  fecha: string;
+  categoria?: string;
+  pagado_por?: string | null;
+  notas?: string | null;
+}): Promise<GastoEmpresa> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("gastos_empresa")
+    .insert({
+      concepto: input.concepto,
+      importe: input.importe,
+      fecha: input.fecha,
+      categoria: input.categoria || "otros",
+      pagado_por: input.pagado_por || null,
+      notas: input.notas || null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as GastoEmpresa;
+}
+
+export async function actualizarGastoEmpresa(
+  id: string,
+  patch: Partial<{
+    concepto: string;
+    importe: number;
+    fecha: string;
+    categoria: string;
+    pagado_por: string | null;
+    liquidado: boolean;
+    fecha_liquidacion: string | null;
+    notas: string | null;
+  }>
+) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("gastos_empresa").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function eliminarGastoEmpresa(id: string) {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("gastos_empresa").delete().eq("id", id);
   if (error) throw error;
 }
