@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import type { Piso } from "../../../lib/pisos";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -536,8 +537,7 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
           <div className="pf-gallery-preview">
             {galleryReady ? galleryKeep.map((url, i) => (
               <div key={i} className="pf-gallery-thumb">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={`Foto ${i + 1}`} loading="lazy" decoding="async" />
+                <Image src={url} alt={`Foto ${i + 1}`} width={80} height={80} quality={50} loading="lazy" style={{ objectFit: "cover", width: "100%", height: "100%" }} />
                 <button
                   type="button"
                   className="pf-gallery-remove"
