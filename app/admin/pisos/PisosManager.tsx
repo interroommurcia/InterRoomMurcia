@@ -358,7 +358,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
           <div className="pisos-list-item" key={piso.id}>
             {editing?.id === piso.id ? (
               <form className="piso-form" onSubmit={(e) => handleUpdate(e, piso.id)}>
-                <PisoFields piso={piso} isEdit />
+                <PisoFields piso={editing} isEdit />
                 <div className="lead-form-actions">
                   <button type="submit" className="btn-primary" disabled={busy}>
                     {busy ? "Guardando..." : "Guardar cambios"}
