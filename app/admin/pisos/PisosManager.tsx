@@ -357,7 +357,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
                   <h4>{piso.titulo}</h4>
                   <div className="loc">
                     {piso.barrio} · {piso.zona.toUpperCase()} · {piso.precioMes}€{piso.categoria === "alquiler" ? "/mes" : ""}
-                    {!piso.disponible && " · No disponible"}
+                    {piso.reservada ? " · Reservada" : !piso.disponible ? " · No disponible" : ""}
                     {" · "}
                     <span style={{ fontWeight: 500, color: piso.categoria === "compraventa" ? "#7c3aed" : "#059669" }}>
                       {piso.categoria === "compraventa" ? "Compraventa" : piso.tipoAlquiler === "habitacion" ? "Habitación" : "Piso completo"}
@@ -482,9 +482,14 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
       <div className="pf-row">
         <div className="pf-field">
           <span className="pf-label">Estado</span>
-          <select className="pf-select" name="disponible" defaultValue={(piso?.disponible ?? true) ? "true" : "false"}>
-            <option value="true">Disponible</option>
-            <option value="false">No disponible</option>
+          <select
+            className="pf-select"
+            name="estado"
+            defaultValue={piso?.reservada ? "reservada" : (piso?.disponible ?? true) ? "disponible" : "no_disponible"}
+          >
+            <option value="disponible">Disponible</option>
+            <option value="reservada">Reservada</option>
+            <option value="no_disponible">No disponible</option>
           </select>
         </div>
         <div className="pf-field">

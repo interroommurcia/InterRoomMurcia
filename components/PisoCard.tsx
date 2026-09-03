@@ -5,7 +5,11 @@ import type { Piso } from "../lib/pisos";
 export default function PisoCard({ piso }: { piso: Piso }) {
   const esCompraventa = piso.categoria === "compraventa";
   return (
-    <Link href={`/habitaciones/${piso.zona}/${piso.slug}`} className="piso-card" key={piso.id}>
+    <Link
+      href={`/habitaciones/${piso.zona}/${piso.slug}`}
+      className={`piso-card${piso.reservada ? " piso-reservada" : ""}`}
+      key={piso.id}
+    >
       <div className="piso-img">
         {piso.imageUrl && (
           <Image
@@ -17,9 +21,12 @@ export default function PisoCard({ piso }: { piso: Piso }) {
             loading="lazy"
           />
         )}
-        <span className={`piso-badge ${piso.disponible ? "" : "no-disponible"}`}>
-          {piso.disponible ? "Disponible" : "No disponible"}
+        <span className={`piso-badge ${piso.disponible ? (piso.reservada ? "reservada" : "") : "no-disponible"}`}>
+          {piso.reservada ? "Reservada" : piso.disponible ? "Disponible" : "No disponible"}
         </span>
+        {piso.reservada && (
+          <div className="piso-watermark">RESERVADA</div>
+        )}
       </div>
       <div className="piso-body">
         <h4>{piso.titulo}</h4>

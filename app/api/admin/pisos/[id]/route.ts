@@ -29,7 +29,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const descripcion = form.get("descripcion");
   if (typeof descripcion === "string" && descripcion.trim()) updates.descripcion = descripcion.trim().slice(0, 2000);
 
-  if (form.get("disponible") !== null) updates.disponible = form.get("disponible") === "true";
+  const estadoVal = form.get("estado");
+  if (estadoVal !== null) {
+    updates.disponible = String(estadoVal) !== "no_disponible";
+    updates.reservada = String(estadoVal) === "reservada";
+  }
 
   const categoriaVal = form.get("categoria");
   if (typeof categoriaVal === "string" && (categoriaVal === "alquiler" || categoriaVal === "compraventa")) updates.categoria = categoriaVal;

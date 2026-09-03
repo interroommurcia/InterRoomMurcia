@@ -69,6 +69,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       metros: metros ? Number(metros) : null,
       descripcion: String(descripcion),
       disponible: true,
+      reservada: false,
       imageUrl,
       gallery,
       videoUrl,

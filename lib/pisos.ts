@@ -26,6 +26,7 @@ export type Piso = {
   metros: number | null;
   descripcion: string;
   disponible: boolean;
+  reservada: boolean;
   imageUrl: string | null;
   gallery: string[];
   videoUrl: string | null;
@@ -85,6 +86,7 @@ type PisoRow = {
   metros: number | null;
   descripcion: string;
   disponible: boolean;
+  reservada: boolean;
   image_url: string | null;
   gallery: string[] | null;
   video_url: string | null;
@@ -103,6 +105,7 @@ function mapPiso(row: PisoRow): Piso {
     metros: row.metros,
     descripcion: row.descripcion,
     disponible: row.disponible,
+    reservada: row.reservada ?? false,
     imageUrl: row.image_url,
     gallery: Array.isArray(row.gallery) ? row.gallery.filter((u): u is string => typeof u === "string") : [],
     videoUrl: row.video_url ?? null,
@@ -111,7 +114,7 @@ function mapPiso(row: PisoRow): Piso {
   };
 }
 
-function mapPisoCard(row: Pick<PisoRow, "id" | "slug" | "titulo" | "zona" | "barrio" | "precio_mes" | "disponible" | "image_url" | "categoria" | "tipo_alquiler">): Piso {
+function mapPisoCard(row: Pick<PisoRow, "id" | "slug" | "titulo" | "zona" | "barrio" | "precio_mes" | "disponible" | "reservada" | "image_url" | "categoria" | "tipo_alquiler">): Piso {
   return {
     id: row.id,
     slug: row.slug,
@@ -122,6 +125,7 @@ function mapPisoCard(row: Pick<PisoRow, "id" | "slug" | "titulo" | "zona" | "bar
     metros: null,
     descripcion: "",
     disponible: row.disponible,
+    reservada: row.reservada ?? false,
     imageUrl: row.image_url,
     gallery: [],
     videoUrl: null,
@@ -130,7 +134,7 @@ function mapPisoCard(row: Pick<PisoRow, "id" | "slug" | "titulo" | "zona" | "bar
   };
 }
 
-const CARD_COLS = "id,slug,titulo,zona,barrio,precio_mes,disponible,image_url,categoria,tipo_alquiler" as const;
+const CARD_COLS = "id,slug,titulo,zona,barrio,precio_mes,disponible,reservada,image_url,categoria,tipo_alquiler" as const;
 
 export async function getPisos(): Promise<Piso[]> {
   const { data, error } = await supabasePublic
