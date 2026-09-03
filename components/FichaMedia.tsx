@@ -1,18 +1,28 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
+import Image from 'next/image'
+import type { EstadoPiso } from '../lib/pisos'
+
+const ESTADO_LABEL: Record<string, string> = {
+  disponible: "Disponible",
+  reservada: "Reservada",
+  alquilada: "Alquilada",
+  vendida: "Vendida",
+  no_disponible: "No disponible",
+}
 
 export default function FichaMedia({
   imageUrl,
   gallery,
   videoUrl,
   titulo,
-  disponible,
+  estado,
 }: {
   imageUrl: string | null
   gallery: string[]
   videoUrl: string | null
   titulo: string
-  disponible: boolean
+  estado: EstadoPiso
 }) {
   const allImages = [
     ...(imageUrl ? [imageUrl] : []),
@@ -27,14 +37,25 @@ export default function FichaMedia({
 
   return (
     <div className="ficha-hero-wrap">
-      {/* Hero */}
+      {/* Hero — Next.js Image for WebP/AVIF + responsive sizing */}
       <div
         className="ficha-hero"
-        style={imageUrl ? { backgroundImage: `url(${imageUrl})`, cursor: 'zoom-in' } : undefined}
         onClick={() => imageUrl && openLightbox(0)}
+        style={imageUrl ? { cursor: 'zoom-in' } : undefined}
       >
-        <span className={`piso-badge ${disponible ? '' : 'no-disponible'}`}>
-          {disponible ? 'Disponible' : 'No disponible'}
+        {imageUrl && (
+          <Image
+            src={imageUrl}
+            alt={titulo}
+            fill
+            sizes="(max-width: 640px) 100vw, 60vw"
+            style={{ objectFit: 'cover' }}
+            priority
+            quality={75}
+          />
+        )}
+        <span className={`piso-badge estado-${estado}`}>
+          {ESTADO_LABEL[estado] || "Disponible"}
         </span>
         {imageUrl && (
           <div className="ficha-hero-zoom-hint">
@@ -47,20 +68,26 @@ export default function FichaMedia({
         )}
       </div>
 
-      {/* Gallery grid */}
+      {/* Gallery grid — Next.js Image for auto WebP + small sizes */}
       {gallery.length > 0 && (
         <div className="ficha-gallery">
           {gallery.map((url, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <div
               key={i}
-              src={url}
-              alt={`${titulo} — foto ${i + 1}`}
-              loading="lazy"
-              decoding="async"
+              className="ficha-gallery-item"
               onClick={() => openLightbox(imageUrl ? i + 1 : i)}
               style={{ cursor: 'zoom-in' }}
-            />
+            >
+              <Image
+                src={url}
+                alt={`${titulo} — foto ${i + 1}`}
+                fill
+                sizes="(max-width: 640px) 48vw, 180px"
+                style={{ objectFit: 'cover' }}
+                loading="lazy"
+                quality={60}
+              />
+            </div>
           ))}
         </div>
       )}
@@ -77,7 +104,7 @@ export default function FichaMedia({
         />
       )}
 
-      {/* Lightbox */}
+      {/* Lightbox — limited to 1200px via sizes */}
       {lightboxIdx !== null && allImages.length > 0 && (
         <Lightbox
           images={allImages}
@@ -241,13 +268,9 @@ function Lightbox({
         </div>
       )}
 
-      {/* Image */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={images[idx]}
-        alt={`${alt} — foto ${idx + 1}`}
-        draggable={false}
-        className="lightbox-img"
+      {/* Image — Next.js Image capped at 1200px */}
+      <div
+        className="lightbox-img-wrap"
         onClick={e => e.stopPropagation()}
         onDoubleClick={handleDoubleClick}
         onWheel={handleWheel}
@@ -262,7 +285,19 @@ function Lightbox({
           transition: dragging ? 'none' : 'transform 0.25s ease',
           cursor: scale > 1 ? 'grab' : 'zoom-in',
         }}
-      />
+      >
+        <Image
+          src={images[idx]}
+          alt={`${alt} — foto ${idx + 1}`}
+          width={1200}
+          height={900}
+          sizes="(max-width: 640px) 95vw, 1200px"
+          style={{ maxWidth: '95vw', maxHeight: '90vh', width: 'auto', height: 'auto', objectFit: 'contain' }}
+          quality={80}
+          draggable={false}
+          priority
+        />
+      </div>
     </div>
   )
 }

@@ -578,10 +578,11 @@ h1 em {
   height: 420px;
   border-radius: 20px;
   background: linear-gradient(135deg, var(--orange), var(--orange-dark) 140%);
-  background-size: cover;
-  background-position: center;
   position: relative;
-  image-rendering: -webkit-optimize-contrast;
+  overflow: hidden;
+}
+.ficha-hero img {
+  border-radius: 20px;
 }
 
 .ficha-gallery {
@@ -590,12 +591,12 @@ h1 em {
   gap: 8px;
 }
 
-.ficha-gallery img {
+.ficha-gallery-item {
+  position: relative;
   width: 100%;
   aspect-ratio: 4 / 3;
-  object-fit: cover;
   border-radius: 12px;
-  display: block;
+  overflow: hidden;
 }
 
 .ficha-video {
@@ -3157,7 +3158,14 @@ button {
   pointer-events: none;
   white-space: nowrap;
 }
-.lightbox-img {
+.lightbox-img-wrap {
+  user-select: none;
+  -webkit-user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox-img-wrap img {
   max-width: 95vw;
   max-height: 90vh;
   object-fit: contain;
@@ -3182,10 +3190,10 @@ button {
 }
 
 /* Gallery images hover */
-.ficha-gallery img {
+.ficha-gallery-item {
   transition: transform 0.18s ease;
 }
-.ficha-gallery img:hover {
+.ficha-gallery-item:hover {
   transform: scale(1.03);
 }
 

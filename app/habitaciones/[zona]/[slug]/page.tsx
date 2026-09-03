@@ -50,7 +50,7 @@ export default async function PisoPage({ params }: { params: { zona: string; slu
                 gallery={piso.gallery}
                 videoUrl={piso.videoUrl}
                 titulo={piso.titulo}
-                disponible={piso.disponible}
+                estado={piso.estado}
               />
 
               <h1>{piso.titulo}</h1>
