@@ -2,10 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { actualizarPiso, borrarPiso, subirImagenPiso, type PisoInput } from "../../../../../lib/pisosAdmin";
 import type { ZonaSlug } from "../../../../../lib/pisos";
+import { getSupabaseAdmin } from "../../../../../lib/supabaseAdmin";
 
 export const maxDuration = 60;
 
 const ZONAS_ALQUILER = ["ucam", "umu", "upct"];
+
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const { data, error } = await getSupabaseAdmin()
+    .from("pisos")
+    .select("*")
+    .eq("id", params.id)
+    .maybeSingle();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  return NextResponse.json(data);
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const form = await req.formData();

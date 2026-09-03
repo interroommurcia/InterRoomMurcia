@@ -175,6 +175,27 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
     setPisos(pisosInit);
   }, [pisosInit]);
 
+  async function cargarYEditar(piso: Piso) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/pisos/${piso.id}`);
+      if (!res.ok) throw new Error("No se pudo cargar el piso");
+      const row = await res.json();
+      setEditing({
+        ...piso,
+        descripcion: row.descripcion ?? "",
+        metros: row.metros ?? null,
+        gallery: Array.isArray(row.gallery) ? row.gallery : [],
+        videoUrl: row.video_url ?? null,
+        reservada: row.reservada ?? false,
+      });
+    } catch {
+      setError("No se pudo cargar los datos del piso para editar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function urlPublica(piso: Piso) {
     return `${window.location.origin}/habitaciones/${piso.zona}/${piso.slug}`;
   }
@@ -371,7 +392,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
                   <button type="button" className="btn-ghost" onClick={() => handleWhatsapp(piso)}>
                     WhatsApp
                   </button>
-                  <button type="button" className="btn-ghost" onClick={() => setEditing(piso)}>
+                  <button type="button" className="btn-ghost" onClick={() => cargarYEditar(piso)} disabled={busy}>
                     Editar
                   </button>
                   <button type="button" className="btn-ghost" onClick={() => handleDelete(piso.id)} disabled={busy}>
