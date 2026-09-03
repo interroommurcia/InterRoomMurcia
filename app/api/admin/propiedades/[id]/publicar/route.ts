@@ -70,6 +70,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       descripcion: String(descripcion),
       disponible: true,
       reservada: false,
+      estado: "disponible",
       imageUrl,
       gallery,
       videoUrl,

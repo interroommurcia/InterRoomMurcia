@@ -43,8 +43,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const estadoVal = form.get("estado");
   if (estadoVal !== null) {
-    updates.disponible = String(estadoVal) !== "no_disponible";
-    updates.reservada = String(estadoVal) === "reservada";
+    const est = String(estadoVal);
+    updates.disponible = est === "disponible" || est === "reservada";
+    updates.reservada = est === "reservada";
+    updates.estado = est;
   }
 
   const categoriaVal = form.get("categoria");

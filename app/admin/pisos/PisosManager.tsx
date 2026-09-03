@@ -188,6 +188,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
         gallery: Array.isArray(row.gallery) ? row.gallery : [],
         videoUrl: row.video_url ?? null,
         reservada: row.reservada ?? false,
+        estado: row.estado ?? (row.reservada ? "reservada" : row.disponible ? "disponible" : "no_disponible"),
       });
     } catch {
       setError("No se pudo cargar los datos del piso para editar.");
@@ -378,7 +379,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
                   <h4>{piso.titulo}</h4>
                   <div className="loc">
                     {piso.barrio} · {piso.zona.toUpperCase()} · {piso.precioMes}€{piso.categoria === "alquiler" ? "/mes" : ""}
-                    {piso.reservada ? " · Reservada" : !piso.disponible ? " · No disponible" : ""}
+                    {piso.estado && piso.estado !== "disponible" ? ` · ${({reservada:"Reservada",alquilada:"Alquilada",vendida:"Vendida",no_disponible:"No disponible"} as Record<string,string>)[piso.estado] || ""}` : !piso.disponible ? " · No disponible" : ""}
                     {" · "}
                     <span style={{ fontWeight: 500, color: piso.categoria === "compraventa" ? "#7c3aed" : "#059669" }}>
                       {piso.categoria === "compraventa" ? "Compraventa" : piso.tipoAlquiler === "habitacion" ? "Habitación" : "Piso completo"}
@@ -415,6 +416,14 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
   const [tipoAlquiler, setTipoAlquiler] = useState(piso?.tipoAlquiler || "completo");
   const [galleryKeep, setGalleryKeep] = useState<string[]>(piso?.gallery ?? []);
   const [borrarVideo, setBorrarVideo] = useState(false);
+  const [galleryReady, setGalleryReady] = useState(false);
+
+  useEffect(() => {
+    if (isEdit && galleryKeep.length > 0) {
+      const t = setTimeout(() => setGalleryReady(true), 100);
+      return () => clearTimeout(t);
+    }
+  }, [isEdit, galleryKeep.length]);
 
   return (
     <>
@@ -506,10 +515,12 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
           <select
             className="pf-select"
             name="estado"
-            defaultValue={piso?.reservada ? "reservada" : (piso?.disponible ?? true) ? "disponible" : "no_disponible"}
+            defaultValue={piso?.estado || (piso?.reservada ? "reservada" : (piso?.disponible ?? true) ? "disponible" : "no_disponible")}
           >
             <option value="disponible">Disponible</option>
             <option value="reservada">Reservada</option>
+            <option value="alquilada">Alquilada</option>
+            <option value="vendida">Vendida</option>
             <option value="no_disponible">No disponible</option>
           </select>
         </div>
@@ -523,10 +534,10 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
         <span className="pf-label">Galería de fotos {isEdit ? "(se añaden a las existentes)" : "(opcional, varias fotos)"}</span>
         {isEdit && galleryKeep.length > 0 && (
           <div className="pf-gallery-preview">
-            {galleryKeep.map((url, i) => (
+            {galleryReady ? galleryKeep.map((url, i) => (
               <div key={i} className="pf-gallery-thumb">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={`Foto ${i + 1}`} />
+                <img src={url} alt={`Foto ${i + 1}`} loading="lazy" decoding="async" />
                 <button
                   type="button"
                   className="pf-gallery-remove"
@@ -536,7 +547,9 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
                   ×
                 </button>
               </div>
-            ))}
+            )) : (
+              <span style={{ fontSize: 13, opacity: 0.6 }}>Cargando {galleryKeep.length} fotos...</span>
+            )}
           </div>
         )}
         {isEdit && <input type="hidden" name="galeria_existente" value={JSON.stringify(galleryKeep)} />}

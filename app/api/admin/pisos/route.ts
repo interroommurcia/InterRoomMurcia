@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   const metros = metrosRaw && metrosRaw !== "" ? Number(metrosRaw) : null;
   const descripcion = String(form.get("descripcion") || "").trim().slice(0, 2000);
   const estadoVal = String(form.get("estado") || "disponible");
-  const disponible = estadoVal !== "no_disponible";
+  const disponible = estadoVal === "disponible" || estadoVal === "reservada";
   const reservada = estadoVal === "reservada";
   const categoriaRaw = String(form.get("categoria") || "alquiler");
   const categoria = (categoriaRaw === "compraventa" ? "compraventa" : "alquiler") as import("../../../../lib/pisos").CategoriaPiso;
@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
       descripcion,
       disponible,
       reservada,
+      estado: estadoVal,
       imageUrl,
       gallery,
       videoUrl,

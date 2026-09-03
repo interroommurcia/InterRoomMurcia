@@ -16,6 +16,8 @@ export type CategoriaPiso = "alquiler" | "compraventa";
 
 export type TipoAlquiler = "completo" | "habitacion";
 
+export type EstadoPiso = "disponible" | "reservada" | "alquilada" | "vendida" | "no_disponible";
+
 export type Piso = {
   id: string;
   slug: string;
@@ -27,6 +29,7 @@ export type Piso = {
   descripcion: string;
   disponible: boolean;
   reservada: boolean;
+  estado: EstadoPiso;
   imageUrl: string | null;
   gallery: string[];
   videoUrl: string | null;
@@ -87,6 +90,7 @@ type PisoRow = {
   descripcion: string;
   disponible: boolean;
   reservada: boolean;
+  estado: string | null;
   image_url: string | null;
   gallery: string[] | null;
   video_url: string | null;
@@ -94,7 +98,17 @@ type PisoRow = {
   tipo_alquiler: TipoAlquiler | null;
 };
 
+function deriveEstado(row: { estado?: string | null; disponible: boolean; reservada?: boolean }): EstadoPiso {
+  if (row.estado && ["disponible", "reservada", "alquilada", "vendida", "no_disponible"].includes(row.estado)) {
+    return row.estado as EstadoPiso;
+  }
+  if (row.reservada) return "reservada";
+  if (!row.disponible) return "no_disponible";
+  return "disponible";
+}
+
 function mapPiso(row: PisoRow): Piso {
+  const estado = deriveEstado(row);
   return {
     id: row.id,
     slug: row.slug,
@@ -106,6 +120,7 @@ function mapPiso(row: PisoRow): Piso {
     descripcion: row.descripcion,
     disponible: row.disponible,
     reservada: row.reservada ?? false,
+    estado,
     imageUrl: row.image_url,
     gallery: Array.isArray(row.gallery) ? row.gallery.filter((u): u is string => typeof u === "string") : [],
     videoUrl: row.video_url ?? null,
@@ -115,6 +130,7 @@ function mapPiso(row: PisoRow): Piso {
 }
 
 function mapPisoCard(row: Pick<PisoRow, "id" | "slug" | "titulo" | "zona" | "barrio" | "precio_mes" | "disponible" | "reservada" | "image_url" | "categoria" | "tipo_alquiler">): Piso {
+  const estado = deriveEstado(row);
   return {
     id: row.id,
     slug: row.slug,
@@ -126,6 +142,7 @@ function mapPisoCard(row: Pick<PisoRow, "id" | "slug" | "titulo" | "zona" | "bar
     descripcion: "",
     disponible: row.disponible,
     reservada: row.reservada ?? false,
+    estado,
     imageUrl: row.image_url,
     gallery: [],
     videoUrl: null,

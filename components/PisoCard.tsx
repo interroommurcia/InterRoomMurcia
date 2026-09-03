@@ -2,12 +2,30 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Piso } from "../lib/pisos";
 
+const ESTADO_LABEL: Record<string, string> = {
+  disponible: "Disponible",
+  reservada: "Reservada",
+  alquilada: "Alquilada",
+  vendida: "Vendida",
+  no_disponible: "No disponible",
+};
+
+const ESTADO_WATERMARK: Record<string, string> = {
+  reservada: "RESERVADA",
+  alquilada: "ALQUILADA",
+  vendida: "VENDIDA",
+};
+
 export default function PisoCard({ piso }: { piso: Piso }) {
   const esCompraventa = piso.categoria === "compraventa";
+  const estado = piso.estado || "disponible";
+  const showWatermark = estado in ESTADO_WATERMARK;
+  const dimmed = estado !== "disponible";
+
   return (
     <Link
       href={`/habitaciones/${piso.zona}/${piso.slug}`}
-      className={`piso-card${piso.reservada ? " piso-reservada" : ""}`}
+      className={`piso-card${dimmed ? " piso-dimmed" : ""}`}
       key={piso.id}
     >
       <div className="piso-img">
@@ -21,11 +39,13 @@ export default function PisoCard({ piso }: { piso: Piso }) {
             loading="lazy"
           />
         )}
-        <span className={`piso-badge ${piso.disponible ? (piso.reservada ? "reservada" : "") : "no-disponible"}`}>
-          {piso.reservada ? "Reservada" : piso.disponible ? "Disponible" : "No disponible"}
+        <span className={`piso-badge estado-${estado}`}>
+          {ESTADO_LABEL[estado] || "Disponible"}
         </span>
-        {piso.reservada && (
-          <div className="piso-watermark">RESERVADA</div>
+        {showWatermark && (
+          <div className={`piso-watermark watermark-${estado}`}>
+            {ESTADO_WATERMARK[estado]}
+          </div>
         )}
       </div>
       <div className="piso-body">

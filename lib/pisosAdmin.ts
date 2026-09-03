@@ -13,6 +13,7 @@ export type PisoInput = {
   descripcion: string;
   disponible: boolean;
   reservada: boolean;
+  estado?: string;
   imageUrl: string | null;
   gallery?: string[];
   videoUrl?: string | null;
@@ -31,6 +32,7 @@ function toRow(input: Partial<PisoInput>) {
   if (input.descripcion !== undefined) row.descripcion = input.descripcion;
   if (input.disponible !== undefined) row.disponible = input.disponible;
   if (input.reservada !== undefined) row.reservada = input.reservada;
+  if (input.estado !== undefined) row.estado = input.estado;
   if (input.imageUrl !== undefined) row.image_url = input.imageUrl;
   if (input.gallery !== undefined) row.gallery = input.gallery;
   if (input.videoUrl !== undefined) row.video_url = input.videoUrl;
