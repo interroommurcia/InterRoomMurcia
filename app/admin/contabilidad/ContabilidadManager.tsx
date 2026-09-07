@@ -1400,13 +1400,17 @@ export default function ContabilidadManager() {
                       const mesesTranscurridos = new Date().getUTCMonth() + 1;
                       const gastoAcumulado = gastoRecurrenteMes * mesesTranscurridos + gs.filter((g) => !g.es_recurrente && g.pagado && g.fecha_pago && g.fecha_pago.startsWith(String(año))).reduce((s, g) => s + g.importe, 0);
                       const netoAño = brutoAño - gastoAcumulado;
+                      const baseAño = Math.round((brutoAño / 1.21) * 100) / 100;
+                      const ivaAño = Math.round((brutoAño - baseAño) * 100) / 100;
                       const meses = Math.max(mesesTranscurridos, 1);
                       const recurrentes = gs.filter((g) => g.es_recurrente);
                       const puntuales = gs.filter((g) => !g.es_recurrente);
                       return (
                         <>
                           <div className="pnl-card">
-                            <div><b>{fmt(brutoAño)}</b><span>Bruto {año}</span></div>
+                            <div><b>{fmt(brutoAño)}</b><span>Bruto {año} (IVA incl.)</span></div>
+                            <div><b>{fmt(baseAño)}</b><span>Base (sin IVA)</span></div>
+                            <div><b>{fmt(ivaAño)}</b><span>IVA 21%</span></div>
                             <div><b>{fmt(gastoAcumulado)}</b><span>Gastos {año}</span></div>
                             <div className={netoAño >= 0 ? "pnl-pos" : "pnl-neg"}><b>{fmt(netoAño)}</b><span>Neto {año}</span></div>
                             <div><b>{fmt(netoAño / meses)}</b><span>Neto/mes</span></div>
