@@ -443,6 +443,13 @@ export default function ContabilidadManager() {
   }, []);
 
   useEffect(() => {
+    if (tab !== "alquileres") return;
+    fetch("/api/admin/contabilidad/generar-mensualidades", { method: "POST" })
+      .then(() => cargarTodo())
+      .catch(() => null);
+  }, [tab]);
+
+  useEffect(() => {
     if (tab !== "metricas") return;
     if (metricas && metricas.anio === metricasAnio) return;
     setCargandoMetricas(true);
@@ -1282,10 +1289,24 @@ export default function ContabilidadManager() {
                           {ing.cobrado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11 }}>Cobrado</span>}
                         </span>
                         <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                            <input type="checkbox" checked={ing.cobrado} onChange={(e) => toggleIngresoCobrado(cliente.id, ing.id, e.target.checked)} />
-                            Cobrado
-                          </label>
+                          {!ing.cobrado ? (
+                            <button type="button" className="btn-primary" style={{ fontSize: 12, padding: "4px 10px", whiteSpace: "nowrap" }} onClick={() => {
+                              const mesLabel = (() => { const d = ing.mes.slice(0, 10).split("-"); return `${d[2]}/${d[1]}/${d[0]}`; })();
+                              if (confirm(`¿Confirmar el pago de la mensualidad del ${mesLabel} por ${fmt(ing.comision_calculada)}?`)) {
+                                toggleIngresoCobrado(cliente.id, ing.id, true);
+                              }
+                            }}>
+                              Confirmar pago
+                            </button>
+                          ) : (
+                            <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "4px 10px", whiteSpace: "nowrap" }} onClick={() => {
+                              if (confirm("¿Desmarcar este pago como cobrado?")) {
+                                toggleIngresoCobrado(cliente.id, ing.id, false);
+                              }
+                            }}>
+                              Desmarcar cobro
+                            </button>
+                          )}
                           <button type="button" className="btn-ghost" onClick={() => eliminarIngreso(cliente.id, ing.id)}>
                             Borrar
                           </button>
