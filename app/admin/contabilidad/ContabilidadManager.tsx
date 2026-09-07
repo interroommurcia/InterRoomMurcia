@@ -260,6 +260,8 @@ export default function ContabilidadManager() {
   const [gastosEmpresa, setGastosEmpresa] = useState<GastoEmpresa[]>([]);
   const [mostrarNuevoGastoEmpresa, setMostrarNuevoGastoEmpresa] = useState(false);
   const [nuevoGastoEmpresa, setNuevoGastoEmpresa] = useState({ concepto: "", importe: "", fecha: new Date().toISOString().slice(0, 10), categoria: "otros", pagado_por: "" });
+  const [editandoEmpresa, setEditandoEmpresa] = useState<string | null>(null);
+  const [edicionEmpresa, setEdicionEmpresa] = useState({ concepto: "", importe: "", fecha: "", categoria: "", pagado_por: "" });
 
   const [liquidaciones, setLiquidaciones] = useState<Liquidacion[]>([]);
   const [nuevaLiquidacion, setNuevaLiquidacion] = useState({ persona: "", importe: "", fecha: new Date().toISOString().slice(0, 10), concepto: "" });
@@ -390,6 +392,23 @@ export default function ContabilidadManager() {
     });
     setNuevoGastoEmpresa({ concepto: "", importe: "", fecha: new Date().toISOString().slice(0, 10), categoria: "otros", pagado_por: "" });
     setMostrarNuevoGastoEmpresa(false);
+    cargarTodo();
+  }
+
+  async function guardarEdicionEmpresa(id: string) {
+    if (!confirm("¿Estás seguro de que quieres guardar los cambios?")) return;
+    await fetch(`/api/admin/gastos-empresa/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        concepto: edicionEmpresa.concepto,
+        importe: Number(edicionEmpresa.importe),
+        fecha: edicionEmpresa.fecha,
+        categoria: edicionEmpresa.categoria,
+        pagado_por: edicionEmpresa.pagado_por || null,
+      }),
+    });
+    setEditandoEmpresa(null);
     cargarTodo();
   }
 
@@ -1817,7 +1836,47 @@ export default function ContabilidadManager() {
             {gastosEmpresa.length === 0 ? (
               <p className="admin-empty" style={{ margin: 0 }}>Sin gastos puntuales. Usa el botón "Gasto puntual" para añadir uno.</p>
             ) : (
-              gastosEmpresa.map((g) => (
+              gastosEmpresa.map((g) => editandoEmpresa === g.id ? (
+                <div key={g.id} className="chat-widget-msg assistant" style={{ padding: 10 }}>
+                  <div className="lead-form-row" style={{ marginBottom: 6 }}>
+                    <label style={{ flex: 2 }}>
+                      Concepto
+                      <input value={edicionEmpresa.concepto} onChange={(e) => setEdicionEmpresa({ ...edicionEmpresa, concepto: e.target.value })} />
+                    </label>
+                    <label style={{ flex: 1 }}>
+                      Importe (€)
+                      <input type="number" step="0.01" value={edicionEmpresa.importe} onChange={(e) => setEdicionEmpresa({ ...edicionEmpresa, importe: e.target.value })} />
+                    </label>
+                    <label style={{ flex: 1 }}>
+                      Fecha
+                      <input type="date" value={edicionEmpresa.fecha} onChange={(e) => setEdicionEmpresa({ ...edicionEmpresa, fecha: e.target.value })} />
+                    </label>
+                  </div>
+                  <div className="lead-form-row" style={{ marginBottom: 6 }}>
+                    <label style={{ flex: 1 }}>
+                      Categoría
+                      <select value={edicionEmpresa.categoria} onChange={(e) => setEdicionEmpresa({ ...edicionEmpresa, categoria: e.target.value })}>
+                        <option value="material">Material</option>
+                        <option value="desplazamiento">Desplazamiento</option>
+                        <option value="comida">Comida / Dietas</option>
+                        <option value="software">Software</option>
+                        <option value="marketing">Marketing</option>
+                        <option value="mantenimiento">Mantenimiento</option>
+                        <option value="legal">Legal / Asesoría</option>
+                        <option value="otros">Otros</option>
+                      </select>
+                    </label>
+                    <label style={{ flex: 1 }}>
+                      Pagado por
+                      <input value={edicionEmpresa.pagado_por} onChange={(e) => setEdicionEmpresa({ ...edicionEmpresa, pagado_por: e.target.value })} placeholder="Nombre" />
+                    </label>
+                  </div>
+                  <div className="lead-form-actions">
+                    <button type="button" className="btn-primary" onClick={() => guardarEdicionEmpresa(g.id)}>Aceptar</button>
+                    <button type="button" className="btn-ghost" onClick={() => setEditandoEmpresa(null)}>Cancelar</button>
+                  </div>
+                </div>
+              ) : (
                 <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                   <span>
                     <b>{fmt(g.importe)}</b> · {g.concepto} · <span style={{ opacity: 0.6 }}>{g.categoria}</span>
@@ -1826,6 +1885,7 @@ export default function ContabilidadManager() {
                     {g.pagado_por && <span style={{ fontSize: 12, marginLeft: 6, padding: "1px 6px", background: "#e0e7ff", color: "#3730a3", borderRadius: 4 }}>Paga: {g.pagado_por}</span>}
                   </span>
                   <span style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                    <button type="button" className="btn-ghost" onClick={() => { setEditandoEmpresa(g.id); setEdicionEmpresa({ concepto: g.concepto, importe: String(g.importe), fecha: g.fecha, categoria: g.categoria, pagado_por: g.pagado_por || "" }); }}>Editar</button>
                     <button type="button" className="btn-ghost" onClick={() => eliminarGastoEmpresaFn(g.id)}>Borrar</button>
                   </span>
                 </div>
