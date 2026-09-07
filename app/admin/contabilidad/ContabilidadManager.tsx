@@ -1399,7 +1399,7 @@ export default function ContabilidadManager() {
                       const gastoRecurrenteMes = gs.filter((g) => g.es_recurrente && (!g.fecha_fin || g.fecha_fin >= new Date().toISOString().slice(0, 10))).reduce((s, g) => s + g.importe, 0);
                       const mesesTranscurridos = new Date().getUTCMonth() + 1;
                       const gastoAcumulado = gastoRecurrenteMes * mesesTranscurridos + gs.filter((g) => !g.es_recurrente && g.pagado && g.fecha_pago && g.fecha_pago.startsWith(String(año))).reduce((s, g) => s + g.importe, 0);
-                      const netoAño = brutoAño - gastoAcumulado;
+                      const netoAño = Math.round((brutoAño / 1.21) * 100) / 100 - gastoAcumulado;
                       const baseAño = Math.round((brutoAño / 1.21) * 100) / 100;
                       const ivaAño = Math.round((brutoAño - baseAño) * 100) / 100;
                       const meses = Math.max(mesesTranscurridos, 1);
