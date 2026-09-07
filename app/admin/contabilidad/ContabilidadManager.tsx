@@ -31,6 +31,17 @@ type Credito = {
   cobrado?: boolean;
 };
 
+type AlquilerComision = {
+  id: string;
+  cliente_id: string;
+  fecha: string;
+  precio_alquiler: number;
+  comision_pct: number;
+  comision_calculada: number;
+  cobrado: boolean;
+  notas: string | null;
+};
+
 type Ingreso = {
   id: string;
   mes: string;
@@ -110,6 +121,7 @@ type Balance = {
   beneficioNetoTotal: number;
   pendienteTotal: number;
   alquileres: { comisionBruta: number; cobrado: number; pendiente: number; gastos?: number; neto?: number };
+  alquilerComisiones?: { comisionBruta: number; cobrado: number; pendiente: number };
   compraventas: { comisionBruta: number; cobrado: number; pendiente: number; gastos: number; neto: number };
   creditos: { bruto: number; cobrado: number; pendiente: number; neto: number };
   gastosFijos?: {
@@ -119,14 +131,14 @@ type Balance = {
   };
 };
 
-type MetricasMes = { mes: number; bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number; gastosFijos: number; fijos: number; impuestos: number };
+type MetricasMes = { mes: number; bruto: number; gastos: number; neto: number; alquileres: number; alquilerComisiones: number; compraventas: number; creditos: number; gastosFijos: number; fijos: number; impuestos: number };
 
 type Metricas = {
   anio: number;
   meses: MetricasMes[];
   mesesAnterior: MetricasMes[];
   trimestres: { trimestre: number; bruto: number; gastos: number; neto: number }[];
-  totalAnual: { bruto: number; gastos: number; neto: number; alquileres: number; compraventas: number; creditos: number; gastosFijos: number; fijos: number; impuestos: number; netoTrasFijos: number; pctFijosSobreBruto: number; pctFijosSobreNeto: number; pctImpuestosSobreBruto: number; pctImpuestosSobreNeto: number };
+  totalAnual: { bruto: number; gastos: number; neto: number; alquileres: number; alquilerComisiones: number; compraventas: number; creditos: number; gastosFijos: number; fijos: number; impuestos: number; netoTrasFijos: number; pctFijosSobreBruto: number; pctFijosSobreNeto: number; pctImpuestosSobreBruto: number; pctImpuestosSobreNeto: number };
   anioAnterior: { bruto: number; neto: number } | null;
   variacion: { brutoPct: number | null; netoPct: number | null };
   aniosDisponibles: number[];
@@ -209,14 +221,17 @@ function GraficoEvolucion({ meses }: { meses: MetricasMes[] }) {
         const x = PAD_L + i * barW + barPad / 2;
         const w = barW - barPad;
         const hA = (m.alquileres / max) * chartH;
+        const hAC = ((m.alquilerComisiones ?? 0) / max) * chartH;
         const hC = (m.compraventas / max) * chartH;
         const hK = (m.creditos / max) * chartH;
         const yA = PAD_T + chartH - hA;
-        const yC = yA - hC;
+        const yAC = yA - hAC;
+        const yC = yAC - hC;
         const yK = yC - hK;
         return (
           <g key={m.mes}>
             {hA > 0 && <rect x={x} y={yA} width={w} height={hA} fill="#3b82f6" rx={2} />}
+            {hAC > 0 && <rect x={x} y={yAC} width={w} height={hAC} fill="#8b5cf6" rx={2} />}
             {hC > 0 && <rect x={x} y={yC} width={w} height={hC} fill="#10b981" rx={2} />}
             {hK > 0 && <rect x={x} y={yK} width={w} height={hK} fill="#f59e0b" rx={2} />}
             <text x={x + w / 2} y={H - PAD_B + 14} fontSize={10} textAnchor="middle" fill="#666">
@@ -285,6 +300,11 @@ export default function ContabilidadManager() {
   const [nuevoGastoCredito, setNuevoGastoCredito] = useState({ concepto: "", importe: "", categoria: "otros" });
   const [subiendoDocumentoCredito, setSubiendoDocumentoCredito] = useState(false);
 
+  const [alquilerComisiones, setAlquilerComisiones] = useState<AlquilerComision[]>([]);
+  const [mostrarNuevaAlquilerComision, setMostrarNuevaAlquilerComision] = useState(false);
+  const [nuevaAlquilerComision, setNuevaAlquilerComision] = useState({ cliente_id: "", fecha: "", precio_alquiler: "", comision_pct: "15" });
+  const [subTabAlquileres, setSubTabAlquileres] = useState<"gestion" | "comision">("gestion");
+
   const [activarAlquiler, setActivarAlquiler] = useState(ACTIVAR_ALQUILER);
   const [mostrarActivarAlquiler, setMostrarActivarAlquiler] = useState(false);
   const [editandoAlquiler, setEditandoAlquiler] = useState<string | null>(null);
@@ -321,7 +341,7 @@ export default function ContabilidadManager() {
   const [edicionOp, setEdicionOp] = useState({ comision_calculada: "", comision_pct: "", precio_venta: "" });
 
   async function cargarTodo() {
-    const [c, o, cr, b, gf, ge, lq] = await Promise.all([
+    const [c, o, cr, b, gf, ge, lq, ac] = await Promise.all([
       fetch("/api/admin/clientes").then((r) => r.json()),
       fetch("/api/admin/operaciones").then((r) => r.json()),
       fetch("/api/admin/creditos").then((r) => r.json()),
@@ -329,6 +349,7 @@ export default function ContabilidadManager() {
       fetch("/api/admin/gastos-fijos").then((r) => r.json()),
       fetch("/api/admin/gastos-empresa").then((r) => r.json()),
       fetch("/api/admin/liquidaciones").then((r) => r.json()),
+      fetch("/api/admin/alquiler-comisiones").then((r) => r.json()),
     ]);
     setClientes(Array.isArray(c) ? c : []);
     setOperaciones(Array.isArray(o) ? o : []);
@@ -337,6 +358,7 @@ export default function ContabilidadManager() {
     setGastosFijos(Array.isArray(gf) ? gf : []);
     setGastosEmpresa(Array.isArray(ge) ? ge : []);
     setLiquidaciones(Array.isArray(lq) ? lq : []);
+    setAlquilerComisiones(Array.isArray(ac) ? ac : []);
     setLoading(false);
   }
 
@@ -710,6 +732,39 @@ export default function ContabilidadManager() {
     cargarTodo();
   }
 
+  async function crearAlquilerComisionFn(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nuevaAlquilerComision.cliente_id || !nuevaAlquilerComision.fecha || !nuevaAlquilerComision.precio_alquiler) return;
+    await fetch("/api/admin/alquiler-comisiones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cliente_id: nuevaAlquilerComision.cliente_id,
+        fecha: nuevaAlquilerComision.fecha,
+        precio_alquiler: Number(nuevaAlquilerComision.precio_alquiler),
+        comision_pct: Number(nuevaAlquilerComision.comision_pct),
+      }),
+    });
+    setNuevaAlquilerComision({ cliente_id: "", fecha: "", precio_alquiler: "", comision_pct: "15" });
+    setMostrarNuevaAlquilerComision(false);
+    cargarTodo();
+  }
+
+  async function eliminarAlquilerComisionFn(id: string) {
+    if (!confirm("¿Borrar esta operación de comisión?")) return;
+    await fetch(`/api/admin/alquiler-comisiones/${id}`, { method: "DELETE" });
+    cargarTodo();
+  }
+
+  async function toggleAlquilerComisionCobrado(id: string, cobrado: boolean) {
+    await fetch(`/api/admin/alquiler-comisiones/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cobrado }),
+    });
+    cargarTodo();
+  }
+
   async function toggleIngresoCobrado(clienteId: string, ingresoId: string, cobrado: boolean) {
     await fetch(`/api/admin/ingresos/${ingresoId}`, {
       method: "PATCH",
@@ -882,10 +937,17 @@ export default function ContabilidadManager() {
             <p>Compraventas netas {fmt(balance.compraventas.neto)} (gastos {fmt(balance.compraventas.gastos)}) · Créditos netos {fmt(balance.creditos.neto)}</p>
           </div>
           <div className="analytics-card" style={{ borderLeft: "3px solid #3b82f6" }}>
-            <h3>Alquileres</h3>
+            <h3>Alquileres en gestión</h3>
             <div className="analytics-stat-value">{fmt(balance.alquileres.comisionBruta)}</div>
             <p>Cobrado {fmt(balance.alquileres.cobrado)} · <b style={{ color: balance.alquileres.pendiente > 0 ? "#c2410c" : undefined }}>Pendiente {fmt(balance.alquileres.pendiente)}</b></p>
           </div>
+          {balance.alquilerComisiones && balance.alquilerComisiones.comisionBruta > 0 && (
+            <div className="analytics-card" style={{ borderLeft: "3px solid #8b5cf6" }}>
+              <h3>Alquileres comisión</h3>
+              <div className="analytics-stat-value">{fmt(balance.alquilerComisiones.comisionBruta)}</div>
+              <p>Cobrado {fmt(balance.alquilerComisiones.cobrado)} · <b style={{ color: balance.alquilerComisiones.pendiente > 0 ? "#c2410c" : undefined }}>Pendiente {fmt(balance.alquilerComisiones.pendiente)}</b></p>
+            </div>
+          )}
           <div className="analytics-card" style={{ borderLeft: "3px solid #10b981" }}>
             <h3>Compraventas</h3>
             <div className="analytics-stat-value">{fmt(balance.compraventas.comisionBruta)}</div>
@@ -965,6 +1027,14 @@ export default function ContabilidadManager() {
                     {fmtPct(variacionPct(metricas.totalAnual.alquileres, metricas.mesesAnterior.reduce((s, m) => s + m.alquileres, 0)))} vs {metricasAnio - 1}
                   </p>
                 </div>
+                <div className="analytics-card" style={{ borderLeft: "3px solid #8b5cf6" }}>
+                  <h3>Alquileres comisión</h3>
+                  <div className="analytics-stat-value">{fmt(metricas.totalAnual.alquilerComisiones)}</div>
+                  <p>
+                    {porcentaje(metricas.totalAnual.alquilerComisiones, metricas.totalAnual.bruto).toFixed(1)}% del total ·{" "}
+                    {fmtPct(variacionPct(metricas.totalAnual.alquilerComisiones, metricas.mesesAnterior.reduce((s, m) => s + (m.alquilerComisiones ?? 0), 0)))} vs {metricasAnio - 1}
+                  </p>
+                </div>
                 <div className="analytics-card" style={{ borderLeft: "3px solid #10b981" }}>
                   <h3>Compraventas</h3>
                   <div className="analytics-stat-value">{fmt(metricas.totalAnual.compraventas)}</div>
@@ -1028,13 +1098,92 @@ export default function ContabilidadManager() {
               <div className="articulos-list-section" style={{ marginTop: 24, padding: 16, background: "#fafafa", borderRadius: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 12 }}>
                   <h3 style={{ margin: 0 }}>Evolución mensual (bruto)</h3>
-                  <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
-                    <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#3b82f6", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Alquileres</span>
+                  <div style={{ display: "flex", gap: 16, fontSize: 12, flexWrap: "wrap" }}>
+                    <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#3b82f6", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Gestión alquileres</span>
+                    <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#8b5cf6", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Comisión alquileres</span>
                     <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#10b981", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Compraventas</span>
                     <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#f59e0b", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Créditos</span>
                   </div>
                 </div>
                 <GraficoEvolucion meses={metricas.meses} />
+              </div>
+
+              {/* Gráfico comparación interanual (líneas) */}
+              {metricas.anioAnterior && (
+                <div className="articulos-list-section" style={{ marginTop: 16, padding: 16, background: "#fafafa", borderRadius: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 12 }}>
+                    <h3 style={{ margin: 0 }}>Bruto: {metricasAnio} vs {metricasAnio - 1}</h3>
+                    <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
+                      <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#3b82f6", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />{metricasAnio}</span>
+                      <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#94a3b8", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />{metricasAnio - 1}</span>
+                    </div>
+                  </div>
+                  {(() => {
+                    const W = 720, H = 200, PAD_L = 50, PAD_B = 28, PAD_T = 12, PAD_R = 12;
+                    const chartW = W - PAD_L - PAD_R, chartH = H - PAD_T - PAD_B;
+                    const allVals = [...metricas.meses.map((m) => m.bruto), ...metricas.mesesAnterior.map((m) => m.bruto)];
+                    const max = Math.max(1, ...allVals);
+                    const px = (i: number) => PAD_L + (i / 11) * chartW;
+                    const py = (v: number) => PAD_T + chartH * (1 - v / max);
+                    const line = (datos: MetricasMes[]) => datos.map((m, i) => `${i === 0 ? "M" : "L"}${px(i).toFixed(1)},${py(m.bruto).toFixed(1)}`).join(" ");
+                    return (
+                      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: "100%", height: "auto", display: "block" }}>
+                        {[0.25, 0.5, 0.75, 1].map((f) => (
+                          <g key={f}>
+                            <line x1={PAD_L} y1={py(max * f)} x2={W - PAD_R} y2={py(max * f)} stroke="#eee" strokeWidth={1} />
+                            <text x={PAD_L - 6} y={py(max * f) + 3} fontSize={9} textAnchor="end" fill="#999">{EUR.format(max * f).replace(/,\d{2}\s?€$/, "€")}</text>
+                          </g>
+                        ))}
+                        {NOMBRES_MES_CORTO.map((n, i) => (
+                          <text key={n} x={px(i)} y={H - PAD_B + 14} fontSize={10} textAnchor="middle" fill="#666">{n}</text>
+                        ))}
+                        <path d={line(metricas.mesesAnterior)} fill="none" stroke="#94a3b8" strokeWidth={2} strokeDasharray="6,4" />
+                        <path d={line(metricas.meses)} fill="none" stroke="#3b82f6" strokeWidth={2.5} />
+                        {metricas.meses.map((m, i) => m.bruto > 0 && (
+                          <circle key={i} cx={px(i)} cy={py(m.bruto)} r={3} fill="#3b82f6" />
+                        ))}
+                      </svg>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Gráfico neto vs gastos */}
+              <div className="articulos-list-section" style={{ marginTop: 16, padding: 16, background: "#fafafa", borderRadius: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 12 }}>
+                  <h3 style={{ margin: 0 }}>Neto vs Gastos por mes</h3>
+                  <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
+                    <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#10b981", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Neto</span>
+                    <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#ef4444", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Gastos</span>
+                  </div>
+                </div>
+                {(() => {
+                  const W = 720, H = 200, PAD_L = 50, PAD_B = 28, PAD_T = 12, PAD_R = 12;
+                  const chartW = W - PAD_L - PAD_R, chartH = H - PAD_T - PAD_B;
+                  const max = Math.max(1, ...metricas.meses.map((m) => Math.max(Math.abs(m.neto), m.gastos)));
+                  const barW = chartW / 12, barPad = 6;
+                  return (
+                    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: "100%", height: "auto", display: "block" }}>
+                      {[0.25, 0.5, 0.75, 1].map((f) => {
+                        const y = PAD_T + chartH * (1 - f);
+                        return <line key={f} x1={PAD_L} y1={y} x2={W - PAD_R} y2={y} stroke="#eee" strokeWidth={1} />;
+                      })}
+                      {metricas.meses.map((m, i) => {
+                        const x = PAD_L + i * barW + barPad / 2;
+                        const w = (barW - barPad) / 2;
+                        const hN = (Math.max(0, m.neto) / max) * chartH;
+                        const hG = (m.gastos / max) * chartH;
+                        return (
+                          <g key={m.mes}>
+                            <rect x={x} y={PAD_T + chartH - hN} width={w} height={hN} fill="#10b981" rx={2} />
+                            <rect x={x + w} y={PAD_T + chartH - hG} width={w} height={hG} fill="#ef4444" rx={2} />
+                            <text x={x + (barW - barPad) / 2} y={H - PAD_B + 14} fontSize={10} textAnchor="middle" fill="#666">{NOMBRES_MES_CORTO[i]}</text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  );
+                })()}
               </div>
 
               {/* Trimestres */}
@@ -1069,12 +1218,14 @@ export default function ContabilidadManager() {
                   <thead>
                     <tr>
                       <th>Mes</th>
-                      <th>Alquileres</th>
+                      <th>Gestión</th>
+                      <th>Comisión</th>
                       <th>Compraventas</th>
                       <th>Créditos</th>
                       <th>Bruto</th>
                       <th>Bruto {metricasAnio - 1}</th>
                       <th>Δ</th>
+                      <th>Gastos</th>
                       <th>Neto</th>
                     </tr>
                   </thead>
@@ -1086,11 +1237,13 @@ export default function ContabilidadManager() {
                         <tr key={m.mes}>
                           <td>{NOMBRES_MES[m.mes - 1]}</td>
                           <td>{fmt(m.alquileres)}</td>
+                          <td>{fmt(m.alquilerComisiones ?? 0)}</td>
                           <td>{fmt(m.compraventas)}</td>
                           <td>{fmt(m.creditos)}</td>
                           <td><strong>{fmt(m.bruto)}</strong></td>
                           <td style={{ color: "#999" }}>{fmt(prev?.bruto ?? 0)}</td>
                           <td style={{ color: delta === null ? "#999" : delta >= 0 ? "#10b981" : "#ef4444", fontWeight: 600 }}>{fmtPct(delta)}</td>
+                          <td style={{ color: "#ef4444" }}>{fmt(m.gastos)}</td>
                           <td>{fmt(m.neto)}</td>
                         </tr>
                       );
@@ -1236,8 +1389,18 @@ export default function ContabilidadManager() {
 
       {tab === "alquileres" && (
         <div className="articulos-list-section" style={{ marginTop: 20 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            <button type="button" className={`contabilidad-tab${subTabAlquileres === "gestion" ? " active" : ""}`} onClick={() => setSubTabAlquileres("gestion")}>
+              Alquileres en Gestión ({clientesConAlquiler.length})
+            </button>
+            <button type="button" className={`contabilidad-tab${subTabAlquileres === "comision" ? " active" : ""}`} onClick={() => setSubTabAlquileres("comision")}>
+              Alquileres Comisión ({alquilerComisiones.length})
+            </button>
+          </div>
+
+          {subTabAlquileres === "gestion" && (<>
           <div className="section-head">
-            <h2>Alquileres ({clientesConAlquiler.length})</h2>
+            <h2>Alquileres en Gestión ({clientesConAlquiler.length})</h2>
             <button type="button" className="btn-primary" onClick={() => setMostrarActivarAlquiler((v) => !v)}>
               {mostrarActivarAlquiler ? "Cancelar" : "Activar alquiler"}
             </button>
@@ -1560,6 +1723,78 @@ export default function ContabilidadManager() {
               </div>
             ))
           )}
+          </>)}
+
+          {subTabAlquileres === "comision" && (<>
+            <div className="section-head">
+              <h2>Alquileres Comisión ({alquilerComisiones.length})</h2>
+              <button type="button" className="btn-primary" onClick={() => setMostrarNuevaAlquilerComision((v) => !v)}>
+                {mostrarNuevaAlquilerComision ? "Cancelar" : "Nueva comisión"}
+              </button>
+            </div>
+
+            {mostrarNuevaAlquilerComision && (
+              <form className="piso-form" onSubmit={crearAlquilerComisionFn}>
+                <label>
+                  Cliente
+                  <select required value={nuevaAlquilerComision.cliente_id} onChange={(e) => setNuevaAlquilerComision({ ...nuevaAlquilerComision, cliente_id: e.target.value })}>
+                    <option value="">Selecciona...</option>
+                    {clientes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre} {c.apellidos} ({c.tipo})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="lead-form-row">
+                  <label>
+                    Fecha
+                    <input type="date" required value={nuevaAlquilerComision.fecha} onChange={(e) => setNuevaAlquilerComision({ ...nuevaAlquilerComision, fecha: e.target.value })} />
+                  </label>
+                  <label>
+                    Precio alquiler mensual (€)
+                    <input type="number" min={0} required value={nuevaAlquilerComision.precio_alquiler} onChange={(e) => setNuevaAlquilerComision({ ...nuevaAlquilerComision, precio_alquiler: e.target.value })} />
+                  </label>
+                  <label>
+                    % Comisión
+                    <input type="number" min={0} step="0.1" value={nuevaAlquilerComision.comision_pct} onChange={(e) => setNuevaAlquilerComision({ ...nuevaAlquilerComision, comision_pct: e.target.value })} />
+                  </label>
+                </div>
+                <div className="lead-form-actions">
+                  <button type="submit" className="btn-primary">Guardar comisión</button>
+                </div>
+              </form>
+            )}
+
+            {alquilerComisiones.length === 0 ? (
+              <p className="admin-empty">Todavía no hay operaciones de comisión por alquiler.</p>
+            ) : (
+              alquilerComisiones.map((ac) => (
+                <div key={ac.id} className="pisos-list-item">
+                  <div className="pisos-list-body">
+                    <h4>
+                      {clienteNombre(ac.cliente_id)}
+                      {ac.cobrado
+                        ? <span style={{ marginLeft: 8, padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11, fontWeight: 500 }}>Cobrado</span>
+                        : <span style={{ marginLeft: 8, padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11, fontWeight: 500 }}>Pendiente</span>}
+                    </h4>
+                    <div className="loc">
+                      Fecha {new Date(ac.fecha).toLocaleDateString("es-ES")} · Alquiler {fmt(ac.precio_alquiler)}/mes · Comisión {ac.comision_pct}% · <b>{fmt(ac.comision_calculada)}</b>
+                    </div>
+                    <label style={{ display: "inline-flex", gap: 4, alignItems: "center", marginTop: 4, fontSize: 13 }}>
+                      <input type="checkbox" checked={ac.cobrado} onChange={(e) => toggleAlquilerComisionCobrado(ac.id, e.target.checked)} />
+                      Cobrado
+                    </label>
+                  </div>
+                  <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
+                    <button type="button" className="btn-ghost" style={{ color: "#dc2626" }} onClick={() => eliminarAlquilerComisionFn(ac.id)}>
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </>)}
         </div>
       )}
 

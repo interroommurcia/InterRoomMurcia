@@ -311,3 +311,22 @@ create index if not exists cliente_gasto_recurrente_idx on public.cliente_gasto(
 -- desglosar en las métricas y comparar rentabilidades por tipo de partida.
 alter table public.operacion_gastos add column if not exists categoria text not null default 'otros';
 alter table public.credito_gastos add column if not exists categoria text not null default 'otros';
+
+-- ============================================================
+-- ALQUILERES COMISIÓN: operaciones puntuales donde se cobra una
+-- comisión por colocar un inquilino, sin gestión mensual.
+-- ============================================================
+create table if not exists public.operaciones_alquiler_comision (
+  id uuid primary key default gen_random_uuid(),
+  cliente_id uuid not null references public.clientes(id) on delete cascade,
+  fecha date not null,
+  precio_alquiler numeric not null,
+  comision_pct numeric not null default 15,
+  comision_calculada numeric not null,
+  cobrado boolean not null default false,
+  fecha_cobro date,
+  notas text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.operaciones_alquiler_comision enable row level security;
