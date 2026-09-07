@@ -32,7 +32,7 @@ export default async function AdminHome() {
   const chatsPendientes = conversaciones.filter((c) => c.estado === "escalada" && !c.leido);
   const mesMetrica = metricas?.meses[mesActual];
   const brutoMes = mesMetrica?.bruto ?? 0;
-  const netoMes = mesMetrica?.neto ?? 0;
+  const netoMes = Math.round(((mesMetrica?.bruto ?? 0) / 1.21 - (mesMetrica?.gastos ?? 0)) * 100) / 100;
   const alquileresMes = mesMetrica?.alquileres ?? 0;
   const brutoAnual = metricas?.totalAnual.bruto ?? 0;
 
