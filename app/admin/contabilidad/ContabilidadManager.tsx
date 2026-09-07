@@ -16,6 +16,7 @@ type Cliente = {
   token: string;
   mensualidad: number;
   comision_pct_alquiler: number;
+  comision_fija_alquiler: number | null;
   alquiler_fecha_inicio: string | null;
   alquiler_fecha_fin: string | null;
   tieneIngresos: boolean;
@@ -283,6 +284,8 @@ export default function ContabilidadManager() {
 
   const [activarAlquiler, setActivarAlquiler] = useState(ACTIVAR_ALQUILER);
   const [mostrarActivarAlquiler, setMostrarActivarAlquiler] = useState(false);
+  const [editandoAlquiler, setEditandoAlquiler] = useState<string | null>(null);
+  const [editAlquilerForm, setEditAlquilerForm] = useState({ mensualidad: "", comision_pct: "", comision_fija: "", fecha_inicio: "", fecha_fin: "" });
 
   const [ingresos, setIngresos] = useState<Record<string, Ingreso[]>>({});
   const [clienteAbierto, setClienteAbierto] = useState<string | null>(null);
@@ -652,6 +655,35 @@ export default function ContabilidadManager() {
     });
     const data = await fetch(`/api/admin/clientes/${clienteId}/ingresos`).then((r) => r.json());
     setIngresos((prev) => ({ ...prev, [clienteId]: Array.isArray(data) ? data : [] }));
+    cargarTodo();
+  }
+
+  function abrirEditarAlquiler(cliente: Cliente) {
+    setEditandoAlquiler(cliente.id);
+    setEditAlquilerForm({
+      mensualidad: String(cliente.mensualidad ?? 0),
+      comision_pct: String(cliente.comision_pct_alquiler ?? 15),
+      comision_fija: cliente.comision_fija_alquiler != null ? String(cliente.comision_fija_alquiler) : "",
+      fecha_inicio: cliente.alquiler_fecha_inicio ?? "",
+      fecha_fin: cliente.alquiler_fecha_fin ?? "",
+    });
+  }
+
+  async function guardarEditarAlquiler(clienteId: string) {
+    if (!confirm("¿Estás seguro de que quieres guardar los cambios en este alquiler?")) return;
+    await fetch(`/api/admin/clientes/${clienteId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mensualidad: Number(editAlquilerForm.mensualidad) || 0,
+        comision_pct_alquiler: Number(editAlquilerForm.comision_pct) || 15,
+        comision_fija_alquiler: editAlquilerForm.comision_fija ? Number(editAlquilerForm.comision_fija) : null,
+        alquiler_fecha_inicio: editAlquilerForm.fecha_inicio || null,
+        alquiler_fecha_fin: editAlquilerForm.fecha_fin || null,
+      }),
+    });
+    setEditandoAlquiler(null);
+    await fetch("/api/admin/contabilidad/generar-mensualidades", { method: "POST" });
     cargarTodo();
   }
 
@@ -1247,11 +1279,32 @@ export default function ContabilidadManager() {
                     {cliente.alquiler_fecha_fin && ` hasta ${cliente.alquiler_fecha_fin}`}
                   </div>
                 </div>
-                <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
-                  <button type="button" className="btn-ghost" onClick={() => borrarAlquiler(cliente.id)}>
+                <div className="lead-form-actions" style={{ padding: "0 16px 12px", gap: 8 }}>
+                  <button type="button" className="btn-ghost" onClick={() => abrirEditarAlquiler(cliente)}>
+                    Editar alquiler
+                  </button>
+                  <button type="button" className="btn-ghost" style={{ color: "#dc2626" }} onClick={() => borrarAlquiler(cliente.id)}>
                     Borrar alquiler
                   </button>
                 </div>
+
+                {editandoAlquiler === cliente.id && (
+                  <div className="chat-transcript" style={{ marginBottom: 12 }}>
+                    <div className="lead-form-row">
+                      <label>Mensualidad (€)<input type="number" min={0} value={editAlquilerForm.mensualidad} onChange={(e) => setEditAlquilerForm({ ...editAlquilerForm, mensualidad: e.target.value })} /></label>
+                      <label>Comisión %<input type="number" min={0} max={100} value={editAlquilerForm.comision_pct} onChange={(e) => setEditAlquilerForm({ ...editAlquilerForm, comision_pct: e.target.value })} /></label>
+                      <label>Comisión fija (€, opcional)<input type="number" min={0} value={editAlquilerForm.comision_fija} onChange={(e) => setEditAlquilerForm({ ...editAlquilerForm, comision_fija: e.target.value })} placeholder="Vacío = usar %" /></label>
+                    </div>
+                    <div className="lead-form-row">
+                      <label>Fecha inicio<input type="date" value={editAlquilerForm.fecha_inicio} onChange={(e) => setEditAlquilerForm({ ...editAlquilerForm, fecha_inicio: e.target.value })} /></label>
+                      <label>Fecha fin<input type="date" value={editAlquilerForm.fecha_fin} onChange={(e) => setEditAlquilerForm({ ...editAlquilerForm, fecha_fin: e.target.value })} /></label>
+                    </div>
+                    <div className="lead-form-actions">
+                      <button type="button" className="btn-primary" onClick={() => guardarEditarAlquiler(cliente.id)}>Aceptar</button>
+                      <button type="button" className="btn-ghost" onClick={() => setEditandoAlquiler(null)}>Cancelar</button>
+                    </div>
+                  </div>
+                )}
 
                 {clienteAbierto === cliente.id && (
                   <div className="chat-transcript">
