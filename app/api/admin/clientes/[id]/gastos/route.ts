@@ -17,8 +17,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const importe = Number(body?.importe);
   const categoria = (body?.categoria || "otros") as CategoriaGasto;
   const esRecurrente = Boolean(body?.esRecurrente);
-  if (!concepto || !Number.isFinite(importe) || importe <= 0) {
-    return NextResponse.json({ error: "concepto e importe > 0 requeridos" }, { status: 400 });
+  if (!concepto || !Number.isFinite(importe) || importe === 0) {
+    return NextResponse.json({ error: "concepto e importe != 0 requeridos" }, { status: 400 });
   }
   try {
     const creado = await crearClienteGasto({
@@ -31,6 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       fecha_fin: body?.fechaFin ?? null,
       fecha_pago: body?.fechaPago ?? null,
       pagado: Boolean(body?.pagado),
+      pagado_por: typeof body?.pagadoPor === "string" ? body.pagadoPor.trim() || null : null,
       notas: body?.notas ?? null,
     });
     return NextResponse.json(creado);

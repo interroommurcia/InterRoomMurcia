@@ -70,6 +70,7 @@ type ClienteGasto = {
   fecha_fin: string | null;
   pagado: boolean;
   fecha_pago: string | null;
+  pagado_por: string | null;
   notas: string | null;
 };
 
@@ -302,6 +303,7 @@ export default function ContabilidadManager() {
     fechaInicio: new Date().toISOString().slice(0, 10),
     fechaPago: "",
     pagado: false,
+    pagadoPor: "",
   });
 
   const [gastos, setGastos] = useState<Record<string, Gasto[]>>({});
@@ -599,15 +601,17 @@ export default function ContabilidadManager() {
         fechaInicio: g.esRecurrente ? g.fechaInicio : null,
         fechaPago: !g.esRecurrente && g.pagado ? g.fechaPago || new Date().toISOString().slice(0, 10) : null,
         pagado: !g.esRecurrente ? g.pagado : true,
+        pagadoPor: g.pagadoPor.trim() || null,
       }),
     });
-    setNuevoGastoCliente({ concepto: "", importe: "", categoria: "propietario", esRecurrente: true, fechaInicio: new Date().toISOString().slice(0, 10), fechaPago: "", pagado: false });
+    setNuevoGastoCliente({ concepto: "", importe: "", categoria: "propietario", esRecurrente: true, fechaInicio: new Date().toISOString().slice(0, 10), fechaPago: "", pagado: false, pagadoPor: "" });
     setMostrarNuevoGastoCliente(false);
     await refrescarClienteGastos(clienteId);
     cargarTodo();
   }
 
   async function toggleGastoClientePagado(clienteId: string, gastoId: string, pagado: boolean) {
+    if (pagado && !confirm("¿Estás seguro de que quieres liquidar este pago?")) return;
     await fetch(`/api/admin/cliente-gastos/${gastoId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -1432,8 +1436,8 @@ export default function ContabilidadManager() {
                                   <input required value={nuevoGastoCliente.concepto} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, concepto: e.target.value })} placeholder="Renta al propietario" />
                                 </label>
                                 <label>
-                                  Importe (€)
-                                  <input type="number" min={0} step="0.01" required value={nuevoGastoCliente.importe} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, importe: e.target.value })} />
+                                  Importe (€) <span style={{ opacity: 0.5, fontSize: 11 }}>negativo = pago a cobrar</span>
+                                  <input type="number" step="0.01" required value={nuevoGastoCliente.importe} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, importe: e.target.value })} />
                                 </label>
                                 <label>
                                   Categoría
@@ -1466,6 +1470,10 @@ export default function ContabilidadManager() {
                                     </label>
                                   </>
                                 )}
+                                <label>
+                                  Pagado por
+                                  <input value={nuevoGastoCliente.pagadoPor} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, pagadoPor: e.target.value })} placeholder="Nombre de quien adelantó" />
+                                </label>
                               </div>
                               <div className="lead-form-actions">
                                 <button type="submit" className="btn-primary">Guardar partida</button>
@@ -1479,7 +1487,8 @@ export default function ContabilidadManager() {
                               {recurrentes.map((g) => (
                                 <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                                   <span>
-                                    <b>{fmt(g.importe)}/mes</b> · {g.concepto} · <span style={{ opacity: 0.6 }}>{labelCategoria(g.categoria)}</span>
+                                    <b style={{ color: g.importe < 0 ? "#059669" : undefined }}>{fmt(g.importe)}/mes</b> · {g.concepto} · <span style={{ opacity: 0.6 }}>{labelCategoria(g.categoria)}</span>
+                                    {g.pagado_por && <span style={{ opacity: 0.6, marginLeft: 8 }}>pagado por {g.pagado_por}</span>}
                                     {g.fecha_inicio && <span style={{ opacity: 0.5, marginLeft: 8 }}>desde {g.fecha_inicio}</span>}
                                     {g.fecha_fin && <span style={{ opacity: 0.5, marginLeft: 8 }}>hasta {g.fecha_fin}</span>}
                                   </span>
@@ -1500,14 +1509,22 @@ export default function ContabilidadManager() {
                               {puntuales.map((g) => (
                                 <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                                   <span>
-                                    <b>{fmt(g.importe)}</b> · {g.concepto} · <span style={{ opacity: 0.6 }}>{labelCategoria(g.categoria)}</span>
+                                    <b style={{ color: g.importe < 0 ? "#059669" : undefined }}>{fmt(g.importe)}</b> · {g.concepto} · <span style={{ opacity: 0.6 }}>{labelCategoria(g.categoria)}</span>
+                                    {g.pagado_por && <span style={{ opacity: 0.6, marginLeft: 8 }}>pagado por {g.pagado_por}</span>}
                                     {g.fecha_pago && <span style={{ opacity: 0.5, marginLeft: 8 }}>{g.fecha_pago}</span>}
+                                    {!g.pagado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11 }}>Pendiente</span>}
+                                    {g.pagado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11 }}>Cobrado</span>}
                                   </span>
                                   <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                    <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                      <input type="checkbox" checked={g.pagado} onChange={(e) => toggleGastoClientePagado(cliente.id, g.id, e.target.checked)} />
-                                      Pagado
-                                    </label>
+                                    {!g.pagado ? (
+                                      <button type="button" className="btn-primary" style={{ fontSize: 12, padding: "4px 10px", whiteSpace: "nowrap" }} onClick={() => toggleGastoClientePagado(cliente.id, g.id, true)}>
+                                        Liquidar
+                                      </button>
+                                    ) : (
+                                      <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => toggleGastoClientePagado(cliente.id, g.id, false)}>
+                                        Desmarcar
+                                      </button>
+                                    )}
                                     <button type="button" className="btn-ghost" onClick={() => eliminarGastoCliente(cliente.id, g.id)}>Borrar</button>
                                   </span>
                                 </div>

@@ -116,6 +116,7 @@ export type ClienteGasto = {
   fecha_fin: string | null;
   pagado: boolean;
   fecha_pago: string | null;
+  pagado_por: string | null;
   notas: string | null;
   created_at: string;
 };
@@ -376,6 +377,7 @@ export async function crearClienteGasto(input: {
   fecha_fin?: string | null;
   fecha_pago?: string | null;
   pagado?: boolean;
+  pagado_por?: string | null;
   notas?: string | null;
 }): Promise<ClienteGasto> {
   const admin = getSupabaseAdmin();
@@ -385,6 +387,7 @@ export async function crearClienteGasto(input: {
     importe: input.importe,
     categoria: input.categoria,
     es_recurrente: input.es_recurrente,
+    pagado_por: input.pagado_por ?? null,
     notas: input.notas ?? null,
   };
   if (input.es_recurrente) {

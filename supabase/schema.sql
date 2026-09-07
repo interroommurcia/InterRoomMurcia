@@ -298,6 +298,7 @@ create table if not exists public.cliente_gasto (
   fecha_fin date,
   pagado boolean not null default false,
   fecha_pago date,
+  pagado_por text,
   notas text,
   created_at timestamptz not null default now()
 );
