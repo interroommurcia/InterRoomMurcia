@@ -25,9 +25,7 @@ export default function InversoresPage() {
         <div className="wrap inv-hero-inner">
           <Reveal>
             <div className="inv-hero-content">
-              <div className="eyebrow" style={{ color: "var(--orange)" }}>
-                Para inversores · Murcia y Cartagena
-              </div>
+              <div className="eyebrow">Para inversores · Murcia y Cartagena</div>
               <h1>
                 Invierte en inmuebles
                 <br />
@@ -41,7 +39,7 @@ export default function InversoresPage() {
                 <a href="#lead-form" className="btn-primary">
                   Quiero invertir
                 </a>
-                <a href="#calculadora" className="btn-ghost" style={{ borderColor: "rgba(255,255,255,.3)", color: "#fff" }}>
+                <a href="#calculadora" className="btn-ghost">
                   Calcular rentabilidad
                 </a>
               </div>

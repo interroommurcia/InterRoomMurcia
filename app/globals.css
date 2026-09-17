@@ -1472,9 +1472,10 @@ button {
 /* ── Inversores page ── */
 
 .inv-hero {
-  background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
-  color: #fff;
+  background: var(--paper);
+  color: var(--ink);
   padding: 70px 0 60px;
+  border-bottom: 3px solid var(--orange);
 }
 .inv-hero-inner {
   display: grid;
@@ -1503,8 +1504,8 @@ button {
   gap: 16px;
 }
 .inv-metrica {
-  background: rgba(255,255,255,.2);
-  border: 1px solid rgba(255,255,255,.3);
+  background: var(--orange-light);
+  border: 1px solid rgba(234,106,18,.15);
   border-radius: 14px;
   padding: 24px 20px;
   display: flex;
@@ -1515,12 +1516,12 @@ button {
 .inv-metrica-valor {
   font-size: 2rem;
   font-weight: 800;
-  color: #fff;
+  color: var(--orange);
   line-height: 1;
 }
 .inv-metrica-label {
   font-size: 0.75rem;
-  opacity: 0.6;
+  opacity: 0.55;
   margin-top: 6px;
 }
 
