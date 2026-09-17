@@ -131,26 +131,19 @@ export default function VentaPage() {
         </div>
       </section>
 
-      {/* Ventajas — tarjetas horizontales con dato destacado */}
-      <section className="venta-ventajas">
+      {/* Ventajas — banda naranja con columnas */}
+      <section className="venta-banda">
         <div className="wrap">
           <Reveal>
-            <div className="section-head">
-              <h2>Por que vender con InterRoom</h2>
-            </div>
+            <h2>Por que vender con InterRoom</h2>
           </Reveal>
-          <div className="venta-ventajas-grid">
+          <div className="venta-banda-grid">
             {VENTAJAS.map((v, i) => (
               <Reveal key={v.titulo} delay={i * 80}>
-                <div className="venta-ventaja-card">
-                  <div className="venta-ventaja-dato">
-                    <span className="venta-ventaja-num">{v.dato}</span>
-                    <span className="venta-ventaja-sub">{v.subtitulo}</span>
-                  </div>
-                  <div className="venta-ventaja-body">
-                    <h3>{v.titulo}</h3>
-                    <p>{v.desc}</p>
-                  </div>
+                <div className="venta-banda-item">
+                  <span className="venta-banda-num">{v.dato}</span>
+                  <h3>{v.titulo}</h3>
+                  <p>{v.desc}</p>
                 </div>
               </Reveal>
             ))}

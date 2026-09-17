@@ -1426,71 +1426,53 @@ button {
   line-height: 1.5;
 }
 
-.venta-ventajas {
-  padding: 70px 0;
+.venta-banda {
+  background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
+  color: #fff;
+  padding: 60px 0;
 }
-.venta-ventajas-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 22px;
-  margin-top: 40px;
-}
-.venta-ventaja-card {
-  display: flex;
-  gap: 22px;
-  align-items: flex-start;
-  background: #fff;
-  border-left: 4px solid var(--orange);
-  border-radius: 14px;
-  padding: 28px 26px;
-  box-shadow: 0 2px 12px rgba(0,0,0,.06);
-  transition: box-shadow .2s, transform .2s;
-}
-.venta-ventaja-card:hover {
-  box-shadow: 0 8px 28px rgba(234,106,18,.15);
-  transform: translateY(-3px);
-}
-.venta-ventaja-dato {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 72px;
-}
-.venta-ventaja-num {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: var(--orange);
-  line-height: 1;
-}
-.venta-ventaja-sub {
-  font-size: 0.68rem;
-  opacity: 0.55;
+.venta-banda h2 {
+  font-size: clamp(1.5rem, 3.5vw, 2.2rem);
   text-align: center;
-  margin-top: 4px;
-  line-height: 1.2;
+  margin-bottom: 40px;
 }
-.venta-ventaja-body h3 {
-  font-size: 1rem;
+.venta-banda-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+.venta-banda-item {
+  text-align: center;
+  padding: 0 8px;
+}
+.venta-banda-num {
+  display: block;
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.venta-banda-item h3 {
+  font-size: 0.95rem;
   font-weight: 700;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
-.venta-ventaja-body p {
-  font-size: 0.85rem;
-  opacity: 0.65;
-  line-height: 1.55;
+.venta-banda-item p {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  line-height: 1.5;
 }
 
 @media (max-width: 768px) {
   .venta-hero { padding: 50px 0 40px; }
   .venta-hero-stats { gap: 20px; flex-wrap: wrap; }
   .venta-pasos-grid { grid-template-columns: 1fr; }
-  .venta-ventajas-grid { grid-template-columns: 1fr; }
+  .venta-banda-grid { grid-template-columns: repeat(2, 1fr); gap: 28px; }
 }
 
 /* ── Inversores page ── */
 
 .inv-hero {
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d1a0a 60%, var(--orange-dark) 100%);
+  background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
   color: #fff;
   padding: 70px 0 60px;
 }
@@ -1521,8 +1503,8 @@ button {
   gap: 16px;
 }
 .inv-metrica {
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.2);
+  border: 1px solid rgba(255,255,255,.3);
   border-radius: 14px;
   padding: 24px 20px;
   display: flex;
@@ -1533,7 +1515,7 @@ button {
 .inv-metrica-valor {
   font-size: 2rem;
   font-weight: 800;
-  color: var(--orange);
+  color: #fff;
   line-height: 1;
 }
 .inv-metrica-label {
@@ -1558,8 +1540,9 @@ button {
   overflow: hidden;
 }
 .inv-card-npl {
-  background: linear-gradient(145deg, #1a1a1a, #2d1a0a);
-  color: #fff;
+  background: #fff;
+  border: 2px solid var(--orange);
+  color: var(--ink);
 }
 .inv-card-compra {
   background: var(--paper-dim);
@@ -1577,8 +1560,8 @@ button {
   margin-bottom: 16px;
 }
 .inv-card-npl .inv-card-tag {
-  background: var(--orange);
-  color: #fff;
+  background: var(--orange-light);
+  color: var(--orange-dark);
 }
 .inv-card-compra .inv-card-tag {
   background: var(--orange-light);
@@ -1626,7 +1609,7 @@ button {
   display: flex;
   gap: 28px;
   padding-top: 18px;
-  border-top: 1px solid rgba(255,255,255,.12);
+  border-top: 1px solid rgba(0,0,0,.08);
 }
 .inv-card-compra .inv-card-stats {
   border-top-color: rgba(0,0,0,.08);
