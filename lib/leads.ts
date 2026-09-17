@@ -11,6 +11,7 @@ export type Lead = {
   precio_deseado: number | null;
   mensaje: string | null;
   origen: string | null;
+  seccion: string | null;
   created_at: string;
 };
 
@@ -32,6 +33,7 @@ async function ensureTable() {
   await sql`ALTER TABLE leads_propietarios ADD COLUMN IF NOT EXISTS tipo TEXT;`;
   await sql`ALTER TABLE leads_propietarios ADD COLUMN IF NOT EXISTS metros INTEGER;`;
   await sql`ALTER TABLE leads_propietarios ADD COLUMN IF NOT EXISTS precio_deseado INTEGER;`;
+  await sql`ALTER TABLE leads_propietarios ADD COLUMN IF NOT EXISTS seccion TEXT;`;
 }
 
 export async function crearLead(data: {
@@ -44,18 +46,19 @@ export async function crearLead(data: {
   precio_deseado?: number;
   mensaje?: string;
   origen?: string;
+  seccion?: string;
 }) {
   await ensureTable();
   await sql`
-    INSERT INTO leads_propietarios (nombre, telefono, direccion, email, tipo, metros, precio_deseado, mensaje, origen)
-    VALUES (${data.nombre}, ${data.telefono}, ${data.direccion}, ${data.email || null}, ${data.tipo || null}, ${data.metros ?? null}, ${data.precio_deseado ?? null}, ${data.mensaje || null}, ${data.origen || null});
+    INSERT INTO leads_propietarios (nombre, telefono, direccion, email, tipo, metros, precio_deseado, mensaje, origen, seccion)
+    VALUES (${data.nombre}, ${data.telefono}, ${data.direccion}, ${data.email || null}, ${data.tipo || null}, ${data.metros ?? null}, ${data.precio_deseado ?? null}, ${data.mensaje || null}, ${data.origen || null}, ${data.seccion || null});
   `;
 }
 
 export async function listarLeads(): Promise<Lead[]> {
   await ensureTable();
   const { rows } = await sql<Lead>`
-    SELECT id, nombre, telefono, email, direccion, tipo, metros, precio_deseado, mensaje, origen, created_at
+    SELECT id, nombre, telefono, email, direccion, tipo, metros, precio_deseado, mensaje, origen, seccion, created_at
     FROM leads_propietarios
     ORDER BY created_at DESC;
   `;

@@ -18,7 +18,7 @@ export default async function LeadsPage() {
       <div className="wrap">
         <AdminNav active="/admin/leads" />
         <div className="section-head">
-          <h2>Leads de propietarios</h2>
+          <h2>Leads</h2>
           <p>{leads.length} solicitudes recibidas</p>
         </div>
         <div className="admin-table-wrap">
@@ -26,6 +26,7 @@ export default async function LeadsPage() {
             <thead>
               <tr>
                 <th>Fecha</th>
+                <th>Sección</th>
                 <th>Nombre</th>
                 <th>Teléfono</th>
                 <th>Email</th>
@@ -42,6 +43,11 @@ export default async function LeadsPage() {
               {leads.map((lead) => (
                 <tr key={lead.id}>
                   <td>{new Date(lead.created_at).toLocaleString("es-ES")}</td>
+                  <td>
+                    <span className={`seccion-badge seccion-${lead.seccion || "propietarios"}`}>
+                      {lead.seccion || "propietarios"}
+                    </span>
+                  </td>
                   <td>{lead.nombre}</td>
                   <td>
                     <a href={`tel:${lead.telefono}`}>{lead.telefono}</a>
@@ -66,7 +72,7 @@ export default async function LeadsPage() {
               ))}
               {leads.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="admin-empty">
+                  <td colSpan={12} className="admin-empty">
                     Todavía no hay solicitudes.
                   </td>
                 </tr>

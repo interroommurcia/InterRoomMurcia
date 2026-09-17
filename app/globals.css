@@ -1260,6 +1260,90 @@ button {
   line-height: 1.6;
 }
 
+/* Calculadora ROI */
+.calculadora-roi {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.calculadora-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.calculadora-inputs label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+.calculadora-inputs input {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(26, 26, 26, 0.15);
+  background: var(--paper);
+  color: var(--ink);
+}
+.calculadora-inputs input:focus {
+  outline: 2px solid var(--orange);
+  outline-offset: 1px;
+}
+.calculadora-resultados {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.calculadora-resultado {
+  background: var(--paper);
+  border: 1px solid rgba(26, 26, 26, 0.08);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.calculadora-valor {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--orange-dark);
+  letter-spacing: -0.02em;
+}
+.calculadora-label {
+  font-size: 0.78rem;
+  opacity: 0.6;
+  font-weight: 500;
+}
+
+/* Badges seccion leads */
+.seccion-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.seccion-propietarios {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.seccion-inversores {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.seccion-venta {
+  background: #d1fae5;
+  color: #065f46;
+}
+
 .admin {
   padding-top: 40px;
 }

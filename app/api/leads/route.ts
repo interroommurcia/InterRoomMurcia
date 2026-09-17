@@ -14,8 +14,9 @@ export async function POST(req: NextRequest) {
     Number.isFinite(Number(body?.precioDeseado)) && body?.precioDeseado !== "" ? Number(body.precioDeseado) : undefined;
   const mensaje = typeof body?.mensaje === "string" ? body.mensaje.trim().slice(0, 500) : "";
   const origen = typeof body?.origen === "string" ? body.origen.trim().slice(0, 120) : "";
+  const seccion = typeof body?.seccion === "string" ? body.seccion.trim().slice(0, 40) : "";
 
-  if (!nombre || !telefono || !direccion) {
+  if (!nombre || !telefono || (!direccion && seccion !== "inversores")) {
     return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
   }
 
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
       precio_deseado: precioDeseado,
       mensaje,
       origen,
+      seccion: seccion || "propietarios",
     });
     return NextResponse.json({ ok: true });
   } catch (err) {
