@@ -108,7 +108,11 @@ export default function InversoresPage() {
       <section className="feature" id="npl">
         <div className="wrap feature-grid">
           <Reveal className="feature-text">
-            <h2>Compra de deuda inmobiliaria</h2>
+            <h2>
+              Compra de deuda inmobiliaria
+              <br />
+              <em>Creditos NPL:</em>
+            </h2>
             <p className="feature-lead">
               Carteras de creditos impagados con descuentos significativos sobre el valor
               del activo subyacente. Una alternativa de inversion con alto potencial.
@@ -125,8 +129,18 @@ export default function InversoresPage() {
           <Reveal delay={120}>
             <div className="feature-visual tone-solid">
               <ChartIcon />
-              <div className="visual-caption">Creditos NPL</div>
-              <div className="visual-sub">Non-Performing Loans con descuento</div>
+              <div className="visual-caption">Hasta 50% de descuento</div>
+              <div className="visual-sub">sobre el valor real del activo</div>
+              <div className="hero-stats" style={{ marginTop: 20 }}>
+                <div>
+                  <b>-50%</b>
+                  <span>precio vs mercado</span>
+                </div>
+                <div>
+                  <b>+15%</b>
+                  <span>rentabilidad media</span>
+                </div>
+              </div>
             </div>
           </Reveal>
         </div>
