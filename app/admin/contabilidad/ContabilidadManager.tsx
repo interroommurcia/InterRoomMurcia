@@ -1194,7 +1194,7 @@ export default function ContabilidadManager() {
                 {(() => {
                   const W = 720, H = 200, PAD_L = 50, PAD_B = 28, PAD_T = 12, PAD_R = 12;
                   const chartW = W - PAD_L - PAD_R, chartH = H - PAD_T - PAD_B;
-                  const max = Math.max(1, ...metricas.meses.map((m) => Math.max(Math.abs(m.neto), m.gastos)));
+                  const max = Math.max(1, ...metricas.meses.map((m) => Math.max(Math.abs(m.neto), m.gastos + m.gastosFijos)));
                   const barW = chartW / 12, barPad = 6;
                   return (
                     <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: "100%", height: "auto", display: "block" }}>
@@ -1206,7 +1206,7 @@ export default function ContabilidadManager() {
                         const x = PAD_L + i * barW + barPad / 2;
                         const w = (barW - barPad) / 2;
                         const hN = (Math.max(0, m.neto) / max) * chartH;
-                        const hG = (m.gastos / max) * chartH;
+                        const hG = ((m.gastos + m.gastosFijos) / max) * chartH;
                         return (
                           <g key={m.mes}>
                             <rect x={x} y={PAD_T + chartH - hN} width={w} height={hN} fill="#10b981" rx={2} />
@@ -1277,8 +1277,8 @@ export default function ContabilidadManager() {
                           <td><strong>{fmt(m.bruto)}</strong></td>
                           <td style={{ color: "#999" }}>{fmt(prev?.bruto ?? 0)}</td>
                           <td style={{ color: delta === null ? "#999" : delta >= 0 ? "#10b981" : "#ef4444", fontWeight: 600 }}>{fmtPct(delta)}</td>
-                          <td style={{ color: "#ef4444" }}>{fmt(m.gastos)}</td>
-                          <td>{fmt(m.neto)}</td>
+                          <td style={{ color: "#ef4444" }}>{fmt(m.gastos + m.gastosFijos)}</td>
+                          <td>{fmt(m.neto - m.gastosFijos)}</td>
                         </tr>
                       );
                     })}
