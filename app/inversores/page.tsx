@@ -10,170 +10,128 @@ export const metadata: Metadata = {
     "Oportunidades de inversion inmobiliaria en Murcia y Cartagena: compraventa de inmuebles y creditos NPL. Analisis de rentabilidad gratuito.",
 };
 
-function BuildingIcon() {
-  return (
-    <svg className="visual-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-      <rect x="8" y="12" width="32" height="30" rx="3" stroke="currentColor" strokeWidth="2.4" />
-      <path d="M8 20h32M20 12v30M28 12v30" stroke="currentColor" strokeWidth="2.4" />
-      <path d="M13 25h3M13 31h3M13 37h3M33 25h-3M33 31h-3M33 37h-3" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M18 8l6-4 6 4" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ChartIcon() {
-  return (
-    <svg className="visual-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-      <rect x="6" y="6" width="36" height="36" rx="4" stroke="currentColor" strokeWidth="2.4" />
-      <path d="M14 34V24M22 34V18M30 34V22M38 34V14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <circle cx="10" cy="10" r="10" fill="var(--orange)" />
-      <path d="M6 10.4l2.4 2.4L14 7.2" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CheckList({ items }: { items: string[] }) {
-  return (
-    <ul className="check-list">
-      {items.map((item) => (
-        <li key={item}>
-          <CheckIcon />
-          <span>{item}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
+const METRICAS = [
+  { valor: "7-8%", label: "Rentabilidad anual media" },
+  { valor: "-50%", label: "Descuento NPL vs mercado" },
+  { valor: "0€", label: "Hasta que inviertas" },
+  { valor: "+15%", label: "ROI creditos NPL" },
+];
 
 export default function InversoresPage() {
   return (
     <>
-      <section className="hero">
-        <div className="wrap hero-grid">
-          <div>
-            <div className="eyebrow">Para inversores · Murcia y Cartagena</div>
-            <h1>
-              Invierte en inmuebles
-              <br />
-              <em>con rentabilidad real</em>
-            </h1>
-            <p className="hero-sub">
-              Te ayudamos a encontrar oportunidades de inversion inmobiliaria en Murcia:
-              compraventa de inmuebles y creditos NPL con asesoramiento profesional.
-            </p>
-            <div className="hero-actions">
-              <a href="#lead-form" className="btn-primary">
-                Quiero invertir
-              </a>
-              <a href="#calculadora" className="btn-ghost">
-                Calcular rentabilidad
-              </a>
-            </div>
-          </div>
-          <div className="hero-side">
-            <div>
-              <div className="tag">Inversion inmobiliaria</div>
-              <div className="hero-side-title">Murcia y Cartagena</div>
-              <p style={{ marginTop: 10, fontSize: "0.85rem", opacity: 0.9 }}>
-                Mercado con alta demanda de alquiler
-                <br />
-                y precios competitivos frente a otras ciudades
-              </p>
-            </div>
-            <div className="hero-stats">
-              <div>
-                <b>Analisis</b>
-                <span>de rentabilidad gratuito</span>
-              </div>
-              <div>
-                <b>0€</b>
-                <span>hasta que inviertas</span>
-              </div>
-              <div>
-                <b>NPL</b>
-                <span>creditos con descuento</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="feature" id="npl">
-        <div className="wrap feature-grid">
-          <Reveal className="feature-text">
-            <h2>
-              Compra de deuda inmobiliaria
-              <br />
-              <em>Creditos NPL:</em>
-            </h2>
-            <p className="feature-lead">
-              Carteras de creditos impagados con descuentos significativos sobre el valor
-              del activo subyacente. Una alternativa de inversion con alto potencial.
-            </p>
-            <CheckList
-              items={[
-                "Acceso a carteras de creditos con descuentos sobre el valor real",
-                "Analisis previo del activo subyacente y riesgo",
-                "Gestion de la recuperacion: negociacion, ejecucion o venta del activo",
-                "Rentabilidades superiores al mercado tradicional",
-              ]}
-            />
-          </Reveal>
-          <Reveal delay={120}>
-            <div className="feature-visual tone-solid">
-              <ChartIcon />
-              <div className="visual-caption">Hasta 50% de descuento</div>
-              <div className="visual-sub">sobre el valor real del activo</div>
-              <div className="hero-stats" style={{ marginTop: 20 }}>
-                <div>
-                  <b>-50%</b>
-                  <span>precio vs mercado</span>
-                </div>
-                <div>
-                  <b>+15%</b>
-                  <span>rentabilidad media</span>
-                </div>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section className="feature" id="compraventa">
-        <div className="wrap feature-grid reverse">
+      {/* Hero degradado oscuro */}
+      <section className="inv-hero">
+        <div className="wrap inv-hero-inner">
           <Reveal>
-            <div className="feature-visual tone-paper">
-              <BuildingIcon />
-              <div className="visual-caption">Compraventa</div>
-              <div className="visual-sub">Inmuebles con potencial de revalorizacion</div>
+            <div className="inv-hero-content">
+              <div className="eyebrow" style={{ color: "var(--orange)" }}>
+                Para inversores · Murcia y Cartagena
+              </div>
+              <h1>
+                Invierte en inmuebles
+                <br />
+                <em>con rentabilidad real</em>
+              </h1>
+              <p>
+                Te ayudamos a encontrar oportunidades de inversion inmobiliaria:
+                compraventa de inmuebles y creditos NPL con asesoramiento profesional.
+              </p>
+              <div className="hero-actions" style={{ marginTop: 28 }}>
+                <a href="#lead-form" className="btn-primary">
+                  Quiero invertir
+                </a>
+                <a href="#calculadora" className="btn-ghost" style={{ borderColor: "rgba(255,255,255,.3)", color: "#fff" }}>
+                  Calcular rentabilidad
+                </a>
+              </div>
             </div>
           </Reveal>
-          <Reveal className="feature-text" delay={120}>
-            <h2>Compra inmuebles por debajo de mercado</h2>
-            <p className="feature-lead">
-              Accede a oportunidades que no estan en los portales convencionales.
-              Te acompañamos en todo el proceso, desde la busqueda hasta la escritura.
-            </p>
-            <CheckList
-              items={[
-                "Compra a particulares",
-                "Rentabilidad del 7%-8% anual",
-                "Gestion integral: busqueda, negociacion, escritura y reforma si es necesario",
-                "Opcion de alquiler gestionado por InterRoom para maximizar el retorno",
-              ]}
-            />
+          <Reveal delay={100}>
+            <div className="inv-metricas">
+              {METRICAS.map((m) => (
+                <div className="inv-metrica" key={m.label}>
+                  <span className="inv-metrica-valor">{m.valor}</span>
+                  <span className="inv-metrica-label">{m.label}</span>
+                </div>
+              ))}
+            </div>
           </Reveal>
         </div>
       </section>
 
-      <section className="section" id="calculadora">
+      {/* Dos oportunidades lado a lado */}
+      <section className="inv-oportunidades">
+        <div className="wrap">
+          <Reveal>
+            <div className="section-head">
+              <h2>Dos formas de invertir</h2>
+              <p>Elige la que mejor se adapte a tu perfil</p>
+            </div>
+          </Reveal>
+          <div className="inv-cards">
+            <Reveal delay={0}>
+              <div className="inv-card inv-card-npl">
+                <div className="inv-card-tag">NPL</div>
+                <h3>
+                  Compra de deuda inmobiliaria
+                  <br />
+                  <em>Creditos NPL:</em>
+                </h3>
+                <p>
+                  Carteras de creditos impagados con descuentos significativos sobre el valor
+                  del activo subyacente. Alto potencial de rentabilidad.
+                </p>
+                <ul>
+                  <li>Acceso a carteras con descuentos sobre el valor real</li>
+                  <li>Analisis previo del activo subyacente y riesgo</li>
+                  <li>Gestion de la recuperacion: negociacion, ejecucion o venta</li>
+                  <li>Rentabilidades superiores al mercado tradicional</li>
+                </ul>
+                <div className="inv-card-stats">
+                  <div>
+                    <b>-50%</b>
+                    <span>precio vs mercado</span>
+                  </div>
+                  <div>
+                    <b>+15%</b>
+                    <span>rentabilidad media</span>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
+            <Reveal delay={120}>
+              <div className="inv-card inv-card-compra">
+                <div className="inv-card-tag">Compraventa</div>
+                <h3>Compra inmuebles por debajo de mercado</h3>
+                <p>
+                  Accede a oportunidades que no estan en los portales convencionales.
+                  Te acompañamos desde la busqueda hasta la escritura.
+                </p>
+                <ul>
+                  <li>Compra a particulares</li>
+                  <li>Rentabilidad del 7%-8% anual</li>
+                  <li>Gestion integral: busqueda, negociacion, escritura y reforma</li>
+                  <li>Alquiler gestionado por InterRoom para maximizar retorno</li>
+                </ul>
+                <div className="inv-card-stats">
+                  <div>
+                    <b>7-8%</b>
+                    <span>rentabilidad anual</span>
+                  </div>
+                  <div>
+                    <b>100%</b>
+                    <span>gestion incluida</span>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* Calculadora */}
+      <section className="section" id="calculadora" style={{ background: "var(--paper-dim)" }}>
         <div className="wrap">
           <Reveal>
             <div className="lead-card">
@@ -190,6 +148,7 @@ export default function InversoresPage() {
         </div>
       </section>
 
+      {/* Formulario */}
       <section className="section lead-section" id="lead-form">
         <div className="wrap">
           <Reveal>
@@ -207,6 +166,7 @@ export default function InversoresPage() {
         </div>
       </section>
 
+      {/* Contacto */}
       <section className="contacto-home">
         <div className="contacto-home-overlay" />
         <Reveal direction="scale" className="wrap contacto-home-inner">
