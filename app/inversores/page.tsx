@@ -105,44 +105,10 @@ export default function InversoresPage() {
         </div>
       </section>
 
-      <section className="feature" id="compraventa">
+      <section className="feature" id="npl">
         <div className="wrap feature-grid">
           <Reveal className="feature-text">
-            <h2>Compra inmuebles por debajo de mercado</h2>
-            <p className="feature-lead">
-              Accede a oportunidades que no estan en los portales convencionales.
-              Te acompañamos en todo el proceso, desde la busqueda hasta la escritura.
-            </p>
-            <CheckList
-              items={[
-                "Inmuebles de bancos, subastas y particulares con urgencia de venta",
-                "Analisis de rentabilidad antes de comprar",
-                "Gestion integral: busqueda, negociacion, escritura y reforma si es necesario",
-                "Opcion de alquiler gestionado por InterRoom para maximizar el retorno",
-              ]}
-            />
-          </Reveal>
-          <Reveal delay={120}>
-            <div className="feature-visual tone-solid">
-              <BuildingIcon />
-              <div className="visual-caption">Compraventa</div>
-              <div className="visual-sub">Inmuebles con potencial de revalorizacion</div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section className="feature" id="npl">
-        <div className="wrap feature-grid reverse">
-          <Reveal>
-            <div className="feature-visual tone-paper">
-              <ChartIcon />
-              <div className="visual-caption">Creditos NPL</div>
-              <div className="visual-sub">Non-Performing Loans con descuento</div>
-            </div>
-          </Reveal>
-          <Reveal className="feature-text" delay={120}>
-            <h2>Creditos NPL: una oportunidad diferente</h2>
+            <h2>Compra de deuda inmobiliaria</h2>
             <p className="feature-lead">
               Carteras de creditos impagados con descuentos significativos sobre el valor
               del activo subyacente. Una alternativa de inversion con alto potencial.
@@ -153,6 +119,40 @@ export default function InversoresPage() {
                 "Analisis previo del activo subyacente y riesgo",
                 "Gestion de la recuperacion: negociacion, ejecucion o venta del activo",
                 "Rentabilidades superiores al mercado tradicional",
+              ]}
+            />
+          </Reveal>
+          <Reveal delay={120}>
+            <div className="feature-visual tone-solid">
+              <ChartIcon />
+              <div className="visual-caption">Creditos NPL</div>
+              <div className="visual-sub">Non-Performing Loans con descuento</div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className="feature" id="compraventa">
+        <div className="wrap feature-grid reverse">
+          <Reveal>
+            <div className="feature-visual tone-paper">
+              <BuildingIcon />
+              <div className="visual-caption">Compraventa</div>
+              <div className="visual-sub">Inmuebles con potencial de revalorizacion</div>
+            </div>
+          </Reveal>
+          <Reveal className="feature-text" delay={120}>
+            <h2>Compra inmuebles por debajo de mercado</h2>
+            <p className="feature-lead">
+              Accede a oportunidades que no estan en los portales convencionales.
+              Te acompañamos en todo el proceso, desde la busqueda hasta la escritura.
+            </p>
+            <CheckList
+              items={[
+                "Compra a particulares",
+                "Rentabilidad del 7%-8% anual",
+                "Gestion integral: busqueda, negociacion, escritura y reforma si es necesario",
+                "Opcion de alquiler gestionado por InterRoom para maximizar el retorno",
               ]}
             />
           </Reveal>
