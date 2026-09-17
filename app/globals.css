@@ -1431,45 +1431,59 @@ button {
 }
 .venta-ventajas-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 22px;
   margin-top: 40px;
 }
 .venta-ventaja-card {
+  display: flex;
+  gap: 22px;
+  align-items: flex-start;
   background: #fff;
-  border: 1px solid rgba(0,0,0,.08);
+  border-left: 4px solid var(--orange);
   border-radius: 14px;
-  padding: 28px 22px;
-  text-align: center;
+  padding: 28px 26px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.06);
   transition: box-shadow .2s, transform .2s;
 }
 .venta-ventaja-card:hover {
-  box-shadow: 0 8px 28px rgba(234,106,18,.12);
-  transform: translateY(-4px);
+  box-shadow: 0 8px 28px rgba(234,106,18,.15);
+  transform: translateY(-3px);
 }
-.venta-ventaja-icono {
-  font-size: 2rem;
-  display: block;
-  margin-bottom: 12px;
+.venta-ventaja-dato {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 72px;
 }
-.venta-ventaja-card h3 {
-  font-size: 0.95rem;
+.venta-ventaja-num {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--orange);
+  line-height: 1;
+}
+.venta-ventaja-sub {
+  font-size: 0.68rem;
+  opacity: 0.55;
+  text-align: center;
+  margin-top: 4px;
+  line-height: 1.2;
+}
+.venta-ventaja-body h3 {
+  font-size: 1rem;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
-.venta-ventaja-card p {
-  font-size: 0.82rem;
+.venta-ventaja-body p {
+  font-size: 0.85rem;
   opacity: 0.65;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 @media (max-width: 768px) {
   .venta-hero { padding: 50px 0 40px; }
   .venta-hero-stats { gap: 20px; flex-wrap: wrap; }
   .venta-pasos-grid { grid-template-columns: 1fr; }
-  .venta-ventajas-grid { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 480px) {
   .venta-ventajas-grid { grid-template-columns: 1fr; }
 }
 

@@ -27,31 +27,35 @@ const PASOS = [
   },
   {
     num: "04",
-    titulo: "Negociacion y cierre",
+    titulo: "Notaria y cierre",
     desc: "Negociamos el mejor precio y te acompañamos hasta la firma en notaria.",
   },
 ];
 
 const VENTAJAS = [
   {
-    icono: "🏠",
+    dato: "10+",
+    subtitulo: "años en la zona",
     titulo: "Conocemos tu zona",
-    desc: "Expertos en el mercado de Murcia y Cartagena, sabemos lo que vale tu inmueble.",
+    desc: "Expertos en el mercado de Murcia y Cartagena. Sabemos lo que vale tu inmueble porque llevamos años operando aqui.",
   },
   {
-    icono: "👥",
+    dato: "200+",
+    subtitulo: "compradores activos",
     titulo: "Red de compradores",
-    desc: "Inversores y compradores activos buscando oportunidades ahora mismo.",
+    desc: "Inversores y compradores verificados buscando oportunidades ahora mismo. Tu inmueble llega a quien realmente compra.",
   },
   {
-    icono: "📊",
-    titulo: "Transparencia total",
-    desc: "Sabes el estado de tu venta en todo momento. Sin letra pequeña.",
+    dato: "100%",
+    subtitulo: "transparencia",
+    titulo: "Sin sorpresas",
+    desc: "Sabes el estado de tu venta en todo momento. Informes de visitas, feedback de compradores y seguimiento continuo.",
   },
   {
-    icono: "💰",
-    titulo: "0€ hasta la venta",
-    desc: "Solo cobramos cuando tu inmueble se vende. Sin cuotas ni costes ocultos.",
+    dato: "0€",
+    subtitulo: "hasta la venta",
+    titulo: "Sin riesgo para ti",
+    desc: "Solo cobramos cuando tu inmueble se vende. Sin cuotas fijas, sin permanencia, sin costes ocultos.",
   },
 ];
 
@@ -127,7 +131,7 @@ export default function VentaPage() {
         </div>
       </section>
 
-      {/* Ventajas — grid de tarjetas */}
+      {/* Ventajas — tarjetas horizontales con dato destacado */}
       <section className="venta-ventajas">
         <div className="wrap">
           <Reveal>
@@ -139,9 +143,14 @@ export default function VentaPage() {
             {VENTAJAS.map((v, i) => (
               <Reveal key={v.titulo} delay={i * 80}>
                 <div className="venta-ventaja-card">
-                  <span className="venta-ventaja-icono">{v.icono}</span>
-                  <h3>{v.titulo}</h3>
-                  <p>{v.desc}</p>
+                  <div className="venta-ventaja-dato">
+                    <span className="venta-ventaja-num">{v.dato}</span>
+                    <span className="venta-ventaja-sub">{v.subtitulo}</span>
+                  </div>
+                  <div className="venta-ventaja-body">
+                    <h3>{v.titulo}</h3>
+                    <p>{v.desc}</p>
+                  </div>
                 </div>
               </Reveal>
             ))}
