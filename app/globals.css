@@ -1426,47 +1426,11 @@ button {
   line-height: 1.5;
 }
 
-.venta-banda {
-  background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
-  color: #fff;
-  padding: 60px 0;
-}
-.venta-banda h2 {
-  font-size: clamp(1.5rem, 3.5vw, 2.2rem);
-  text-align: center;
-  margin-bottom: 40px;
-}
-.venta-banda-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
-}
-.venta-banda-item {
-  text-align: center;
-  padding: 0 8px;
-}
-.venta-banda-num {
-  display: block;
-  font-size: 2.2rem;
-  font-weight: 800;
-  margin-bottom: 8px;
-}
-.venta-banda-item h3 {
-  font-size: 0.95rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-.venta-banda-item p {
-  font-size: 0.8rem;
-  opacity: 0.85;
-  line-height: 1.5;
-}
 
 @media (max-width: 768px) {
   .venta-hero { padding: 50px 0 40px; }
   .venta-hero-stats { gap: 20px; flex-wrap: wrap; }
   .venta-pasos-grid { grid-template-columns: 1fr; }
-  .venta-banda-grid { grid-template-columns: repeat(2, 1fr); gap: 28px; }
 }
 
 /* ── Inversores page ── */

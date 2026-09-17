@@ -131,23 +131,45 @@ export default function VentaPage() {
         </div>
       </section>
 
-      {/* Ventajas — banda naranja con columnas */}
-      <section className="venta-banda">
-        <div className="wrap">
+      {/* Ventajas — feature con visual + checklist */}
+      <section className="feature">
+        <div className="wrap feature-grid">
           <Reveal>
-            <h2>Por que vender con InterRoom</h2>
-          </Reveal>
-          <div className="venta-banda-grid">
-            {VENTAJAS.map((v, i) => (
-              <Reveal key={v.titulo} delay={i * 80}>
-                <div className="venta-banda-item">
-                  <span className="venta-banda-num">{v.dato}</span>
-                  <h3>{v.titulo}</h3>
-                  <p>{v.desc}</p>
+            <div className="feature-visual tone-solid">
+              <svg className="visual-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                <path d="M24 4l-2 6h-6l5 4-2 6 5-4 5 4-2-6 5-4h-6z" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
+                <rect x="8" y="22" width="32" height="20" rx="3" stroke="currentColor" strokeWidth="2.4" />
+                <path d="M8 28h32" stroke="currentColor" strokeWidth="2.4" />
+                <path d="M16 34h6M16 38h10" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+              </svg>
+              <div className="visual-caption">Tu inmueble, nuestra prioridad</div>
+              <div className="visual-sub">Experiencia local + alcance profesional</div>
+              <div className="hero-stats" style={{ marginTop: 20 }}>
+                <div>
+                  <b>10+</b>
+                  <span>años en la zona</span>
                 </div>
-              </Reveal>
-            ))}
-          </div>
+                <div>
+                  <b>200+</b>
+                  <span>compradores activos</span>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+          <Reveal className="feature-text" delay={120}>
+            <h2>Por que vender con InterRoom</h2>
+            <ul className="check-list">
+              {VENTAJAS.map((v) => (
+                <li key={v.titulo}>
+                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <circle cx="10" cy="10" r="10" fill="var(--orange)" />
+                    <path d="M6 10.4l2.4 2.4L14 7.2" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span><strong>{v.titulo}</strong> — {v.desc}</span>
+                </li>
+              ))}
+            </ul>
+          </Reveal>
         </div>
       </section>
 
