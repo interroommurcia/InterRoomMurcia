@@ -9,155 +9,147 @@ export const metadata: Metadata = {
     "Vende tu piso, casa o local en Murcia y Cartagena con InterRoom. Valoracion gratuita, marketing profesional y acompañamiento hasta la firma.",
 };
 
-function HandshakeIcon() {
-  return (
-    <svg className="visual-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-      <path d="M4 28h6l8-8 6 2 8-8h6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M18 22l4 4M26 18l-4 4" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M10 34l6-6M32 34l-6-6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-      <circle cx="24" cy="10" r="4" stroke="currentColor" strokeWidth="2.4" />
-      <path d="M8 40h32" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-    </svg>
-  );
-}
+const PASOS = [
+  {
+    num: "01",
+    titulo: "Valoracion gratuita",
+    desc: "Analizamos el mercado y te damos un precio real de venta en 48 horas.",
+  },
+  {
+    num: "02",
+    titulo: "Marketing profesional",
+    desc: "Fotografia profesional, tour virtual y publicacion en los principales portales.",
+  },
+  {
+    num: "03",
+    titulo: "Gestion de visitas",
+    desc: "Filtramos compradores serios, organizamos visitas y te informamos de cada una.",
+  },
+  {
+    num: "04",
+    titulo: "Negociacion y cierre",
+    desc: "Negociamos el mejor precio y te acompañamos hasta la firma en notaria.",
+  },
+];
 
-function MegaphoneIcon() {
-  return (
-    <svg className="visual-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-      <path d="M10 20v8a4 4 0 0 0 4 4h2l2 10h4l-2-10h2a4 4 0 0 0 4-4v-8" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
-      <path d="M26 18V32l12 6V12l-12 6z" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
-      <path d="M10 20h16M10 28h16" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <circle cx="10" cy="10" r="10" fill="var(--orange)" />
-      <path d="M6 10.4l2.4 2.4L14 7.2" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CheckList({ items }: { items: string[] }) {
-  return (
-    <ul className="check-list">
-      {items.map((item) => (
-        <li key={item}>
-          <CheckIcon />
-          <span>{item}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
+const VENTAJAS = [
+  {
+    icono: "🏠",
+    titulo: "Conocemos tu zona",
+    desc: "Expertos en el mercado de Murcia y Cartagena, sabemos lo que vale tu inmueble.",
+  },
+  {
+    icono: "👥",
+    titulo: "Red de compradores",
+    desc: "Inversores y compradores activos buscando oportunidades ahora mismo.",
+  },
+  {
+    icono: "📊",
+    titulo: "Transparencia total",
+    desc: "Sabes el estado de tu venta en todo momento. Sin letra pequeña.",
+  },
+  {
+    icono: "💰",
+    titulo: "0€ hasta la venta",
+    desc: "Solo cobramos cuando tu inmueble se vende. Sin cuotas ni costes ocultos.",
+  },
+];
 
 export default function VentaPage() {
   return (
     <>
-      <section className="hero">
-        <div className="wrap hero-grid">
-          <div>
-            <div className="eyebrow">Compraventa · Murcia y Cartagena</div>
-            <h1>
-              Vende tu inmueble
-              <br />
-              <em>al mejor precio</em>
-            </h1>
-            <p className="hero-sub">
-              Nos encargamos de todo el proceso de venta: valoracion, marketing, visitas,
-              negociacion y escritura. Tu solo decides cuando aceptar la oferta.
-            </p>
-            <div className="hero-actions">
-              <a href="#lead-form" className="btn-primary">
-                Valoracion gratuita
-              </a>
-              <a href="#como-funciona" className="btn-ghost">
-                Como funciona
-              </a>
-            </div>
-          </div>
-          <div className="hero-side">
-            <div>
-              <div className="tag">Sin compromiso</div>
-              <div className="hero-side-title">0€ hasta la venta</div>
-              <p style={{ marginTop: 10, fontSize: "0.85rem", opacity: 0.9 }}>
-                Solo cobramos cuando tu inmueble se vende
-                <br />
-                Sin cuotas fijas ni costes ocultos
-              </p>
-            </div>
-            <div className="hero-stats">
-              <div>
-                <b>0€</b>
-                <span>hasta la venta</span>
-              </div>
-              <div>
-                <b>48h</b>
-                <span>primera valoracion</span>
-              </div>
-              <div>
-                <b>100%</b>
-                <span>transparencia</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="feature" id="como-funciona">
-        <div className="wrap feature-grid">
-          <Reveal className="feature-text">
-            <h2>Vendemos tu inmueble sin que muevas un dedo</h2>
-            <p className="feature-lead">
-              Desde la primera valoracion hasta la firma en notaria, nos ocupamos
-              de cada paso para que tu solo tengas que decidir.
-            </p>
-            <CheckList
-              items={[
-                "Valoracion profesional gratuita basada en el mercado actual",
-                "Fotografia profesional y tour virtual de tu inmueble",
-                "Publicacion en los principales portales inmobiliarios",
-                "Filtrado de compradores serios y gestion de visitas",
-                "Negociacion profesional para conseguir el mejor precio",
-                "Acompañamiento hasta la firma de escritura",
-              ]}
-            />
-          </Reveal>
-          <Reveal delay={120}>
-            <div className="feature-visual tone-solid">
-              <HandshakeIcon />
-              <div className="visual-caption">Proceso completo</div>
-              <div className="visual-sub">De la valoracion a la firma</div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section className="feature">
-        <div className="wrap feature-grid reverse">
+      {/* Hero oscuro — diferente al resto de páginas */}
+      <section className="venta-hero">
+        <div className="wrap venta-hero-inner">
           <Reveal>
-            <div className="feature-visual tone-paper">
-              <MegaphoneIcon />
-              <div className="visual-caption">Maxima visibilidad</div>
-              <div className="visual-sub">Tu inmueble donde los compradores buscan</div>
+            <div className="venta-hero-content">
+              <div className="eyebrow" style={{ color: "var(--orange)" }}>
+                Compraventa · Murcia y Cartagena
+              </div>
+              <h1>
+                Vende tu inmueble
+                <br />
+                <em>al mejor precio</em>
+              </h1>
+              <p>
+                Nos encargamos de todo: valoracion, marketing, visitas, negociacion
+                y escritura. Tu solo decides cuando aceptar la oferta.
+              </p>
+              <div className="venta-hero-stats">
+                <div className="venta-stat">
+                  <span className="venta-stat-num">0€</span>
+                  <span className="venta-stat-label">hasta la venta</span>
+                </div>
+                <div className="venta-stat">
+                  <span className="venta-stat-num">48h</span>
+                  <span className="venta-stat-label">primera valoracion</span>
+                </div>
+                <div className="venta-stat">
+                  <span className="venta-stat-num">100%</span>
+                  <span className="venta-stat-label">transparencia</span>
+                </div>
+              </div>
+              <div className="hero-actions">
+                <a href="#lead-form" className="btn-primary">
+                  Valoracion gratuita
+                </a>
+                <a href="#como-funciona" className="btn-ghost" style={{ borderColor: "rgba(255,255,255,.3)", color: "#fff" }}>
+                  Como funciona
+                </a>
+              </div>
             </div>
-          </Reveal>
-          <Reveal className="feature-text" delay={120}>
-            <h2>Por que vender con InterRoom</h2>
-            <CheckList
-              items={[
-                "Conocemos el mercado de Murcia y Cartagena mejor que nadie",
-                "Red de inversores y compradores activos buscando oportunidades",
-                "Transparencia total: sabes el estado de tu venta en todo momento",
-                "Sin permanencia ni costes ocultos",
-              ]}
-            />
           </Reveal>
         </div>
       </section>
 
+      {/* Pasos — timeline vertical */}
+      <section className="venta-pasos" id="como-funciona">
+        <div className="wrap">
+          <Reveal>
+            <div className="section-head">
+              <h2>Como vendemos tu inmueble</h2>
+              <p>Un proceso sencillo, profesional y sin sorpresas</p>
+            </div>
+          </Reveal>
+          <div className="venta-pasos-grid">
+            {PASOS.map((paso, i) => (
+              <Reveal key={paso.num} delay={i * 100}>
+                <div className="venta-paso">
+                  <div className="venta-paso-num">{paso.num}</div>
+                  <div className="venta-paso-body">
+                    <h3>{paso.titulo}</h3>
+                    <p>{paso.desc}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Ventajas — grid de tarjetas */}
+      <section className="venta-ventajas">
+        <div className="wrap">
+          <Reveal>
+            <div className="section-head">
+              <h2>Por que vender con InterRoom</h2>
+            </div>
+          </Reveal>
+          <div className="venta-ventajas-grid">
+            {VENTAJAS.map((v, i) => (
+              <Reveal key={v.titulo} delay={i * 80}>
+                <div className="venta-ventaja-card">
+                  <span className="venta-ventaja-icono">{v.icono}</span>
+                  <h3>{v.titulo}</h3>
+                  <p>{v.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Formulario */}
       <section className="section lead-section" id="lead-form">
         <div className="wrap">
           <Reveal>
@@ -175,6 +167,7 @@ export default function VentaPage() {
         </div>
       </section>
 
+      {/* Contacto */}
       <section className="contacto-home">
         <div className="contacto-home-overlay" />
         <Reveal direction="scale" className="wrap contacto-home-inner">
