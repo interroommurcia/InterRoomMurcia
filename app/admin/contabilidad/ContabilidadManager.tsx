@@ -303,6 +303,8 @@ export default function ContabilidadManager() {
   const [alquilerComisiones, setAlquilerComisiones] = useState<AlquilerComision[]>([]);
   const [mostrarNuevaAlquilerComision, setMostrarNuevaAlquilerComision] = useState(false);
   const [nuevaAlquilerComision, setNuevaAlquilerComision] = useState({ cliente_id: "", fecha: "", precio_alquiler: "", comision_pct: "15" });
+  const [editandoAC, setEditandoAC] = useState<string | null>(null);
+  const [editACForm, setEditACForm] = useState({ cliente_id: "", fecha: "", precio_alquiler: "", comision_pct: "", notas: "" });
   const [subTabAlquileres, setSubTabAlquileres] = useState<"gestion" | "comision">("gestion");
 
   const [activarAlquiler, setActivarAlquiler] = useState(ACTIVAR_ALQUILER);
@@ -762,6 +764,35 @@ export default function ContabilidadManager() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cobrado }),
     });
+    cargarTodo();
+  }
+
+  function iniciarEdicionAC(ac: AlquilerComision) {
+    setEditandoAC(ac.id);
+    setEditACForm({
+      cliente_id: ac.cliente_id,
+      fecha: ac.fecha,
+      precio_alquiler: String(ac.precio_alquiler),
+      comision_pct: String(ac.comision_pct),
+      notas: ac.notas ?? "",
+    });
+  }
+
+  async function guardarEdicionAC(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editandoAC) return;
+    await fetch(`/api/admin/alquiler-comisiones/${editandoAC}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cliente_id: editACForm.cliente_id,
+        fecha: editACForm.fecha,
+        precio_alquiler: Number(editACForm.precio_alquiler),
+        comision_pct: Number(editACForm.comision_pct),
+        notas: editACForm.notas || null,
+      }),
+    });
+    setEditandoAC(null);
     cargarTodo();
   }
 
@@ -1771,26 +1802,49 @@ export default function ContabilidadManager() {
             ) : (
               alquilerComisiones.map((ac) => (
                 <div key={ac.id} className="pisos-list-item">
-                  <div className="pisos-list-body">
-                    <h4>
-                      {clienteNombre(ac.cliente_id)}
-                      {ac.cobrado
-                        ? <span style={{ marginLeft: 8, padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11, fontWeight: 500 }}>Cobrado</span>
-                        : <span style={{ marginLeft: 8, padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11, fontWeight: 500 }}>Pendiente</span>}
-                    </h4>
-                    <div className="loc">
-                      Fecha {new Date(ac.fecha).toLocaleDateString("es-ES")} · Alquiler {fmt(ac.precio_alquiler)}/mes · Comisión {ac.comision_pct}% · <b>{fmt(ac.comision_calculada)}</b>
-                    </div>
-                    <label style={{ display: "inline-flex", gap: 4, alignItems: "center", marginTop: 4, fontSize: 13 }}>
-                      <input type="checkbox" checked={ac.cobrado} onChange={(e) => toggleAlquilerComisionCobrado(ac.id, e.target.checked)} />
-                      Cobrado
-                    </label>
-                  </div>
-                  <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
-                    <button type="button" className="btn-ghost" style={{ color: "#dc2626" }} onClick={() => eliminarAlquilerComisionFn(ac.id)}>
-                      Eliminar
-                    </button>
-                  </div>
+                  {editandoAC === ac.id ? (
+                    <form className="piso-form" onSubmit={guardarEdicionAC} style={{ padding: 12 }}>
+                      <label>Cliente
+                        <select required value={editACForm.cliente_id} onChange={(e) => setEditACForm({ ...editACForm, cliente_id: e.target.value })}>
+                          <option value="">Seleccionar…</option>
+                          {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre} {c.apellidos ?? ""}</option>)}
+                        </select>
+                      </label>
+                      <label>Fecha <input type="date" required value={editACForm.fecha} onChange={(e) => setEditACForm({ ...editACForm, fecha: e.target.value })} /></label>
+                      <label>Precio alquiler (€/mes) <input type="number" min={0} required value={editACForm.precio_alquiler} onChange={(e) => setEditACForm({ ...editACForm, precio_alquiler: e.target.value })} /></label>
+                      <label>Comisión (%) <input type="number" min={0} step="0.1" value={editACForm.comision_pct} onChange={(e) => setEditACForm({ ...editACForm, comision_pct: e.target.value })} /></label>
+                      <label>Notas <input type="text" value={editACForm.notas} onChange={(e) => setEditACForm({ ...editACForm, notas: e.target.value })} /></label>
+                      <div className="lead-form-actions">
+                        <button type="submit" className="btn-primary">Guardar</button>
+                        <button type="button" className="btn-ghost" onClick={() => setEditandoAC(null)}>Cancelar</button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="pisos-list-body">
+                        <h4>
+                          {clienteNombre(ac.cliente_id)}
+                          {ac.cobrado
+                            ? <span style={{ marginLeft: 8, padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11, fontWeight: 500 }}>Cobrado</span>
+                            : <span style={{ marginLeft: 8, padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11, fontWeight: 500 }}>Pendiente</span>}
+                        </h4>
+                        <div className="loc">
+                          Fecha {new Date(ac.fecha).toLocaleDateString("es-ES")} · Alquiler {fmt(ac.precio_alquiler)}/mes · Comisión {ac.comision_pct}% · <b>{fmt(ac.comision_calculada)}</b>
+                          {ac.notas && <span style={{ marginLeft: 8, color: "#6b7280", fontSize: 12 }}>— {ac.notas}</span>}
+                        </div>
+                        <label style={{ display: "inline-flex", gap: 4, alignItems: "center", marginTop: 4, fontSize: 13 }}>
+                          <input type="checkbox" checked={ac.cobrado} onChange={(e) => toggleAlquilerComisionCobrado(ac.id, e.target.checked)} />
+                          Cobrado
+                        </label>
+                      </div>
+                      <div className="lead-form-actions" style={{ padding: "0 16px 12px" }}>
+                        <button type="button" className="btn-ghost" onClick={() => iniciarEdicionAC(ac)}>Editar</button>
+                        <button type="button" className="btn-ghost" style={{ color: "#dc2626" }} onClick={() => eliminarAlquilerComisionFn(ac.id)}>
+                          Eliminar
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))
             )}

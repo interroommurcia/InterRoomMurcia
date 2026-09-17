@@ -11,6 +11,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (body.cobrado !== undefined) patch.cobrado = Boolean(body.cobrado);
     if (body.comision_calculada !== undefined) patch.comision_calculada = Number(body.comision_calculada);
     if (body.notas !== undefined) patch.notas = body.notas;
+    if (body.cliente_id) patch.cliente_id = body.cliente_id;
+    if (body.fecha) patch.fecha = body.fecha;
+    if (body.precio_alquiler !== undefined) patch.precio_alquiler = Number(body.precio_alquiler);
+    if (body.comision_pct !== undefined) patch.comision_pct = Number(body.comision_pct);
     await actualizarAlquilerComision(params.id, patch);
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {

@@ -817,11 +817,36 @@ export async function crearAlquilerComision(input: {
   return data as AlquilerComision;
 }
 
-export async function actualizarAlquilerComision(id: string, patch: Partial<{ cobrado: boolean; comision_calculada: number; notas: string | null }>) {
+export async function actualizarAlquilerComision(
+  id: string,
+  patch: Partial<{
+    cobrado: boolean;
+    comision_calculada: number;
+    notas: string | null;
+    cliente_id: string;
+    fecha: string;
+    precio_alquiler: number;
+    comision_pct: number;
+  }>,
+) {
   const admin = getSupabaseAdmin();
-  const update: Record<string, unknown> = { ...patch, updated_at: new Date().toISOString() };
+  const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.cobrado !== undefined) {
+    update.cobrado = patch.cobrado;
     update.fecha_cobro = patch.cobrado ? new Date().toISOString().slice(0, 10) : null;
+  }
+  if (patch.notas !== undefined) update.notas = patch.notas;
+  if (patch.cliente_id) update.cliente_id = patch.cliente_id;
+  if (patch.fecha) update.fecha = patch.fecha;
+  if (patch.precio_alquiler !== undefined || patch.comision_pct !== undefined) {
+    const { data: current } = await admin.from("operaciones_alquiler_comision").select("precio_alquiler, comision_pct").eq("id", id).single();
+    const precio = patch.precio_alquiler ?? current?.precio_alquiler ?? 0;
+    const pct = patch.comision_pct ?? current?.comision_pct ?? 15;
+    update.precio_alquiler = precio;
+    update.comision_pct = pct;
+    update.comision_calculada = calcularComision(precio, pct);
+  } else if (patch.comision_calculada !== undefined) {
+    update.comision_calculada = patch.comision_calculada;
   }
   const { error } = await admin.from("operaciones_alquiler_comision").update(update).eq("id", id);
   if (error) throw error;
