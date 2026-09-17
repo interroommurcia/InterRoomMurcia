@@ -971,18 +971,21 @@ export default function ContabilidadManager() {
             <h3>Alquileres en gestión</h3>
             <div className="analytics-stat-value">{fmt(balance.alquileres.comisionBruta)}</div>
             <p>Cobrado {fmt(balance.alquileres.cobrado)} · <b style={{ color: balance.alquileres.pendiente > 0 ? "#c2410c" : undefined }}>Pendiente {fmt(balance.alquileres.pendiente)}</b></p>
+            <p style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{porcentaje(balance.alquileres.comisionBruta, balance.comisionBrutaTotal).toFixed(1)}% del beneficio total</p>
           </div>
           {balance.alquilerComisiones && balance.alquilerComisiones.comisionBruta > 0 && (
             <div className="analytics-card" style={{ borderLeft: "3px solid #8b5cf6" }}>
               <h3>Alquileres comisión</h3>
               <div className="analytics-stat-value">{fmt(balance.alquilerComisiones.comisionBruta)}</div>
               <p>Cobrado {fmt(balance.alquilerComisiones.cobrado)} · <b style={{ color: balance.alquilerComisiones.pendiente > 0 ? "#c2410c" : undefined }}>Pendiente {fmt(balance.alquilerComisiones.pendiente)}</b></p>
+              <p style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{porcentaje(balance.alquilerComisiones.comisionBruta, balance.comisionBrutaTotal).toFixed(1)}% del beneficio total</p>
             </div>
           )}
           <div className="analytics-card" style={{ borderLeft: "3px solid #10b981" }}>
             <h3>Compraventas</h3>
             <div className="analytics-stat-value">{fmt(balance.compraventas.comisionBruta)}</div>
             <p>Cobrado {fmt(balance.compraventas.cobrado)} · <b style={{ color: balance.compraventas.pendiente > 0 ? "#c2410c" : undefined }}>Pendiente {fmt(balance.compraventas.pendiente)}</b></p>
+            <p style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{porcentaje(balance.compraventas.comisionBruta, balance.comisionBrutaTotal).toFixed(1)}% del beneficio total</p>
           </div>
           <div className="analytics-card" style={{ borderLeft: "3px solid #8b5cf6" }}>
             <h3>Compra de créditos</h3>
