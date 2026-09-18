@@ -97,7 +97,7 @@ export default function VentaPage() {
                 <a href="#lead-form" className="btn-primary">
                   Valoracion gratuita
                 </a>
-                <a href="#como-funciona" className="btn-ghost" style={{ borderColor: "rgba(255,255,255,.3)", color: "#fff" }}>
+                <a href="#como-funciona" className="btn-ghost">
                   Como funciona
                 </a>
               </div>

@@ -1347,9 +1347,10 @@ button {
 /* ── Venta page ── */
 
 .venta-hero {
-  background: var(--ink);
-  color: #fff;
+  background: var(--paper);
+  color: var(--ink);
   padding: 80px 0 60px;
+  border-bottom: 3px solid var(--orange);
 }
 .venta-hero-inner {
   max-width: 720px;
@@ -1385,8 +1386,9 @@ button {
 }
 .venta-stat-label {
   font-size: 0.78rem;
-  opacity: 0.7;
+  opacity: 0.55;
   margin-top: 2px;
+  color: var(--ink);
 }
 
 .venta-pasos {
@@ -1436,7 +1438,7 @@ button {
 /* ── Inversores page ── */
 
 .inv-hero {
-  background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
+  background: linear-gradient(135deg, var(--ink) 0%, var(--orange-dark) 60%, var(--orange) 100%);
   color: #fff;
   padding: 70px 0 60px;
   border-bottom: none;
@@ -1458,7 +1460,7 @@ button {
   color: #fff;
 }
 .inv-hero h1 em {
-  color: var(--ink);
+  color: var(--orange);
   font-style: normal;
 }
 .inv-hero p {
