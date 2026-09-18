@@ -66,11 +66,16 @@ export async function POST(req: NextRequest) {
     })),
   ];
 
+  const errors: string[] = [];
   const results = await Promise.allSettled(
     jobs.map(async (job) => {
       const buffer = await generateImageGemini(job.prompt);
-      if (!buffer) return { key: job.key, url: null };
+      if (!buffer) {
+        errors.push(`${job.key}: generación falló`);
+        return { key: job.key, url: null };
+      }
       const url = await uploadImage(buffer, job.path);
+      if (!url) errors.push(`${job.key}: upload falló`);
       return { key: job.key, url };
     })
   );
@@ -78,7 +83,9 @@ export async function POST(req: NextRequest) {
   const images: Record<string, string | null> = {};
   for (const r of results) {
     if (r.status === "fulfilled") images[r.value.key] = r.value.url;
+    else errors.push(`rejected: ${r.reason}`);
   }
 
-  return NextResponse.json({ images });
+  if (errors.length) console.warn("[generate-images] errores:", errors);
+  return NextResponse.json({ images, errors: errors.length ? errors : undefined });
 }

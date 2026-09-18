@@ -219,6 +219,7 @@ export default function ArticulosManager() {
   async function generateImages() {
     if (!article?.heroImagePrompt) return;
     setLoadingImages(true);
+    setError("");
     try {
       const sectionPrompts = article.sections.map((s) => s.imagePrompt).filter(Boolean).slice(0, 3) as string[];
       const res = await fetch("/api/admin/articulos/generate-images", {
@@ -226,8 +227,17 @@ export default function ArticulosManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug: article.slug, heroImagePrompt: article.heroImagePrompt, sectionPrompts }),
       });
-      if (!res.ok) return;
-      const { images } = await res.json();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: "Error desconocido" }));
+        setError("Error generando imágenes: " + (errData.error || res.statusText));
+        return;
+      }
+      const { images, errors: imgErrors } = await res.json();
+      const generated = Object.values(images).filter(Boolean).length;
+      if (generated === 0) {
+        setError("No se pudieron generar las imágenes. " + (imgErrors?.join("; ") || "Revisa la GEMINI_API_KEY en Vercel."));
+        return;
+      }
       setArticle((prev) => {
         if (!prev) return prev;
         const updated = { ...prev };
@@ -238,8 +248,8 @@ export default function ArticulosManager() {
         updated.sections = prev.sections.map((s, i) => (images[`s${i}`] ? { ...s, image: images[`s${i}`] } : s));
         return updated;
       });
-    } catch {
-      /* imágenes opcionales */
+    } catch (e: unknown) {
+      setError("Error generando imágenes: " + (e instanceof Error ? e.message : "desconocido"));
     } finally {
       setLoadingImages(false);
     }
