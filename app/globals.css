@@ -1476,8 +1476,8 @@ button {
   gap: 16px;
 }
 .inv-metrica {
-  background: rgba(255,255,255,.55);
-  border: 1px solid rgba(255,255,255,.6);
+  background: rgba(255,255,255,.85);
+  border: 1px solid rgba(255,255,255,.9);
   border-radius: 14px;
   padding: 24px 20px;
   display: flex;
@@ -1489,7 +1489,7 @@ button {
 .inv-metrica-valor {
   font-size: 2rem;
   font-weight: 800;
-  color: var(--ink);
+  color: var(--orange-dark);
   line-height: 1;
 }
 .inv-metrica-label {
