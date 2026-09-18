@@ -1438,8 +1438,8 @@ button {
 /* ── Inversores page ── */
 
 .inv-hero {
-  background: linear-gradient(135deg, var(--ink) 0%, var(--orange-dark) 60%, var(--orange) 100%);
-  color: #fff;
+  background: linear-gradient(135deg, #fff 0%, var(--orange-light) 40%, var(--orange) 100%);
+  color: var(--ink);
   padding: 70px 0 60px;
   border-bottom: none;
 }
@@ -1450,36 +1450,25 @@ button {
   align-items: center;
 }
 .inv-hero .eyebrow {
-  color: #fff !important;
-  opacity: 0.85;
+  color: var(--ink) !important;
+  opacity: 0.7;
 }
 .inv-hero h1 {
   font-size: clamp(2rem, 5vw, 3rem);
   line-height: 1.1;
   margin: 12px 0 16px;
-  color: #fff;
+  color: var(--ink);
 }
 .inv-hero h1 em {
-  color: var(--orange);
+  color: var(--orange-dark);
   font-style: normal;
 }
 .inv-hero p {
   font-size: 1rem;
-  opacity: 0.85;
+  opacity: 0.8;
   line-height: 1.6;
   max-width: 480px;
-  color: #fff;
-}
-.inv-hero .btn-primary {
-  background: var(--ink);
-  color: #fff;
-}
-.inv-hero .btn-primary:hover {
-  box-shadow: 0 8px 20px rgba(0,0,0,.3);
-}
-.inv-hero .btn-ghost {
-  border-color: rgba(255,255,255,.4);
-  color: #fff;
+  color: var(--ink);
 }
 .inv-metricas {
   display: grid;
@@ -1487,8 +1476,8 @@ button {
   gap: 16px;
 }
 .inv-metrica {
-  background: rgba(255,255,255,.2);
-  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(255,255,255,.55);
+  border: 1px solid rgba(255,255,255,.6);
   border-radius: 14px;
   padding: 24px 20px;
   display: flex;
@@ -1500,14 +1489,14 @@ button {
 .inv-metrica-valor {
   font-size: 2rem;
   font-weight: 800;
-  color: #fff;
+  color: var(--ink);
   line-height: 1;
 }
 .inv-metrica-label {
   font-size: 0.75rem;
-  opacity: 0.7;
+  opacity: 0.6;
   margin-top: 6px;
-  color: #fff;
+  color: var(--ink);
 }
 
 .inv-oportunidades {
