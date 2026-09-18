@@ -1436,10 +1436,10 @@ button {
 /* ── Inversores page ── */
 
 .inv-hero {
-  background: var(--paper);
-  color: var(--ink);
+  background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
+  color: #fff;
   padding: 70px 0 60px;
-  border-bottom: 3px solid var(--orange);
+  border-bottom: none;
 }
 .inv-hero-inner {
   display: grid;
@@ -1447,20 +1447,37 @@ button {
   gap: 48px;
   align-items: center;
 }
+.inv-hero .eyebrow {
+  color: #fff !important;
+  opacity: 0.85;
+}
 .inv-hero h1 {
   font-size: clamp(2rem, 5vw, 3rem);
   line-height: 1.1;
   margin: 12px 0 16px;
+  color: #fff;
 }
 .inv-hero h1 em {
-  color: var(--orange);
+  color: var(--ink);
   font-style: normal;
 }
 .inv-hero p {
   font-size: 1rem;
-  opacity: 0.8;
+  opacity: 0.85;
   line-height: 1.6;
   max-width: 480px;
+  color: #fff;
+}
+.inv-hero .btn-primary {
+  background: var(--ink);
+  color: #fff;
+}
+.inv-hero .btn-primary:hover {
+  box-shadow: 0 8px 20px rgba(0,0,0,.3);
+}
+.inv-hero .btn-ghost {
+  border-color: rgba(255,255,255,.4);
+  color: #fff;
 }
 .inv-metricas {
   display: grid;
@@ -1468,25 +1485,27 @@ button {
   gap: 16px;
 }
 .inv-metrica {
-  background: var(--orange-light);
-  border: 1px solid rgba(234,106,18,.15);
+  background: rgba(255,255,255,.2);
+  border: 1px solid rgba(255,255,255,.25);
   border-radius: 14px;
   padding: 24px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+  backdrop-filter: blur(4px);
 }
 .inv-metrica-valor {
   font-size: 2rem;
   font-weight: 800;
-  color: var(--orange);
+  color: #fff;
   line-height: 1;
 }
 .inv-metrica-label {
   font-size: 0.75rem;
-  opacity: 0.55;
+  opacity: 0.7;
   margin-top: 6px;
+  color: #fff;
 }
 
 .inv-oportunidades {
