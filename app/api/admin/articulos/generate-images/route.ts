@@ -10,13 +10,13 @@ async function generateImageGemini(prompt: string): Promise<{ buffer: Buffer | n
   const styledPrompt = `${prompt}. Style: ultra-realistic professional photography of the Region of Murcia (Spain), 8K, warm Mediterranean golden-hour light, terracotta and ochre palette, palm trees and Levantine architecture when appropriate, no watermarks, no text overlays, no logos, no people`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        instances: [{ prompt: styledPrompt }],
-        parameters: { sampleCount: 1, aspectRatio: "16:9", safetyFilterLevel: "block_few" },
+        prompt: styledPrompt,
+        config: { numberOfImages: 1, aspectRatio: "16:9", safetyFilterLevel: "BLOCK_LOW_AND_ABOVE" },
       }),
     }
   );
@@ -27,7 +27,7 @@ async function generateImageGemini(prompt: string): Promise<{ buffer: Buffer | n
     return { buffer: null, error: `API ${res.status}: ${err.slice(0, 200)}` };
   }
   const data = await res.json();
-  const b64 = data?.predictions?.[0]?.bytesBase64Encoded;
+  const b64 = data?.generatedImages?.[0]?.image?.imageBytes;
   if (!b64) return { buffer: null, error: "Sin imagen en respuesta: " + JSON.stringify(data).slice(0, 200) };
   return { buffer: Buffer.from(b64, "base64") };
 }
