@@ -40,8 +40,7 @@ header {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: hsla(0, 0%, 100%, 0.92);
-  backdrop-filter: blur(6px);
+  background: #fff;
   border-bottom: 1px solid rgba(26, 26, 26, 0.08);
 }
 
@@ -2584,7 +2583,7 @@ button {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(255, 255, 255, 0.97);
+  background: #fff;
   pointer-events: none;
   visibility: hidden;
   opacity: 0;
