@@ -7,7 +7,7 @@ async function generateImageGemini(prompt: string): Promise<{ buffer: Buffer | n
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return { buffer: null, error: "GEMINI_API_KEY no configurada" };
 
-  const styledPrompt = `${prompt}. Style: ultra-realistic professional photography of the Region of Murcia (Spain), 8K, warm Mediterranean golden-hour light, terracotta and ochre palette, palm trees and Levantine architecture when appropriate, no watermarks, no text overlays, no logos, no people`;
+  const styledPrompt = `${prompt}. Style: ultra-realistic professional photography of the Region of Murcia (Spain), 16:9 landscape aspect ratio, 8K, warm Mediterranean golden-hour light, terracotta and ochre palette, palm trees and Levantine architecture when appropriate, no watermarks, no text overlays, no logos, no people`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
@@ -16,7 +16,7 @@ async function generateImageGemini(prompt: string): Promise<{ buffer: Buffer | n
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: `Generate a photorealistic image: ${styledPrompt}` }] }],
-        generationConfig: { responseModalities: ["IMAGE"], imageSizeOptions: { aspectRatio: "LANDSCAPE_16_9" } },
+        generationConfig: { responseModalities: ["IMAGE"] },
       }),
     }
   );
