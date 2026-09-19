@@ -3,9 +3,9 @@ import { getSupabaseAdmin } from "../../../../../lib/supabaseAdmin";
 
 export const maxDuration = 60;
 
-async function generateImageGemini(prompt: string): Promise<Buffer | null> {
+async function generateImageGemini(prompt: string): Promise<{ buffer: Buffer | null; error?: string }> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) return { buffer: null, error: "GEMINI_API_KEY no configurada" };
 
   const styledPrompt = `${prompt}. Style: ultra-realistic professional photography of the Region of Murcia (Spain), 8K, warm Mediterranean golden-hour light, terracotta and ochre palette, palm trees and Levantine architecture when appropriate, no watermarks, no text overlays, no logos, no people`;
 
@@ -24,12 +24,12 @@ async function generateImageGemini(prompt: string): Promise<Buffer | null> {
   if (!res.ok) {
     const err = await res.text();
     console.error("[gemini-imagen]", res.status, err);
-    return null;
+    return { buffer: null, error: `API ${res.status}: ${err.slice(0, 200)}` };
   }
   const data = await res.json();
   const b64 = data?.predictions?.[0]?.bytesBase64Encoded;
-  if (!b64) return null;
-  return Buffer.from(b64, "base64");
+  if (!b64) return { buffer: null, error: "Sin imagen en respuesta: " + JSON.stringify(data).slice(0, 200) };
+  return { buffer: Buffer.from(b64, "base64") };
 }
 
 async function uploadImage(buffer: Buffer, path: string): Promise<string | null> {
@@ -69,9 +69,9 @@ export async function POST(req: NextRequest) {
   const errors: string[] = [];
   const results = await Promise.allSettled(
     jobs.map(async (job) => {
-      const buffer = await generateImageGemini(job.prompt);
+      const { buffer, error } = await generateImageGemini(job.prompt);
       if (!buffer) {
-        errors.push(`${job.key}: generación falló`);
+        errors.push(`${job.key}: ${error || "generación falló"}`);
         return { key: job.key, url: null };
       }
       const url = await uploadImage(buffer, job.path);
