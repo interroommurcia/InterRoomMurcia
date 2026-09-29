@@ -574,12 +574,22 @@ export default function ContabilidadManager() {
 
   async function subirDocumentoCredito(operacionId: string, file: File) {
     setSubiendoDocumentoCredito(true);
-    const form = new FormData();
-    form.append("file", file);
-    await fetch(`/api/admin/creditos/${operacionId}/documentos`, { method: "POST", body: form });
-    const data = await fetch(`/api/admin/creditos/${operacionId}/documentos`).then((r) => r.json());
-    setCreditoDocumentos((prev) => ({ ...prev, [operacionId]: Array.isArray(data) ? data : [] }));
-    setSubiendoDocumentoCredito(false);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`/api/admin/creditos/${operacionId}/documentos`, { method: "POST", body: form });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`Error subiendo documento: ${err.error || res.statusText}`);
+        return;
+      }
+      const data = await fetch(`/api/admin/creditos/${operacionId}/documentos`).then((r) => r.json());
+      setCreditoDocumentos((prev) => ({ ...prev, [operacionId]: Array.isArray(data) ? data : [] }));
+    } catch (e) {
+      alert(`Error subiendo documento: ${e instanceof Error ? e.message : "Error desconocido"}`);
+    } finally {
+      setSubiendoDocumentoCredito(false);
+    }
   }
 
   async function eliminarDocumentoCredito(operacionId: string, documentoId: string) {
@@ -899,12 +909,22 @@ export default function ContabilidadManager() {
 
   async function subirDocumento(operacionId: string, file: File) {
     setSubiendoDocumento(true);
-    const form = new FormData();
-    form.append("file", file);
-    await fetch(`/api/admin/operaciones/${operacionId}/documentos`, { method: "POST", body: form });
-    const data = await fetch(`/api/admin/operaciones/${operacionId}/documentos`).then((r) => r.json());
-    setDocumentos((prev) => ({ ...prev, [operacionId]: Array.isArray(data) ? data : [] }));
-    setSubiendoDocumento(false);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`/api/admin/operaciones/${operacionId}/documentos`, { method: "POST", body: form });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`Error subiendo documento: ${err.error || res.statusText}`);
+        return;
+      }
+      const data = await fetch(`/api/admin/operaciones/${operacionId}/documentos`).then((r) => r.json());
+      setDocumentos((prev) => ({ ...prev, [operacionId]: Array.isArray(data) ? data : [] }));
+    } catch (e) {
+      alert(`Error subiendo documento: ${e instanceof Error ? e.message : "Error desconocido"}`);
+    } finally {
+      setSubiendoDocumento(false);
+    }
   }
 
   async function eliminarDocumento(operacionId: string, documentoId: string) {
@@ -1392,12 +1412,14 @@ export default function ContabilidadManager() {
                         Adjuntar documento (PDF)
                         <input
                           type="file"
-                          accept="application/pdf"
+                          accept=".pdf,application/pdf"
                           disabled={subiendoDocumentoCredito}
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const file = e.target.files?.[0];
-                            if (file) subirDocumentoCredito(cr.id, file);
-                            e.target.value = "";
+                            if (file) {
+                              await subirDocumentoCredito(cr.id, file);
+                              e.target.value = "";
+                            }
                           }}
                         />
                       </label>
@@ -2434,12 +2456,14 @@ export default function ContabilidadManager() {
                         Adjuntar documento (PDF)
                         <input
                           type="file"
-                          accept="application/pdf"
+                          accept=".pdf,application/pdf"
                           disabled={subiendoDocumento}
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const file = e.target.files?.[0];
-                            if (file) subirDocumento(op.id, file);
-                            e.target.value = "";
+                            if (file) {
+                              await subirDocumento(op.id, file);
+                              e.target.value = "";
+                            }
                           }}
                         />
                       </label>
