@@ -613,10 +613,14 @@ export async function listarDocumentos(operacionId: string): Promise<Documento[]
   return (data ?? []) as Documento[];
 }
 
+function sanitizeFilename(name: string): string {
+  return name.normalize("NFD").replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_+/g, "_");
+}
+
 export async function subirDocumento(operacionId: string, nombre: string, buffer: Buffer, contentType: string): Promise<Documento> {
   const admin = getSupabaseAdmin();
   await admin.storage.createBucket(DOCUMENTOS_BUCKET, { public: false }).catch(() => {});
-  const path = `${operacionId}/${Date.now()}-${nombre}`;
+  const path = `${operacionId}/${Date.now()}-${sanitizeFilename(nombre)}`;
   const { error: uploadError } = await admin.storage.from(DOCUMENTOS_BUCKET).upload(path, buffer, { contentType });
   if (uploadError) throw uploadError;
 
@@ -748,7 +752,7 @@ export async function listarCreditoDocumentos(operacionId: string): Promise<Docu
 export async function subirCreditoDocumento(operacionId: string, nombre: string, buffer: Buffer, contentType: string): Promise<Documento> {
   const admin = getSupabaseAdmin();
   await admin.storage.createBucket(DOCUMENTOS_BUCKET, { public: false }).catch(() => {});
-  const path = `creditos/${operacionId}/${Date.now()}-${nombre}`;
+  const path = `creditos/${operacionId}/${Date.now()}-${sanitizeFilename(nombre)}`;
   const { error: uploadError } = await admin.storage.from(DOCUMENTOS_BUCKET).upload(path, buffer, { contentType });
   if (uploadError) throw uploadError;
 
