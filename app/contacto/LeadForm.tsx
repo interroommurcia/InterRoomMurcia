@@ -25,6 +25,7 @@ export default function LeadForm() {
     metros: "",
     precioDeseado: "",
     mensaje: "",
+    website: "",
   });
 
   async function handleSubmit(e: React.FormEvent) {
@@ -62,6 +63,16 @@ export default function LeadForm() {
 
   return (
     <form className="lead-form" onSubmit={handleSubmit}>
+      <input
+        type="text"
+        name="website"
+        value={form.website}
+        onChange={(e) => setForm({ ...form, website: e.target.value })}
+        autoComplete="off"
+        tabIndex={-1}
+        aria-hidden="true"
+        style={{ position: "absolute", left: "-9999px", opacity: 0, height: 0, width: 0 }}
+      />
       <div className="lead-form-row">
         <label>
           Nombre

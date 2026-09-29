@@ -16,6 +16,10 @@ export async function POST(req: NextRequest) {
   const origen = typeof body?.origen === "string" ? body.origen.trim().slice(0, 120) : "";
   const seccion = typeof body?.seccion === "string" ? body.seccion.trim().slice(0, 40) : "";
 
+  if (body?.website) {
+    return NextResponse.json({ ok: true });
+  }
+
   if (!nombre || !telefono || (!direccion && seccion !== "inversores")) {
     return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
   }
