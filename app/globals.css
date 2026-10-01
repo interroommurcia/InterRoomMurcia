@@ -1391,8 +1391,8 @@ button {
 }
 
 .venta-pasos {
-  padding: 70px 0;
-  background: var(--paper-dim);
+  padding: 80px 0;
+  background: linear-gradient(180deg, var(--paper) 0%, var(--paper-dim) 100%);
 }
 .venta-pasos-grid {
   display: grid;
@@ -1402,29 +1402,51 @@ button {
 }
 .venta-paso {
   display: flex;
-  gap: 18px;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   background: #fff;
-  border-radius: 14px;
-  padding: 28px 24px;
-  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  border-radius: 18px;
+  padding: 36px 28px 32px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.06);
+  border-top: 3px solid var(--orange);
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.venta-paso:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0,0,0,.10);
+}
+.venta-paso-icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(234, 106, 18, 0.08);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: var(--orange);
+}
+.venta-paso-icon svg {
+  width: 28px;
+  height: 28px;
 }
 .venta-paso-num {
-  font-size: 1.6rem;
+  font-size: 1.1rem;
   font-weight: 800;
   color: var(--orange);
-  min-width: 44px;
-  line-height: 1;
+  margin-bottom: 8px;
+  opacity: 0.5;
 }
 .venta-paso-body h3 {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 .venta-paso-body p {
   font-size: 0.88rem;
   opacity: 0.7;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 

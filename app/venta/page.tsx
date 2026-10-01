@@ -24,21 +24,51 @@ const PASOS = [
     num: "01",
     titulo: "Valoración gratuita en 24h",
     desc: "Analizamos tu zona, comparables recientes y demanda real. Te damos un precio de mercado honesto, sin inflar para captar.",
+    icon: (
+      <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <circle cx="20" cy="20" r="18" stroke="currentColor" strokeWidth="2" />
+        <path d="M20 10v10l7 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
   },
   {
     num: "02",
     titulo: "Marketing profesional",
     desc: "Fotografía HD, tour virtual 360°, vídeo y publicación en los principales portales inmobiliarios y redes sociales.",
+    icon: (
+      <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <rect x="5" y="8" width="30" height="22" rx="3" stroke="currentColor" strokeWidth="2" />
+        <circle cx="20" cy="19" r="6" stroke="currentColor" strokeWidth="2" />
+        <circle cx="29" cy="13" r="2" fill="currentColor" />
+      </svg>
+    ),
   },
   {
     num: "03",
     titulo: "Filtrado y visitas",
     desc: "Solo compradores verificados y pre-cualificados financieramente. Nada de curiosos. Te informamos de cada visita.",
+    icon: (
+      <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <circle cx="15" cy="14" r="5" stroke="currentColor" strokeWidth="2" />
+        <path d="M7 30c0-5 4-8 8-8s8 3 8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="28" cy="14" r="4" stroke="currentColor" strokeWidth="2" />
+        <path d="M26 22c3 0 7 2 7 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M22 16l4 4m0-4l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+      </svg>
+    ),
   },
   {
     num: "04",
     titulo: "Negociación y escritura",
     desc: "Negociamos el mejor precio, gestionamos toda la documentación y te acompañamos hasta la firma en notaría.",
+    icon: (
+      <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <path d="M10 8h20v26H10z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        <path d="M15 16h10M15 20h10M15 24h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M25 30l4-4 2 2-4 4z" fill="currentColor" opacity="0.3" />
+        <path d="M25 30l4-4 2 2-4 4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      </svg>
+    ),
   },
 ];
 
@@ -185,7 +215,7 @@ export default function VentaPage() {
                   <circle cx="10" cy="10" r="10" fill="var(--orange)" />
                   <path d="M6 10.4l2.4 2.4L14 7.2" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span><strong>Costes operativos mínimos</strong> — Estructura ligera y eficiente. Menos gastos fijos = comisión más baja para ti.</span>
+                <span><strong>Inmobiliaria digital: misma gestión, mitad de comisión</strong> — Estructura ligera y eficiente. Menos gastos fijos = comisión más baja para ti.</span>
               </li>
               <li>
                 <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -260,6 +290,7 @@ export default function VentaPage() {
             {PASOS.map((paso, i) => (
               <Reveal key={paso.num} delay={i * 100}>
                 <div className="venta-paso">
+                  <div className="venta-paso-icon">{paso.icon}</div>
                   <div className="venta-paso-num">{paso.num}</div>
                   <div className="venta-paso-body">
                     <h3>{paso.titulo}</h3>
