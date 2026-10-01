@@ -56,7 +56,7 @@ const COMPARATIVA = [
 const FAQS = [
   {
     q: "¿Por qué cobráis solo 1,5%?",
-    a: "Somos una inmobiliaria digital. No tenemos oficina física en zona prime ni equipos comerciales sobredimensionados. Ese ahorro te lo trasladamos a ti.",
+    a: "Somos una inmobiliaria digital. Usamos tecnología para automatizar procesos y reducir costes operativos. Ese ahorro te lo trasladamos a ti.",
   },
   {
     q: "¿Qué incluye el 1,5% + IVA?",
@@ -96,7 +96,7 @@ export default function VentaPage() {
                 Inmobiliaria digital: misma gestión, mitad de comisión.
                 <br />
                 <strong>Solo 1,5% + IVA al vendedor</strong> — la mitad que una agencia tradicional.
-                Sin oficina física, sin costes inflados. Todo lo que ahorras, te lo quedas tú.
+                Sin costes inflados. Todo lo que ahorras, te lo quedas tú.
               </p>
               <div className="venta-hero-stats">
                 <div className="venta-stat">
@@ -163,8 +163,8 @@ export default function VentaPage() {
                 <circle cx="24" cy="32" r="4" stroke="currentColor" strokeWidth="2.4" />
                 <path d="M18 8h12" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
               </svg>
-              <div className="visual-caption">Sin oficina física = sin gastos innecesarios</div>
-              <div className="visual-sub">Tu comisión no paga nuestro alquiler</div>
+              <div className="visual-caption">Tecnología que reduce costes</div>
+              <div className="visual-sub">Menos gastos fijos, más ahorro para ti</div>
               <div className="hero-stats" style={{ marginTop: 20 }}>
                 <div>
                   <b>100%</b>
@@ -185,7 +185,7 @@ export default function VentaPage() {
                   <circle cx="10" cy="10" r="10" fill="var(--orange)" />
                   <path d="M6 10.4l2.4 2.4L14 7.2" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span><strong>Sin oficina en zona prime</strong> — No pagamos 2.000 €/mes de alquiler que acabas pagando tú en la comisión.</span>
+                <span><strong>Costes operativos mínimos</strong> — Estructura ligera y eficiente. Menos gastos fijos = comisión más baja para ti.</span>
               </li>
               <li>
                 <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
