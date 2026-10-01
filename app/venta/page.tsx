@@ -86,7 +86,7 @@ const COMPARATIVA = [
 const FAQS = [
   {
     q: "¿Por qué cobráis solo 1,5%?",
-    a: "Somos una inmobiliaria digital. Usamos tecnología para automatizar procesos y reducir costes operativos. Ese ahorro te lo trasladamos a ti.",
+    a: "Somos una inmobiliaria digital que opera en Murcia, Alicante y Almería con sede en Murcia. Usamos tecnología para automatizar procesos y reducir costes operativos. Ese ahorro te lo trasladamos a ti.",
   },
   {
     q: "¿Qué incluye el 1,5% + IVA?",
@@ -102,7 +102,7 @@ const FAQS = [
   },
   {
     q: "¿Trabajáis en toda Murcia?",
-    a: "Sí, en Murcia capital, pedanías, Cartagena y toda la Región de Murcia.",
+    a: "Sí, en Murcia capital, pedanías, Cartagena y toda la Región de Murcia, además de Alicante y Almería.",
   },
 ];
 
