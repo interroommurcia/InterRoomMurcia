@@ -1428,10 +1428,140 @@ button {
 }
 
 
+.venta-hero-claim {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  max-width: 600px;
+}
+
+/* Bloque ahorro */
+.venta-ahorro {
+  padding: 60px 0;
+  background: var(--paper);
+}
+.venta-ahorro-card {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: #fff;
+  border-radius: 18px;
+  padding: 48px 40px;
+  max-width: 700px;
+  margin: 0 auto;
+  text-align: center;
+}
+.venta-ahorro-card h2 {
+  font-size: 1.6rem;
+  margin-bottom: 16px;
+}
+.venta-ahorro-card p {
+  font-size: 1rem;
+  opacity: 0.9;
+  line-height: 1.6;
+}
+.venta-ahorro-highlight {
+  margin: 28px 0 20px;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.venta-ahorro-highlight span {
+  color: var(--orange);
+  font-size: 2rem;
+  font-weight: 800;
+  display: inline-block;
+  margin-left: 8px;
+}
+.venta-ahorro-sub {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+/* Tabla comparativa */
+.venta-comparativa {
+  padding: 70px 0;
+  background: var(--paper);
+}
+.venta-tabla-wrap {
+  overflow-x: auto;
+  margin-top: 36px;
+}
+.venta-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+.venta-tabla th,
+.venta-tabla td {
+  padding: 14px 18px;
+  text-align: left;
+  border-bottom: 1px solid rgba(0,0,0,.08);
+}
+.venta-tabla thead th {
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+}
+.venta-tabla-highlight {
+  background: rgba(234, 106, 18, 0.06);
+  font-weight: 600;
+  color: var(--orange);
+}
+.venta-tabla thead .venta-tabla-highlight {
+  color: var(--orange);
+  opacity: 1;
+}
+
+/* FAQs */
+.venta-faqs {
+  padding: 70px 0;
+  background: var(--paper-dim);
+}
+.venta-faqs-list {
+  max-width: 700px;
+  margin: 36px auto 0;
+}
+.venta-faq {
+  border-bottom: 1px solid rgba(0,0,0,.08);
+}
+.venta-faq summary {
+  padding: 18px 0;
+  font-weight: 600;
+  font-size: 1.02rem;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.venta-faq summary::after {
+  content: "+";
+  font-size: 1.4rem;
+  font-weight: 300;
+  color: var(--orange);
+  transition: transform 0.2s;
+}
+.venta-faq[open] summary::after {
+  content: "−";
+}
+.venta-faq summary::-webkit-details-marker {
+  display: none;
+}
+.venta-faq p {
+  padding: 0 0 18px;
+  font-size: 0.92rem;
+  opacity: 0.75;
+  line-height: 1.6;
+}
+
 @media (max-width: 768px) {
   .venta-hero { padding: 50px 0 40px; }
   .venta-hero-stats { gap: 20px; flex-wrap: wrap; }
   .venta-pasos-grid { grid-template-columns: 1fr; }
+  .venta-ahorro-card { padding: 32px 24px; }
+  .venta-ahorro-highlight span { font-size: 1.5rem; }
+  .venta-tabla { font-size: 0.82rem; }
+  .venta-tabla th,
+  .venta-tabla td { padding: 10px 12px; }
 }
 
 /* ── Inversores page ── */

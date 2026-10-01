@@ -4,103 +4,244 @@ import VentaForm from "./VentaForm";
 import { WHATSAPP_NUMBER } from "../../lib/whatsapp";
 
 export const metadata: Metadata = {
-  title: "Vende tu inmueble",
+  title: "Vende tu casa en Murcia por solo 1,5% de comisión | Inmobiliaria digital",
   description:
-    "Vende tu piso, casa o local en Murcia y Cartagena con InterRoom. Valoracion gratuita, marketing profesional y acompañamiento hasta la firma.",
+    "Vende tu piso o casa en Murcia y Cartagena con InterRoom: inmobiliaria digital con comisión del 1,5% + IVA, la mitad que una agencia tradicional. Misma gestión, mitad de precio. Valoración gratuita.",
+  keywords: [
+    "vender piso Murcia",
+    "inmobiliaria low cost Murcia",
+    "inmobiliaria digital Murcia",
+    "vender casa comisión baja",
+    "inmobiliaria online Murcia",
+    "inmobiliaria barata Murcia",
+    "vender piso Cartagena",
+    "comisión inmobiliaria 1,5%",
+  ],
 };
 
 const PASOS = [
   {
     num: "01",
-    titulo: "Valoracion gratuita",
-    desc: "Analizamos el mercado y te damos un precio real de venta en 48 horas.",
+    titulo: "Valoración gratuita en 24h",
+    desc: "Analizamos tu zona, comparables recientes y demanda real. Te damos un precio de mercado honesto, sin inflar para captar.",
   },
   {
     num: "02",
     titulo: "Marketing profesional",
-    desc: "Fotografia profesional, tour virtual y publicacion en los principales portales.",
+    desc: "Fotografía HD, tour virtual 360°, vídeo y publicación en los principales portales inmobiliarios y redes sociales.",
   },
   {
     num: "03",
-    titulo: "Gestion de visitas",
-    desc: "Filtramos compradores serios, organizamos visitas y te informamos de cada una.",
+    titulo: "Filtrado y visitas",
+    desc: "Solo compradores verificados y pre-cualificados financieramente. Nada de curiosos. Te informamos de cada visita.",
   },
   {
     num: "04",
-    titulo: "Notaria y cierre",
-    desc: "Negociamos el mejor precio y te acompañamos hasta la firma en notaria.",
+    titulo: "Negociación y escritura",
+    desc: "Negociamos el mejor precio, gestionamos toda la documentación y te acompañamos hasta la firma en notaría.",
   },
 ];
 
-const VENTAJAS = [
+const COMPARATIVA = [
+  { concepto: "Comisión al vendedor", tradicional: "3% – 5% + IVA", interroom: "1,5% + IVA" },
+  { concepto: "Fotografía profesional", tradicional: "A veces", interroom: "Siempre incluida" },
+  { concepto: "Tour virtual 360°", tradicional: "Suplemento aparte", interroom: "Incluido" },
+  { concepto: "Publicación en portales", tradicional: "Sí", interroom: "Sí + redes sociales" },
+  { concepto: "Coste si no se vende", tradicional: "0 €", interroom: "0 €" },
+  { concepto: "Permanencia", tradicional: "3-6 meses", interroom: "Sin permanencia" },
+  { concepto: "Informes de visitas", tradicional: "Verbal", interroom: "Por escrito cada visita" },
+  { concepto: "Acompañamiento notaría", tradicional: "Sí", interroom: "Sí" },
+];
+
+const FAQS = [
   {
-    dato: "10+",
-    subtitulo: "años en la zona",
-    titulo: "Conocemos tu zona",
-    desc: "Expertos en el mercado de Murcia y Cartagena. Sabemos lo que vale tu inmueble porque llevamos años operando aqui.",
+    q: "¿Por qué cobráis solo 1,5%?",
+    a: "Somos una inmobiliaria digital. No tenemos oficina física en zona prime ni equipos comerciales sobredimensionados. Ese ahorro te lo trasladamos a ti.",
   },
   {
-    dato: "200+",
-    subtitulo: "compradores activos",
-    titulo: "Red de compradores",
-    desc: "Inversores y compradores verificados buscando oportunidades ahora mismo. Tu inmueble llega a quien realmente compra.",
+    q: "¿Qué incluye el 1,5% + IVA?",
+    a: "Todo: valoración, fotografía profesional, tour virtual, publicación en portales, filtrado de compradores, gestión de visitas, negociación y acompañamiento hasta la firma en notaría.",
   },
   {
-    dato: "100%",
-    subtitulo: "transparencia",
-    titulo: "Sin sorpresas",
-    desc: "Sabes el estado de tu venta en todo momento. Informes de visitas, feedback de compradores y seguimiento continuo.",
+    q: "¿Hay algún coste si no se vende?",
+    a: "No. Solo cobramos si vendemos tu inmueble. Sin cuotas fijas, sin permanencia, sin costes ocultos.",
   },
   {
-    dato: "0€",
-    subtitulo: "hasta la venta",
-    titulo: "Sin riesgo para ti",
-    desc: "Solo cobramos cuando tu inmueble se vende. Sin cuotas fijas, sin permanencia, sin costes ocultos.",
+    q: "¿Cuánto tarda en venderse?",
+    a: "Depende de la zona y el precio, pero con un precio de mercado correcto y nuestro marketing, la media en Murcia está entre 2 y 4 meses.",
+  },
+  {
+    q: "¿Trabajáis en toda Murcia?",
+    a: "Sí, en Murcia capital, pedanías, Cartagena y toda la Región de Murcia.",
   },
 ];
 
 export default function VentaPage() {
   return (
     <>
-      {/* Hero oscuro — diferente al resto de páginas */}
+      {/* Hero — propuesta de valor directa */}
       <section className="venta-hero">
         <div className="wrap venta-hero-inner">
           <Reveal>
             <div className="venta-hero-content">
               <div className="eyebrow" style={{ color: "var(--orange)" }}>
-                Compraventa · Murcia y Cartagena
+                Inmobiliaria digital · Murcia y Cartagena
               </div>
               <h1>
-                Vende tu inmueble
+                Vende tu casa por
                 <br />
-                <em>al mejor precio</em>
+                <em>la mitad de comisión</em>
               </h1>
-              <p>
-                Nos encargamos de todo: valoracion, marketing, visitas, negociacion
-                y escritura. Tu solo decides cuando aceptar la oferta.
+              <p className="venta-hero-claim">
+                Inmobiliaria digital: misma gestión, mitad de comisión.
+                <br />
+                <strong>Solo 1,5% + IVA al vendedor</strong> — la mitad que una agencia tradicional.
+                Sin oficina física, sin costes inflados. Todo lo que ahorras, te lo quedas tú.
               </p>
               <div className="venta-hero-stats">
                 <div className="venta-stat">
+                  <span className="venta-stat-num">1,5%</span>
+                  <span className="venta-stat-label">comisión + IVA</span>
+                </div>
+                <div className="venta-stat">
                   <span className="venta-stat-num">0€</span>
-                  <span className="venta-stat-label">hasta la venta</span>
+                  <span className="venta-stat-label">si no vendemos</span>
                 </div>
                 <div className="venta-stat">
-                  <span className="venta-stat-num">48h</span>
-                  <span className="venta-stat-label">primera valoracion</span>
+                  <span className="venta-stat-num">24h</span>
+                  <span className="venta-stat-label">valoración gratuita</span>
                 </div>
                 <div className="venta-stat">
-                  <span className="venta-stat-num">100%</span>
-                  <span className="venta-stat-label">transparencia</span>
+                  <span className="venta-stat-num">0</span>
+                  <span className="venta-stat-label">meses de permanencia</span>
                 </div>
               </div>
               <div className="hero-actions">
                 <a href="#lead-form" className="btn-primary">
-                  Valoracion gratuita
+                  Valoración gratuita
                 </a>
-                <a href="#como-funciona" className="btn-ghost">
-                  Como funciona
+                <a href="#comparativa" className="btn-ghost">
+                  Compara comisiones
                 </a>
               </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Bloque de ahorro concreto */}
+      <section className="venta-ahorro">
+        <div className="wrap">
+          <Reveal>
+            <div className="venta-ahorro-card">
+              <h2>¿Cuánto te ahorras?</h2>
+              <p>
+                En un piso de <strong>150.000 €</strong>, una inmobiliaria tradicional al 3% te cobra{" "}
+                <strong>4.500 € + IVA</strong>. Con InterRoom pagas solo{" "}
+                <strong>2.250 € + IVA</strong>.
+              </p>
+              <div className="venta-ahorro-highlight">
+                Te ahorras <span>2.250 €</span> por el mismo servicio
+              </div>
+              <p className="venta-ahorro-sub">
+                Y a mayor precio de venta, mayor es tu ahorro. En una vivienda de 250.000 €
+                te ahorras <strong>3.750 €</strong>.
+              </p>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Por qué somos más baratos — sin perder calidad */}
+      <section className="feature">
+        <div className="wrap feature-grid">
+          <Reveal>
+            <div className="feature-visual tone-solid">
+              <svg className="visual-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                <rect x="6" y="14" width="36" height="24" rx="3" stroke="currentColor" strokeWidth="2.4" />
+                <path d="M6 20h36" stroke="currentColor" strokeWidth="2.4" />
+                <circle cx="24" cy="32" r="4" stroke="currentColor" strokeWidth="2.4" />
+                <path d="M18 8h12" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+              </svg>
+              <div className="visual-caption">Sin oficina física = sin gastos innecesarios</div>
+              <div className="visual-sub">Tu comisión no paga nuestro alquiler</div>
+              <div className="hero-stats" style={{ marginTop: 20 }}>
+                <div>
+                  <b>100%</b>
+                  <span>online</span>
+                </div>
+                <div>
+                  <b>200+</b>
+                  <span>compradores activos</span>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+          <Reveal className="feature-text" delay={120}>
+            <h2>¿Por qué podemos cobrar la mitad?</h2>
+            <ul className="check-list">
+              <li>
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <circle cx="10" cy="10" r="10" fill="var(--orange)" />
+                  <path d="M6 10.4l2.4 2.4L14 7.2" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span><strong>Sin oficina en zona prime</strong> — No pagamos 2.000 €/mes de alquiler que acabas pagando tú en la comisión.</span>
+              </li>
+              <li>
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <circle cx="10" cy="10" r="10" fill="var(--orange)" />
+                  <path d="M6 10.4l2.4 2.4L14 7.2" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span><strong>Tecnología propia</strong> — Automatizamos procesos que otras agencias hacen a mano con tres empleados.</span>
+              </li>
+              <li>
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <circle cx="10" cy="10" r="10" fill="var(--orange)" />
+                  <path d="M6 10.4l2.4 2.4L14 7.2" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span><strong>Equipo especializado</strong> — Menos gente, más experta. Sin comerciales puerta fría ni estructuras infladas.</span>
+              </li>
+              <li>
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <circle cx="10" cy="10" r="10" fill="var(--orange)" />
+                  <path d="M6 10.4l2.4 2.4L14 7.2" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span><strong>Mismo resultado</strong> — Tu casa se vende igual de rápido y al mismo precio. Lo que baja es lo que nos pagas a nosotros.</span>
+              </li>
+            </ul>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Comparativa de comisiones */}
+      <section className="venta-comparativa" id="comparativa">
+        <div className="wrap">
+          <Reveal>
+            <div className="section-head">
+              <h2>Compara antes de decidir</h2>
+              <p>Mismo servicio, diferente comisión</p>
+            </div>
+          </Reveal>
+          <Reveal delay={100}>
+            <div className="venta-tabla-wrap">
+              <table className="venta-tabla">
+                <thead>
+                  <tr>
+                    <th>Servicio</th>
+                    <th>Agencia tradicional</th>
+                    <th className="venta-tabla-highlight">InterRoom</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARATIVA.map((row) => (
+                    <tr key={row.concepto}>
+                      <td>{row.concepto}</td>
+                      <td>{row.tradicional}</td>
+                      <td className="venta-tabla-highlight">{row.interroom}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </Reveal>
         </div>
@@ -111,7 +252,7 @@ export default function VentaPage() {
         <div className="wrap">
           <Reveal>
             <div className="section-head">
-              <h2>Como vendemos tu inmueble</h2>
+              <h2>Cómo vendemos tu casa</h2>
               <p>Un proceso sencillo, profesional y sin sorpresas</p>
             </div>
           </Reveal>
@@ -131,46 +272,43 @@ export default function VentaPage() {
         </div>
       </section>
 
-      {/* Ventajas — feature con visual + checklist */}
-      <section className="feature">
-        <div className="wrap feature-grid">
+      {/* FAQs — Schema markup para LLMs y Google */}
+      <section className="venta-faqs">
+        <div className="wrap">
           <Reveal>
-            <div className="feature-visual tone-solid">
-              <svg className="visual-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-                <path d="M24 4l-2 6h-6l5 4-2 6 5-4 5 4-2-6 5-4h-6z" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
-                <rect x="8" y="22" width="32" height="20" rx="3" stroke="currentColor" strokeWidth="2.4" />
-                <path d="M8 28h32" stroke="currentColor" strokeWidth="2.4" />
-                <path d="M16 34h6M16 38h10" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-              </svg>
-              <div className="visual-caption">Tu inmueble, nuestra prioridad</div>
-              <div className="visual-sub">Experiencia local + alcance profesional</div>
-              <div className="hero-stats" style={{ marginTop: 20 }}>
-                <div>
-                  <b>10+</b>
-                  <span>años en la zona</span>
-                </div>
-                <div>
-                  <b>200+</b>
-                  <span>compradores activos</span>
-                </div>
-              </div>
+            <div className="section-head">
+              <h2>Preguntas frecuentes</h2>
+              <p>Lo que nos preguntan los propietarios que quieren vender</p>
             </div>
           </Reveal>
-          <Reveal className="feature-text" delay={120}>
-            <h2>Por que vender con InterRoom</h2>
-            <ul className="check-list">
-              {VENTAJAS.map((v) => (
-                <li key={v.titulo}>
-                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                    <circle cx="10" cy="10" r="10" fill="var(--orange)" />
-                    <path d="M6 10.4l2.4 2.4L14 7.2" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <span><strong>{v.titulo}</strong> — {v.desc}</span>
-                </li>
-              ))}
-            </ul>
-          </Reveal>
+          <div className="venta-faqs-list">
+            {FAQS.map((faq, i) => (
+              <Reveal key={i} delay={i * 80}>
+                <details className="venta-faq">
+                  <summary>{faq.q}</summary>
+                  <p>{faq.a}</p>
+                </details>
+              </Reveal>
+            ))}
+          </div>
         </div>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: FAQS.map((faq) => ({
+                "@type": "Question",
+                name: faq.q,
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: faq.a,
+                },
+              })),
+            }),
+          }}
+        />
       </section>
 
       {/* Formulario */}
@@ -179,10 +317,10 @@ export default function VentaPage() {
           <Reveal>
             <div className="lead-card">
               <div>
-                <h2>Pide tu valoracion gratuita</h2>
+                <h2>Pide tu valoración gratuita</h2>
                 <p>
-                  Cuentanos donde esta tu inmueble y te decimos, sin compromiso,
-                  cuanto puede valer en el mercado actual.
+                  Cuéntanos dónde está tu inmueble y te decimos, sin compromiso,
+                  cuánto puede valer y cuánto te ahorras con nuestra comisión del 1,5%.
                 </p>
               </div>
               <VentaForm />
@@ -195,11 +333,11 @@ export default function VentaPage() {
       <section className="contacto-home">
         <div className="contacto-home-overlay" />
         <Reveal direction="scale" className="wrap contacto-home-inner">
-          <h2>Contacta con nosotros</h2>
-          <p>Escribenos por WhatsApp o llamanos directamente.</p>
+          <h2>¿Quieres vender? Hablamos</h2>
+          <p>Escríbenos por WhatsApp o llámanos. Sin compromiso, sin presión.</p>
           <div className="contacto-home-actions">
             <a
-              href={`https://wa.me/${WHATSAPP_NUMBER}`}
+              href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hola, quiero vender mi casa y me interesa vuestra comisión del 1,5%.")}`}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-whatsapp"
