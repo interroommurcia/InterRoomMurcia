@@ -98,7 +98,7 @@ const FAQS = [
   },
   {
     q: "¿Cuánto tarda en venderse?",
-    a: "Depende de la zona y el precio, pero con un precio de mercado correcto y nuestro marketing, la media en Murcia está entre 2 y 4 meses.",
+    a: "Depende de la zona y el precio, pero con un precio de mercado correcto y nuestro marketing, la media está entre 35 y 45 días.",
   },
   {
     q: "¿Trabajáis en toda Murcia?",
