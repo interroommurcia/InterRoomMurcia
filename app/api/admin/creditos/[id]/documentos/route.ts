@@ -13,11 +13,20 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   }
 }
 
+const ALLOWED_DOC_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp",
+  "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+const ALLOWED_DOC_EXTS = [".pdf", ".jpg", ".jpeg", ".png", ".webp", ".doc", ".docx"];
+
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const form = await req.formData();
   const file = form.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "file requerido" }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ error: "Archivo demasiado grande (máx. 4MB)" }, { status: 413 });
+
+  const ext = "." + (file.name.split(".").pop()?.toLowerCase() || "");
+  if (!ALLOWED_DOC_EXTS.includes(ext) || !ALLOWED_DOC_TYPES.includes(file.type)) {
+    return NextResponse.json({ error: "Tipo de archivo no permitido" }, { status: 400 });
+  }
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());

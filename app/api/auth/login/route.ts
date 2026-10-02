@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verificarCredenciales, crearSesion } from "../../../../lib/auth";
+import { getClientIp } from "../../../../lib/security";
 
 export async function POST(req: NextRequest) {
   const { email, password } = await req.json();
@@ -7,7 +8,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Email y contraseña requeridos" }, { status: 400 });
   }
 
-  const user = await verificarCredenciales(email, password);
+  const ip = getClientIp(req);
+  const user = await verificarCredenciales(email, password, ip);
   if (!user) {
     return NextResponse.json({ error: "Credenciales incorrectas" }, { status: 401 });
   }

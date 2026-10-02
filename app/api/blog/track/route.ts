@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "../../../../lib/supabaseAdmin";
+import { getClientIp } from "../../../../lib/security";
+
+const trackRateMap = new Map<string, { count: number; resetAt: number }>();
+const TRACK_LIMIT = 100;
+const TRACK_WINDOW = 60 * 60 * 1000;
 
 function detectSource(referrer: string | null): string {
   if (!referrer) return "direct";
@@ -18,6 +23,18 @@ function detectSource(referrer: string | null): string {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req) || "unknown";
+  const now = Date.now();
+  const entry = trackRateMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    trackRateMap.set(ip, { count: 1, resetAt: now + TRACK_WINDOW });
+  } else {
+    entry.count++;
+    if (entry.count > TRACK_LIMIT) {
+      return NextResponse.json({ ok: false }, { status: 429 });
+    }
+  }
+
   const { slug, event, referrer } = await req.json();
   if (!slug || !["view", "cta_click"].includes(event)) {
     return NextResponse.json({ ok: false }, { status: 400 });

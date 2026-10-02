@@ -9,6 +9,26 @@ function getJwtSecret() {
   return new TextEncoder().encode(key);
 }
 
+function getClientIp(req: NextRequest): string | null {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || null;
+}
+
+async function logUnauthorized(req: NextRequest, reason: string) {
+  const ip = getClientIp(req);
+  const path = req.nextUrl.pathname;
+  try {
+    const { logSecurityEvent } = await import("./lib/security");
+    await logSecurityEvent({
+      type: reason === "jwt_tampered" ? "jwt_tampered" : "unauthorized_access",
+      ip,
+      path,
+      details: reason,
+    });
+  } catch {
+    console.error(`[security] ${reason} — IP: ${ip} — ${path}`);
+  }
+}
+
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get(COOKIE)?.value;
 
@@ -17,8 +37,10 @@ export async function middleware(req: NextRequest) {
       await jwtVerify(token, getJwtSecret());
       return NextResponse.next();
     } catch {
-      // token inválido/expirado
+      logUnauthorized(req, "jwt_tampered");
     }
+  } else {
+    logUnauthorized(req, "no_token");
   }
 
   if (!req.nextUrl.pathname.startsWith("/api/")) {

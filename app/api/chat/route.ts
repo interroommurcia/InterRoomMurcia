@@ -10,8 +10,24 @@ import {
   avisarEscaladoRoomi,
   type ChatMensaje,
 } from "../../../lib/chat";
+import { getClientIp } from "../../../lib/security";
 
 export const maxDuration = 60;
+
+const chatRateMap = new Map<string, { count: number; resetAt: number }>();
+const CHAT_LIMIT = 30;
+const CHAT_WINDOW = 60 * 60 * 1000;
+
+function checkChatRate(ip: string): boolean {
+  const now = Date.now();
+  const entry = chatRateMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    chatRateMap.set(ip, { count: 1, resetAt: now + CHAT_WINDOW });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= CHAT_LIMIT;
+}
 
 type Clasificacion = { escalar: boolean; motivo: string | null; nombre: string | null; contacto: string | null };
 
@@ -47,6 +63,11 @@ export async function POST(req: NextRequest) {
   const pagina = typeof body?.pagina === "string" ? body.pagina.slice(0, 200) : null;
 
   if (!message) return NextResponse.json({ error: "Mensaje requerido" }, { status: 400 });
+
+  const ip = getClientIp(req) || "unknown";
+  if (!checkChatRate(ip)) {
+    return NextResponse.json({ error: "Demasiadas solicitudes. Inténtalo más tarde." }, { status: 429 });
+  }
 
   const anthropic = new Anthropic({ apiKey });
 

@@ -1,7 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { crearLead } from "../../../lib/leads";
+import { logSecurityEvent, getClientIp } from "../../../lib/security";
+
+const ipRequests = new Map<string, { count: number; resetAt: number }>();
+const LEAD_LIMIT = 10;
+const LEAD_WINDOW = 60 * 60 * 1000;
+
+function checkLeadRate(ip: string): boolean {
+  const now = Date.now();
+  const entry = ipRequests.get(ip);
+  if (!entry || now > entry.resetAt) {
+    ipRequests.set(ip, { count: 1, resetAt: now + LEAD_WINDOW });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= LEAD_LIMIT;
+}
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req) || "unknown";
+
+  if (!checkLeadRate(ip)) {
+    logSecurityEvent({ type: "login_rate_limited", ip, path: "/api/leads", details: "Rate limited leads" }).catch(() => {});
+    return NextResponse.json({ error: "Demasiadas solicitudes" }, { status: 429 });
+  }
+
   const body = await req.json().catch(() => null);
 
   const nombre = typeof body?.nombre === "string" ? body.nombre.trim().slice(0, 120) : "";
@@ -17,6 +40,7 @@ export async function POST(req: NextRequest) {
   const seccion = typeof body?.seccion === "string" ? body.seccion.trim().slice(0, 40) : "";
 
   if (body?.website) {
+    logSecurityEvent({ type: "honeypot_triggered", ip, path: "/api/leads", details: `Bot: ${nombre}` }).catch(() => {});
     return NextResponse.json({ ok: true });
   }
 

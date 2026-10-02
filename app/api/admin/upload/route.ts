@@ -22,13 +22,19 @@ async function ensureBucket(admin: ReturnType<typeof getSupabaseAdmin>) {
   bucketReady = true;
 }
 
+const ALLOWED_UPLOAD_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/quicktime", "video/webm"];
+const ALLOWED_UPLOAD_EXTS = ["jpg", "jpeg", "png", "webp", "avif", "mp4", "mov", "webm"];
+
 export async function POST(req: NextRequest) {
   const { filename, contentType } = await req.json();
   if (!filename || !contentType) {
     return NextResponse.json({ error: "Faltan filename o contentType" }, { status: 400 });
   }
 
-  const ext = filename.split(".").pop() || "bin";
+  const ext = (filename.split(".").pop() || "bin").toLowerCase();
+  if (!ALLOWED_UPLOAD_EXTS.includes(ext) || !ALLOWED_UPLOAD_TYPES.includes(contentType)) {
+    return NextResponse.json({ error: "Tipo de archivo no permitido" }, { status: 400 });
+  }
   const path = `${crypto.randomUUID()}.${ext}`;
   const admin = getSupabaseAdmin();
 

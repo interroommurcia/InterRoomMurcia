@@ -4,11 +4,19 @@ import { subirMedia } from "../../../../../../lib/propiedades";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+const ALLOWED_MEDIA_EXTS = [".jpg", ".jpeg", ".png", ".webp", ".avif", ".mp4", ".mov", ".avi", ".webm"];
+
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const form = await req.formData();
     const file = form.get("file");
     if (!(file instanceof File)) return NextResponse.json({ error: "file requerido" }, { status: 400 });
+
+    const ext = "." + (file.name.split(".").pop()?.toLowerCase() || "");
+    if (!ALLOWED_MEDIA_EXTS.includes(ext)) {
+      return NextResponse.json({ error: "Tipo de archivo no permitido" }, { status: 400 });
+    }
+
     const tipo = (form.get("tipo") as string) === "video" ? "video" : "foto";
     const habitacion_id = (form.get("habitacion_id") as string) || null;
     const buffer = Buffer.from(await file.arrayBuffer());

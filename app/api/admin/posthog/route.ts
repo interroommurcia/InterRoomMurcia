@@ -43,8 +43,9 @@ export async function GET(req: NextRequest) {
   const hasta = req.nextUrl.searchParams.get("hasta");
   const excluirAdmin = req.nextUrl.searchParams.get("excluirAdmin") === "1";
 
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
   let dateFilter: string;
-  if (desde && hasta) {
+  if (desde && hasta && dateRe.test(desde) && dateRe.test(hasta)) {
     dateFilter = `timestamp >= '${desde}' AND timestamp <= '${hasta} 23:59:59'`;
   } else {
     dateFilter = `timestamp >= now() - INTERVAL 30 DAY`;
@@ -132,7 +133,7 @@ export async function GET(req: NextRequest) {
           SELECT distinct_id, min(timestamp) AS first_seen
           FROM events WHERE event = '$pageview' AND ${DOMAIN_FILTER} ${adminFilter}
           GROUP BY distinct_id
-          HAVING ${desde && hasta ? `first_seen >= '${desde}' AND first_seen <= '${hasta} 23:59:59'` : `first_seen >= now() - INTERVAL 30 DAY`}
+          HAVING ${desde && hasta && dateRe.test(desde) && dateRe.test(hasta) ? `first_seen >= '${desde}' AND first_seen <= '${hasta} 23:59:59'` : `first_seen >= now() - INTERVAL 30 DAY`}
         )
         GROUP BY day ORDER BY day ASC
       `),
@@ -154,8 +155,8 @@ export async function GET(req: NextRequest) {
         // Nuevos vs recurrentes por día
         hogql(`
         SELECT toDate(e.timestamp) AS day,
-          uniqExactIf(e.distinct_id, f.first_seen >= ${desde ? `'${desde}'` : `now() - INTERVAL 30 DAY`}) AS new_users,
-          uniqExactIf(e.distinct_id, f.first_seen < ${desde ? `'${desde}'` : `now() - INTERVAL 30 DAY`}) AS returning_users
+          uniqExactIf(e.distinct_id, f.first_seen >= ${desde && dateRe.test(desde) ? `'${desde}'` : `now() - INTERVAL 30 DAY`}) AS new_users,
+          uniqExactIf(e.distinct_id, f.first_seen < ${desde && dateRe.test(desde) ? `'${desde}'` : `now() - INTERVAL 30 DAY`}) AS returning_users
         FROM events AS e
         INNER JOIN (
           SELECT distinct_id AS did, min(timestamp) AS first_seen

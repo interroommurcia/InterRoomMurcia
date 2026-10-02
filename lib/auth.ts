@@ -69,10 +69,22 @@ export async function getSesion(): Promise<SessionUser | null> {
   }
 }
 
-export async function verificarCredenciales(email: string, password: string): Promise<SessionUser | null> {
+export async function verificarCredenciales(
+  email: string,
+  password: string,
+  ip?: string | null,
+): Promise<SessionUser | null> {
   const normalizedEmail = email.toLowerCase().trim();
 
   if (!checkRateLimit(normalizedEmail)) {
+    import("./security").then((m) =>
+      m.logSecurityEvent({
+        type: "login_rate_limited",
+        ip,
+        path: "/api/auth/login",
+        details: `Rate limited: ${normalizedEmail}`,
+      })
+    ).catch(() => {});
     return null;
   }
 
@@ -83,12 +95,32 @@ export async function verificarCredenciales(email: string, password: string): Pr
     .eq("email", normalizedEmail)
     .maybeSingle();
 
-  if (error || !data || !data.activo) return null;
+  if (error || !data || !data.activo) {
+    import("./security").then((m) =>
+      m.logSecurityEvent({
+        type: "login_failed",
+        ip,
+        path: "/api/auth/login",
+        details: `Email: ${normalizedEmail}`,
+      })
+    ).catch(() => {});
+    return null;
+  }
 
   const { createHash } = await import("crypto");
   const salted = data.password_salt ? data.password_salt + password : password;
   const hash = createHash("sha256").update(salted).digest("hex");
-  if (hash !== data.password_hash) return null;
+  if (hash !== data.password_hash) {
+    import("./security").then((m) =>
+      m.logSecurityEvent({
+        type: "login_failed",
+        ip,
+        path: "/api/auth/login",
+        details: `Contraseña incorrecta: ${normalizedEmail}`,
+      })
+    ).catch(() => {});
+    return null;
+  }
 
   return { id: data.id, email: data.email, nombre: data.nombre, rol: data.rol };
 }
