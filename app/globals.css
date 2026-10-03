@@ -1828,17 +1828,30 @@ button {
 /* FAQs */
 .venta-faqs {
   padding: 70px 0;
-  background: var(--paper-dim);
+  background: #fff;
 }
 .venta-faqs-list {
   max-width: 700px;
   margin: 36px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 .venta-faq {
-  border-bottom: 1px solid rgba(0,0,0,.08);
+  background: var(--paper-dim);
+  border-radius: 14px;
+  padding: 0 24px;
+  border: none;
+  transition: box-shadow 0.25s;
+}
+.venta-faq:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+.venta-faq[open] {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 .venta-faq summary {
-  padding: 18px 0;
+  padding: 20px 0;
   font-weight: 600;
   font-size: 1.02rem;
   cursor: pointer;
@@ -1861,7 +1874,7 @@ button {
   display: none;
 }
 .venta-faq p {
-  padding: 0 0 18px;
+  padding: 0 0 20px;
   font-size: 0.92rem;
   opacity: 0.75;
   line-height: 1.6;
