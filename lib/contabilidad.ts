@@ -23,6 +23,10 @@ export type Cliente = {
   origen: OrigenCliente;
   lead_id: number | null;
   notas: string | null;
+  nif: string | null;
+  direccion: string | null;
+  cp_ciudad: string | null;
+  es_empresa: boolean;
   token: string;
   datos_completados: boolean;
   mensualidad: number;
@@ -209,6 +213,10 @@ export async function crearCliente(input: {
   origen?: OrigenCliente;
   lead_id?: number;
   notas?: string;
+  nif?: string | null;
+  direccion?: string | null;
+  cp_ciudad?: string | null;
+  es_empresa?: boolean;
   mensualidad?: number;
   comision_pct_alquiler?: number;
   comision_fija_alquiler?: number | null;
@@ -230,6 +238,10 @@ export async function crearCliente(input: {
       origen: input.origen || "manual",
       lead_id: input.lead_id ?? null,
       notas: input.notas || null,
+      nif: input.nif || null,
+      direccion: input.direccion || null,
+      cp_ciudad: input.cp_ciudad || null,
+      es_empresa: input.es_empresa ?? false,
       mensualidad: input.mensualidad ?? 0,
       comision_pct_alquiler: input.comision_pct_alquiler ?? 15,
       comision_fija_alquiler: input.comision_fija_alquiler ?? null,
@@ -254,6 +266,10 @@ export async function actualizarCliente(
     zona_interes: string | null;
     operacion: OperacionCliente;
     notas: string | null;
+    nif: string | null;
+    direccion: string | null;
+    cp_ciudad: string | null;
+    es_empresa: boolean;
     mensualidad: number;
     comision_pct_alquiler: number;
     comision_fija_alquiler: number | null;

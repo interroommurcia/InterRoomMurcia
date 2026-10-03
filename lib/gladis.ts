@@ -14,6 +14,10 @@ import {
   descargarDocumento,
   type OperacionCompraventa,
 } from "./contabilidad";
+import { getCliente } from "./contabilidad";
+import { listarPagosFacturables } from "./factura/pendientes";
+import { sugerirNumero } from "./factura/numeracion";
+import { crearFactura, descargarFacturaPdf } from "./factura/facturas";
 import { calcularPendientes, formatearPendientes } from "./secretaria";
 import { telegramSendDocument, telegramSendPhoto } from "./telegram";
 import { listarPropiedades, descargarMedia } from "./propiedades";
@@ -46,10 +50,11 @@ Guía de uso de herramientas:
 - Cuando anotes una tarea que el usuario diga que es "para" o "asignada a" alguien del equipo, incluye los nombres en el array trabajadores de anotar_agenda (puede haber varios).
 - Si preguntan qué habitaciones o propiedades se quedan libres en enero, usa habitaciones_libres_enero. Devuelve las propiedades y habitaciones marcadas con "libre en enero" (rotación completa).
 - Si piden fotos, vídeos o media de una propiedad interna (no del catálogo público), usa buscar_media_propiedad para localizar los archivos. Si quieren que envíes una foto o documento de la propiedad, usa enviar_media_propiedad con el id del medio encontrado.
+- Si te piden generar/hacer una factura de un cliente, usa primero listar_pagos_facturables para ver sus pagos pendientes. Si hay varios, muéstralos y pregunta cuál. Si falta el NIF u otros datos fiscales del cliente, avísalo. Luego, con el pago elegido, usa generar_factura (tras confirmar). El número lo pones tú si el usuario te lo da; si no, usa el sugerido.
 - Si ninguna herramienta resuelve la pregunta, dilo con claridad en vez de inventar una respuesta.
 
 REGLA CRÍTICA — confirmación antes de modificar:
-Antes de ejecutar CUALQUIER herramienta que cree, modifique, envíe o elimine datos (anotar_agenda, enviar_documento, enviar_media_propiedad y todas las futuras herramientas de escritura), NUNCA la llames directamente en el primer turno. En su lugar:
+Antes de ejecutar CUALQUIER herramienta que cree, modifique, envíe o elimine datos (anotar_agenda, enviar_documento, enviar_media_propiedad, generar_factura y todas las futuras herramientas de escritura), NUNCA la llames directamente en el primer turno. En su lugar:
 1. Resume en una frase exactamente qué vas a hacer con los datos concretos (tipo, título, fecha, cliente, importe, destinatario…).
 2. Pregunta explícitamente: "¿Confirmas?" o "¿Lo hago?" y espera respuesta.
 3. Solo cuando el usuario responda con confirmación clara ("sí", "confirma", "hazlo", "adelante", "ok"), ejecuta la herramienta.
@@ -166,6 +171,32 @@ const TOOLS: Anthropic.Tool[] = [
         notas: { type: "string", description: "Notas adicionales, opcional" },
       },
       required: ["tipo", "titulo"],
+    },
+  },
+  {
+    name: "listar_pagos_facturables",
+    description:
+      "Lista los pagos pendientes de facturar de un cliente (comisiones de alquiler, compraventa, alquiler puntual y créditos), con su cliente_id, origen, origen_id, concepto y base imponible. Devuelve también el número de factura sugerido y si faltan datos fiscales. Úsala antes de generar_factura para que el usuario elija el pago.",
+    input_schema: {
+      type: "object",
+      properties: { nombre: { type: "string", description: "Nombre o parte del nombre del cliente" } },
+      required: ["nombre"],
+    },
+  },
+  {
+    name: "generar_factura",
+    description:
+      "Genera una factura para un pago pendiente concreto (obtenido con listar_pagos_facturables), guarda el PDF y lo envía a este chat de Telegram. HERRAMIENTA DE ESCRITURA: resume y pide confirmación antes de ejecutar.",
+    input_schema: {
+      type: "object",
+      properties: {
+        cliente_id: { type: "string", description: "id del cliente (de listar_pagos_facturables)" },
+        origen: { type: "string", enum: ["ingreso", "compraventa", "alquiler_comision", "credito"], description: "origen del pago" },
+        origen_id: { type: "string", description: "origen_id del pago elegido (de listar_pagos_facturables)" },
+        numero: { type: "string", description: "Número de factura. Si se omite, se usa el sugerido." },
+        modelo: { type: "string", enum: ["cliente", "empresa"], description: "cliente = sin IRPF; empresa = IRPF 15%. Si se omite, se usa el que tenga la ficha del cliente." },
+      },
+      required: ["cliente_id", "origen", "origen_id"],
     },
   },
   {
@@ -440,6 +471,65 @@ Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.co
     const trs = await listarTrabajadores();
     if (!trs.length) return "No hay trabajadores dados de alta todavía.";
     return trs.map((t) => `- ${t.nombre}${t.activo ? "" : " (inactivo)"}`).join("\n");
+  }
+  if (nombre === "listar_pagos_facturables") {
+    const query = String(input.nombre ?? "").toLowerCase().trim();
+    if (!query) return "Falta el nombre del cliente.";
+    const clientes = await listarClientes();
+    const encontrados = clientes.filter((c) => `${c.nombre} ${c.apellidos ?? ""}`.toLowerCase().includes(query));
+    if (!encontrados.length) return "Cliente no encontrado.";
+    const numeroSugerido = await sugerirNumero();
+    const partes: string[] = [`Número de factura sugerido: ${numeroSugerido}`];
+    for (const c of encontrados.slice(0, 3)) {
+      const nombreCompleto = `${c.nombre} ${c.apellidos ?? ""}`.trim();
+      const faltan = [!c.nif && "NIF", !c.direccion && "dirección"].filter(Boolean);
+      partes.push(
+        `\nCLIENTE: ${nombreCompleto} · cliente_id=${c.id} · modelo ${c.es_empresa ? "empresa (IRPF 15%)" : "cliente (sin IRPF)"}${faltan.length ? ` · FALTAN DATOS FISCALES: ${faltan.join(", ")}` : ""}`
+      );
+      const pagos = await listarPagosFacturables(c.id);
+      if (!pagos.length) {
+        partes.push("  (sin pagos pendientes de facturar)");
+        continue;
+      }
+      pagos.forEach((p) =>
+        partes.push(`  - origen=${p.origen} · origen_id=${p.origen_id} · ${p.concepto} · base ${p.base.toFixed(2)}€${p.ya_facturado ? " · YA FACTURADO" : ""}`)
+      );
+    }
+    return partes.join("\n");
+  }
+  if (nombre === "generar_factura") {
+    const clienteId = String(input.cliente_id ?? "");
+    const origen = String(input.origen ?? "") as "ingreso" | "compraventa" | "alquiler_comision" | "credito";
+    const origenId = String(input.origen_id ?? "");
+    if (!clienteId || !origen || !origenId) return "Faltan cliente_id, origen u origen_id.";
+    const cliente = await getCliente(clienteId);
+    if (!cliente) return "Cliente no encontrado.";
+    const pagos = await listarPagosFacturables(clienteId);
+    const pago = pagos.find((p) => p.origen_id === origenId && p.origen === origen);
+    if (!pago) return "Ese pago ya no está pendiente o no existe.";
+    if (!cliente.nif) return "El cliente no tiene NIF/CIF en su ficha. Añádelo primero desde Contabilidad o la página de Facturas.";
+    const modelo = input.modelo ? String(input.modelo) : cliente.es_empresa ? "empresa" : "cliente";
+    const esEmpresa = modelo === "empresa";
+    const numero = input.numero ? String(input.numero).trim() : await sugerirNumero();
+    const factura = await crearFactura({
+      numero,
+      cliente_id: clienteId,
+      origen: pago.origen,
+      origen_id: pago.origen_id,
+      fecha: pago.fecha,
+      concepto: pago.concepto.split(" — ")[0],
+      cliente_nombre: `${cliente.nombre} ${cliente.apellidos ?? ""}`.trim(),
+      cliente_nif: cliente.nif,
+      cliente_direccion: cliente.direccion,
+      cliente_cp_ciudad: cliente.cp_ciudad,
+      cliente_telefono: cliente.telefono,
+      es_empresa: esEmpresa,
+      irpf_pct: esEmpresa ? 15 : 0,
+      lineas: [{ descripcion: pago.concepto, base: pago.base }],
+    });
+    const doc = await descargarFacturaPdf(factura.id);
+    if (doc) await telegramSendDocument(chatId, doc.buffer, `Factura-${numero.replace(/\//g, "-")}.pdf`, `Factura ${numero} · ${factura.cliente_nombre} · ${factura.total.toFixed(2)}€`);
+    return `Factura ${numero} generada (${esEmpresa ? "empresa, con IRPF" : "cliente, sin IRPF"}): base ${factura.base.toFixed(2)}€, IVA ${factura.iva_importe.toFixed(2)}€${factura.irpf_importe ? `, IRPF -${factura.irpf_importe.toFixed(2)}€` : ""}, total ${factura.total.toFixed(2)}€. Enviada a este chat.`;
   }
   if (nombre === "tareas_del_trabajador") {
     const nombreT = String(input.nombre ?? "").trim();
