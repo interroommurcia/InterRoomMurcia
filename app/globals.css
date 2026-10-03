@@ -3736,7 +3736,7 @@ button {
    ============================================================ */
 .chat-widget {
   position: fixed;
-  bottom: 20px;
+  bottom: 64px;
   right: 20px;
   z-index: 900;
   display: flex;
@@ -3858,7 +3858,7 @@ button {
 @media (max-width: 480px) {
   .chat-widget {
     right: 0;
-    bottom: 0;
+    bottom: 60px;
     left: 0;
     align-items: stretch;
     padding: 12px;
