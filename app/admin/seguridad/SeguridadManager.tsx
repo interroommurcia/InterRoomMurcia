@@ -33,6 +33,7 @@ const EVENT_LABELS: Record<string, string> = {
   suspicious_input: "Input sospechoso",
   jwt_tampered: "JWT manipulado",
   csrf_origin_mismatch: "CSRF detectado",
+  admin_access: "Acceso exitoso",
 };
 
 export function SeguridadManager() {

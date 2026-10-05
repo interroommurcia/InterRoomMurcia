@@ -8,7 +8,8 @@ export type SecurityEventType =
   | "unauthorized_access"
   | "suspicious_input"
   | "jwt_tampered"
-  | "csrf_origin_mismatch";
+  | "csrf_origin_mismatch"
+  | "admin_access";
 
 export type SecuritySeverity = "low" | "medium" | "high" | "critical";
 
@@ -21,6 +22,7 @@ const SEVERITY_MAP: Record<SecurityEventType, SecuritySeverity> = {
   suspicious_input: "medium",
   jwt_tampered: "critical",
   csrf_origin_mismatch: "high",
+  admin_access: "low",
 };
 
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;

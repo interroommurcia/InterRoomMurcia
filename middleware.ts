@@ -13,6 +13,17 @@ function getClientIp(req: NextRequest): string | null {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || null;
 }
 
+async function logAuthorized(req: NextRequest) {
+  const ip = getClientIp(req);
+  const path = req.nextUrl.pathname;
+  try {
+    const { logSecurityEvent } = await import("./lib/security");
+    await logSecurityEvent({ type: "admin_access", ip, path, details: "ok" });
+  } catch {
+    // silencioso
+  }
+}
+
 async function logUnauthorized(req: NextRequest, reason: string) {
   const ip = getClientIp(req);
   const path = req.nextUrl.pathname;
@@ -35,6 +46,7 @@ export async function middleware(req: NextRequest) {
   if (token) {
     try {
       await jwtVerify(token, getJwtSecret());
+      logAuthorized(req);
       return NextResponse.next();
     } catch {
       logUnauthorized(req, "jwt_tampered");
