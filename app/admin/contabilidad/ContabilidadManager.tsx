@@ -1641,9 +1641,9 @@ export default function ContabilidadManager() {
                       const gastoRecurrenteMes = gs.filter((g) => g.es_recurrente && (!g.fecha_fin || g.fecha_fin >= new Date().toISOString().slice(0, 10))).reduce((s, g) => s + g.importe, 0);
                       const mesesTranscurridos = new Date().getUTCMonth() + 1;
                       const gastoAcumulado = gastoRecurrenteMes * mesesTranscurridos + gs.filter((g) => !g.es_recurrente && g.pagado && g.fecha_pago && g.fecha_pago.startsWith(String(año))).reduce((s, g) => s + g.importe, 0);
-                      const netoAño = Math.round((brutoAño / 1.21) * 100) / 100 - gastoAcumulado;
                       const baseAño = Math.round((brutoAño / 1.21) * 100) / 100;
                       const ivaAño = Math.round((brutoAño - baseAño) * 100) / 100;
+                      const rentabilidadPiso = baseAño - gastoAcumulado;
                       const meses = Math.max(mesesTranscurridos, 1);
                       const recurrentes = gs.filter((g) => g.es_recurrente);
                       const puntuales = gs.filter((g) => !g.es_recurrente);
@@ -1653,10 +1653,14 @@ export default function ContabilidadManager() {
                             <div><b>{fmt(brutoAño)}</b><span>Bruto {año} (IVA incl.)</span></div>
                             <div><b>{fmt(baseAño)}</b><span>Base (sin IVA)</span></div>
                             <div><b>{fmt(ivaAño)}</b><span>IVA 21%</span></div>
-                            <div><b>{fmt(gastoAcumulado)}</b><span>Gastos {año}</span></div>
-                            <div className={netoAño >= 0 ? "pnl-pos" : "pnl-neg"}><b>{fmt(netoAño)}</b><span>Neto {año}</span></div>
-                            <div><b>{fmt(netoAño / meses)}</b><span>Neto/mes</span></div>
+                            <div className={baseAño >= 0 ? "pnl-pos" : "pnl-neg"}><b>{fmt(baseAño)}</b><span>Neto InterRoom {año}</span></div>
+                            <div><b>{fmt(baseAño / meses)}</b><span>Neto InterRoom/mes</span></div>
+                          </div>
+                          <div className="pnl-card" style={{ marginTop: 8 }}>
+                            <div><b>{fmt(gastoAcumulado)}</b><span>Gastos casero {año}</span></div>
                             <div><b>{fmt(gastoRecurrenteMes)}</b><span>Gasto recurrente/mes</span></div>
+                            <div className={rentabilidadPiso >= 0 ? "pnl-pos" : "pnl-neg"}><b>{fmt(rentabilidadPiso)}</b><span>Rentabilidad piso {año}</span></div>
+                            <div><b>{fmt(rentabilidadPiso / meses)}</b><span>Rentabilidad/mes</span></div>
                           </div>
 
                           <div className="section-head" style={{ marginTop: 12 }}>
