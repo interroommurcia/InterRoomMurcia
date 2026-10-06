@@ -10,7 +10,7 @@ async function generateImageGemini(prompt: string): Promise<{ buffer: Buffer | n
   const styledPrompt = `${prompt}. Style: ultra-realistic professional photography of the Region of Murcia (Spain), 16:9 landscape aspect ratio, 8K, warm Mediterranean golden-hour light, terracotta and ochre palette, palm trees and Levantine architecture when appropriate, no watermarks, no text overlays, no logos, no people`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-image-generation:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
