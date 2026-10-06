@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
     const messages: Anthropic.MessageParam[] = [{ role: "user", content: buildPrompt(keyword, tone, material) }];
 
     const stream = anthropic.messages.stream({
-      model: "claude-sonnet-4-6",
+      model: "claude-sonnet-4-20250514",
       max_tokens: 8192,
       system: SYSTEM,
       messages,

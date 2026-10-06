@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
   const [catalogo, knowledgeBase] = await Promise.all([catalogSnapshot(), getKnowledgeBase()]);
 
   const stream = anthropic.messages.stream({
-    model: "claude-sonnet-4-6",
+    model: "claude-sonnet-4-20250514",
     max_tokens: 800,
     system: buildSystemPrompt(catalogo, knowledgeBase),
     messages: mensajesConUsuario.map((m) => ({ role: m.role, content: m.text })),

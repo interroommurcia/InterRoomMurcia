@@ -421,7 +421,7 @@ Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.co
     const anthropic = new Anthropic({ apiKey });
     const [catalogo, kb] = await Promise.all([catalogSnapshot(), getKnowledgeBase()]);
     const res = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-sonnet-4-20250514",
       max_tokens: 400,
       system: buildSystemPrompt(catalogo, kb),
       messages: [{ role: "user", content: String(input.pregunta ?? "") }],
@@ -619,7 +619,7 @@ export async function responderGladis(chatId: string, mensajeUsuario: string): P
   let respuestaFinal = "";
   for (let i = 0; i < MAX_TURNOS_HERRAMIENTA; i++) {
     const res = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-sonnet-4-20250514",
       max_tokens: 800,
       system: systemConFecha,
       tools: TOOLS,
