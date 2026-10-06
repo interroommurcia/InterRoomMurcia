@@ -59,12 +59,15 @@ async function generateArticleFromKeyword(keyword: string, tone: string, materia
   }
   raw += decoder.decode();
 
+  const apiErrorMatch = raw.match(/"__api_error"\s*:\s*"([^"]*)"/);
+  if (apiErrorMatch) throw new Error(`Error de la API: ${apiErrorMatch[1]}`);
+
   const jsonMatch = raw.match(/```json\s*([\s\S]*?)\s*```/) || raw.match(/```\s*([\s\S]*?)\s*```/);
   try {
     return JSON.parse(jsonMatch ? jsonMatch[1] : raw);
   } catch {
     const objMatch = raw.match(/\{[\s\S]*\}/);
-    if (!objMatch) throw new Error("Respuesta inválida del modelo");
+    if (!objMatch) throw new Error("Respuesta vacía del modelo");
     try {
       return JSON.parse(objMatch[0]);
     } catch {

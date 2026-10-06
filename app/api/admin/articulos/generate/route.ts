@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
     const messages: Anthropic.MessageParam[] = [{ role: "user", content: buildPrompt(keyword, tone, material) }];
 
     const stream = anthropic.messages.stream({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 8192,
       system: SYSTEM,
       messages,
@@ -133,7 +133,9 @@ export async function POST(req: NextRequest) {
           }
           controller.close();
         } catch (err: unknown) {
-          controller.error(err);
+          const msg = err instanceof Error ? err.message : "Error desconocido de la API";
+          controller.enqueue(encoder.encode(`\n{"__api_error":"${msg.replace(/"/g, '\\"')}"}`));
+          controller.close();
         }
       },
     });
