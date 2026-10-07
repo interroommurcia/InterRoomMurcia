@@ -285,6 +285,7 @@ export default function ContabilidadManager() {
   const [nuevaLiquidacion, setNuevaLiquidacion] = useState({ persona: "", importe: "", fecha: new Date().toISOString().slice(0, 10), concepto: "" });
   const [mostrarNuevaLiquidacion, setMostrarNuevaLiquidacion] = useState(false);
   const [personaExpandida, setPersonaExpandida] = useState<string | null>(null);
+  const [lineasSeleccionadas, setLineasSeleccionadas] = useState<Set<string>>(new Set());
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [operaciones, setOperaciones] = useState<Operacion[]>([]);
   const [balance, setBalance] = useState<Balance | null>(null);
@@ -2366,41 +2367,88 @@ export default function ContabilidadManager() {
                           </tr>
                           {personaExpandida === p.nombre && (() => {
                             const lineas = desglosePersona(p.nombre);
+                            const lineasPendientes = lineas.filter((l) => l.tipo !== "pago");
+                            const seleccionadasDePersona = lineasPendientes.filter((l) => lineasSeleccionadas.has(l.key));
+                            const importeSeleccionado = seleccionadasDePersona.reduce((s, l) => s + l.importe, 0);
+                            const todasSeleccionadas = lineasPendientes.length > 0 && seleccionadasDePersona.length === lineasPendientes.length;
                             return (
                               <tr>
                                 <td colSpan={4} style={{ padding: 0, background: "#f5f3ff" }}>
                                   <div style={{ padding: "8px 16px" }}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
                                       <span style={{ fontSize: 13, fontWeight: 600, color: "#4338ca" }}>Desglose de {p.nombre}</span>
-                                      {p.pendiente > 0 && (
-                                        <button type="button" className="btn-primary" style={{ fontSize: 12, padding: "4px 10px" }} onClick={async () => {
-                                          if (!confirm(`¿Estás seguro de que quieres liquidar todos los pagos pendientes de ${p.nombre} por ${fmt(p.pendiente)}?`)) return;
-                                          await fetch("/api/admin/liquidaciones", {
-                                            method: "POST",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ persona: p.nombre, importe: p.pendiente, fecha: new Date().toISOString().slice(0, 10), concepto: "Liquidación total" }),
-                                          });
-                                          cargarTodo();
-                                        }}>
-                                          Liquidar todo ({fmt(p.pendiente)})
-                                        </button>
-                                      )}
+                                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                        {seleccionadasDePersona.length > 0 && (
+                                          <button type="button" className="btn-primary" style={{ fontSize: 12, padding: "4px 10px" }} onClick={async () => {
+                                            if (!confirm(`¿Estás seguro de que quieres liquidar los ${seleccionadasDePersona.length} pagos seleccionados por ${fmt(importeSeleccionado)}?`)) return;
+                                            await fetch("/api/admin/liquidaciones", {
+                                              method: "POST",
+                                              headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({ persona: p.nombre, importe: importeSeleccionado, fecha: new Date().toISOString().slice(0, 10), concepto: `Liquidación de ${seleccionadasDePersona.length} pago${seleccionadasDePersona.length > 1 ? "s" : ""}` }),
+                                            });
+                                            setLineasSeleccionadas(new Set());
+                                            cargarTodo();
+                                          }}>
+                                            Liquidar seleccionados ({fmt(importeSeleccionado)})
+                                          </button>
+                                        )}
+                                        {p.pendiente > 0 && (
+                                          <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }} onClick={async () => {
+                                            if (!confirm(`¿Estás seguro de que quieres liquidar todos los pagos pendientes de ${p.nombre} por ${fmt(p.pendiente)}?`)) return;
+                                            await fetch("/api/admin/liquidaciones", {
+                                              method: "POST",
+                                              headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({ persona: p.nombre, importe: p.pendiente, fecha: new Date().toISOString().slice(0, 10), concepto: "Liquidación total" }),
+                                            });
+                                            setLineasSeleccionadas(new Set());
+                                            cargarTodo();
+                                          }}>
+                                            Liquidar todo ({fmt(p.pendiente)})
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
                                     <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
                                       <tbody>
+                                        {lineasPendientes.length > 0 && (
+                                          <tr style={{ borderBottom: "1px solid #e0e7ff" }}>
+                                            <td style={{ padding: "4px 0", width: 24 }}>
+                                              <input type="checkbox" checked={todasSeleccionadas} onChange={() => {
+                                                const next = new Set(lineasSeleccionadas);
+                                                if (todasSeleccionadas) {
+                                                  lineasPendientes.forEach((l) => next.delete(l.key));
+                                                } else {
+                                                  lineasPendientes.forEach((l) => next.add(l.key));
+                                                }
+                                                setLineasSeleccionadas(next);
+                                              }} />
+                                            </td>
+                                            <td colSpan={3} style={{ padding: "4px 0", fontSize: 11, opacity: 0.6 }}>Seleccionar todo</td>
+                                          </tr>
+                                        )}
                                         {lineas.map((l) => (
-                                          <tr key={l.key} style={{ borderBottom: "1px solid #e0e7ff" }}>
-                                            <td style={{ padding: "4px 0", width: "40%" }}>
+                                          <tr key={l.key} style={{ borderBottom: "1px solid #e0e7ff", background: lineasSeleccionadas.has(l.key) ? "#e0e7ff" : undefined }}>
+                                            <td style={{ padding: "4px 0", width: 24 }}>
+                                              {l.tipo !== "pago" && (
+                                                <input type="checkbox" checked={lineasSeleccionadas.has(l.key)} onChange={() => {
+                                                  const next = new Set(lineasSeleccionadas);
+                                                  if (next.has(l.key)) next.delete(l.key); else next.add(l.key);
+                                                  setLineasSeleccionadas(next);
+                                                }} />
+                                              )}
+                                            </td>
+                                            <td style={{ padding: "4px 0", width: "35%" }}>
                                               {l.tipo === "pago" ? <span style={{ color: "#059669" }}>{l.concepto}</span> : l.concepto}
                                               {l.tipo === "puntual" && <span style={{ opacity: 0.5, marginLeft: 4, fontSize: 11 }}>(puntual)</span>}
                                             </td>
-                                            <td style={{ padding: "4px 8px", opacity: 0.7, width: "30%" }}>{l.periodo}</td>
+                                            <td style={{ padding: "4px 8px", opacity: 0.7, width: "25%" }}>{l.periodo}</td>
                                             <td style={{ padding: "4px 0", textAlign: "right", fontWeight: 600, color: l.tipo === "pago" ? "#059669" : undefined }}>
                                               {l.tipo === "pago" ? `- ${fmt(Math.abs(l.importe))}` : fmt(l.importe)}
                                             </td>
                                           </tr>
                                         ))}
                                         <tr style={{ borderTop: "2px solid #c7d2fe" }}>
+                                          <td />
                                           <td colSpan={2} style={{ padding: "6px 0", fontWeight: 700 }}>Pendiente</td>
                                           <td style={{ padding: "6px 0", textAlign: "right", fontWeight: 700, color: p.pendiente > 0 ? "#c2410c" : "#059669" }}>{fmt(p.pendiente)}</td>
                                         </tr>
