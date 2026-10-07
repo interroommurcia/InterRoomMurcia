@@ -880,7 +880,7 @@ export async function eliminarAlquilerComision(id: string) {
   if (error) throw error;
 }
 
-export type TipoGastoRecurrente = "fijo" | "impuesto";
+export type TipoGastoRecurrente = "fijo" | "impuesto" | "anual";
 
 export type GastoFijo = {
   id: string;
@@ -914,7 +914,9 @@ export type GastoEmpresa = {
 // métricas mensuales dividimos por 3 (media). Los fijos se computan tal cual.
 function equivMensual(g: Pick<GastoFijo, "importe_mensual" | "tipo">): number {
   const importe = Number(g.importe_mensual);
-  return g.tipo === "impuesto" ? importe / 3 : importe;
+  if (g.tipo === "impuesto") return importe / 3;
+  if (g.tipo === "anual") return importe / 12;
+  return importe;
 }
 
 export async function listarGastosFijos(): Promise<GastoFijo[]> {
@@ -1080,13 +1082,17 @@ export async function balanceTotal() {
   const activos = gastosFijosRaw.filter((g) => !g.fecha_fin || new Date(g.fecha_fin) >= hoy);
   const fijos = gastosFijosRaw.filter((g) => (g.tipo ?? "fijo") === "fijo");
   const impuestos = gastosFijosRaw.filter((g) => g.tipo === "impuesto");
+  const anuales = gastosFijosRaw.filter((g) => g.tipo === "anual");
   const fijoMensual = activos.filter((g) => (g.tipo ?? "fijo") === "fijo").reduce((s, g) => s + Number(g.importe_mensual), 0);
   const impuestoTrimestral = activos.filter((g) => g.tipo === "impuesto").reduce((s, g) => s + Number(g.importe_mensual), 0);
+  const anualTotal = activos.filter((g) => g.tipo === "anual").reduce((s, g) => s + Number(g.importe_mensual), 0);
   const impuestoMensualEquiv = impuestoTrimestral / 3;
-  const gastoFijoMensual = fijoMensual + impuestoMensualEquiv;
+  const anualMensualEquiv = anualTotal / 12;
+  const gastoFijoMensual = fijoMensual + impuestoMensualEquiv + anualMensualEquiv;
   const gastoFijoAcumulado = acumuladoGastosFijos(gastosFijosRaw);
   const acumuladoFijos = acumuladoGastosFijos(fijos);
   const acumuladoImpuestos = acumuladoGastosFijos(impuestos);
+  const acumuladoAnuales = acumuladoGastosFijos(anuales);
 
   const beneficioNetoOperativo = netoAlquileres + netoCompraventas + netoCreditos + comisionAlquilerPuntual;
   const beneficioNetoFinal = beneficioNetoOperativo - gastoFijoAcumulado;
@@ -1120,6 +1126,12 @@ export async function balanceTotal() {
         acumulado: acumuladoImpuestos,
         pctSobreNetoOperativo: beneficioNetoOperativo > 0 ? (acumuladoImpuestos / beneficioNetoOperativo) * 100 : 0,
       },
+      anuales: {
+        anual: anualTotal,
+        mensualEquiv: anualMensualEquiv,
+        acumulado: acumuladoAnuales,
+        pctSobreNetoOperativo: beneficioNetoOperativo > 0 ? (acumuladoAnuales / beneficioNetoOperativo) * 100 : 0,
+      },
     },
   };
 }
@@ -1136,6 +1148,7 @@ export type MetricasMes = {
   gastosFijos: number;
   fijos: number;
   impuestos: number;
+  anuales: number;
 };
 
 export type MetricasAnuales = {
@@ -1154,11 +1167,14 @@ export type MetricasAnuales = {
     gastosFijos: number;
     fijos: number;
     impuestos: number;
+    anuales: number;
     netoTrasFijos: number;
     pctFijosSobreBruto: number;
     pctFijosSobreNeto: number;
     pctImpuestosSobreBruto: number;
     pctImpuestosSobreNeto: number;
+    pctAnualesSobreBruto: number;
+    pctAnualesSobreNeto: number;
   };
   anioAnterior: { bruto: number; neto: number } | null;
   variacion: { brutoPct: number | null; netoPct: number | null };
@@ -1222,6 +1238,7 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
       gastosFijos: 0,
       fijos: 0,
       impuestos: 0,
+      anuales: 0,
     }));
 
     for (const r of ingresosRes.data ?? []) {
@@ -1304,7 +1321,8 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
         if (inicio > ultimoDiaMes) continue;
         if (fin && fin < primerDiaMes) continue;
         meses[i].gastosFijos += importe;
-        if ((g.tipo ?? "fijo") === "impuesto") meses[i].impuestos += importe;
+        if (g.tipo === "impuesto") meses[i].impuestos += importe;
+        else if (g.tipo === "anual") meses[i].anuales += importe;
         else meses[i].fijos += importe;
       }
     }
@@ -1336,8 +1354,9 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
       gastosFijos: acc.gastosFijos + m.gastosFijos,
       fijos: acc.fijos + m.fijos,
       impuestos: acc.impuestos + m.impuestos,
+      anuales: acc.anuales + m.anuales,
     }),
-    { bruto: 0, gastos: 0, neto: 0, alquileres: 0, alquilerComisiones: 0, compraventas: 0, creditos: 0, gastosFijos: 0, fijos: 0, impuestos: 0 }
+    { bruto: 0, gastos: 0, neto: 0, alquileres: 0, alquilerComisiones: 0, compraventas: 0, creditos: 0, gastosFijos: 0, fijos: 0, impuestos: 0, anuales: 0 }
   );
   const totalAnual = {
     ...totalBase,
@@ -1346,6 +1365,8 @@ export async function metricasAnuales(anio: number): Promise<MetricasAnuales> {
     pctFijosSobreNeto: totalBase.neto > 0 ? (totalBase.fijos / totalBase.neto) * 100 : 0,
     pctImpuestosSobreBruto: totalBase.bruto > 0 ? (totalBase.impuestos / totalBase.bruto) * 100 : 0,
     pctImpuestosSobreNeto: totalBase.neto > 0 ? (totalBase.impuestos / totalBase.neto) * 100 : 0,
+    pctAnualesSobreBruto: totalBase.bruto > 0 ? (totalBase.anuales / totalBase.bruto) * 100 : 0,
+    pctAnualesSobreNeto: totalBase.neto > 0 ? (totalBase.anuales / totalBase.neto) * 100 : 0,
   };
 
   const totalAnterior = mesesAnterior.reduce((acc, m) => ({ bruto: acc.bruto + m.bruto, neto: acc.neto + m.neto }), { bruto: 0, neto: 0 });

@@ -128,17 +128,18 @@ type Balance = {
     mensual: number; anualizado: number; acumulado: number; pctSobreBruto: number; pctSobreNetoOperativo: number;
     fijos?: { mensual: number; anualizado: number; acumulado: number; pctSobreNetoOperativo: number };
     impuestos?: { trimestral: number; mensualEquiv: number; anualizado: number; acumulado: number; pctSobreNetoOperativo: number };
+    anuales?: { anual: number; mensualEquiv: number; acumulado: number; pctSobreNetoOperativo: number };
   };
 };
 
-type MetricasMes = { mes: number; bruto: number; gastos: number; neto: number; alquileres: number; alquilerComisiones: number; compraventas: number; creditos: number; gastosFijos: number; fijos: number; impuestos: number };
+type MetricasMes = { mes: number; bruto: number; gastos: number; neto: number; alquileres: number; alquilerComisiones: number; compraventas: number; creditos: number; gastosFijos: number; fijos: number; impuestos: number; anuales: number };
 
 type Metricas = {
   anio: number;
   meses: MetricasMes[];
   mesesAnterior: MetricasMes[];
   trimestres: { trimestre: number; bruto: number; gastos: number; neto: number }[];
-  totalAnual: { bruto: number; gastos: number; neto: number; alquileres: number; alquilerComisiones: number; compraventas: number; creditos: number; gastosFijos: number; fijos: number; impuestos: number; netoTrasFijos: number; pctFijosSobreBruto: number; pctFijosSobreNeto: number; pctImpuestosSobreBruto: number; pctImpuestosSobreNeto: number };
+  totalAnual: { bruto: number; gastos: number; neto: number; alquileres: number; alquilerComisiones: number; compraventas: number; creditos: number; gastosFijos: number; fijos: number; impuestos: number; anuales: number; netoTrasFijos: number; pctFijosSobreBruto: number; pctFijosSobreNeto: number; pctImpuestosSobreBruto: number; pctImpuestosSobreNeto: number; pctAnualesSobreBruto: number; pctAnualesSobreNeto: number };
   anioAnterior: { bruto: number; neto: number } | null;
   variacion: { brutoPct: number | null; netoPct: number | null };
   aniosDisponibles: number[];
@@ -149,7 +150,7 @@ type GastoFijo = {
   concepto: string;
   importe_mensual: number;
   categoria: string;
-  tipo: "fijo" | "impuesto";
+  tipo: "fijo" | "impuesto" | "anual";
   fecha_inicio: string;
   fecha_fin: string | null;
   notas: string | null;
@@ -268,9 +269,9 @@ export default function ContabilidadManager() {
   const [tab, setTab] = useState<"metricas" | "creditos" | "alquileres" | "compraventas" | "gastos">("creditos");
   const [gastosFijos, setGastosFijos] = useState<GastoFijo[]>([]);
   const [mostrarNuevoFijo, setMostrarNuevoFijo] = useState(false);
-  const [nuevoFijo, setNuevoFijo] = useState({ concepto: "", importe_mensual: "", categoria: "otros", tipo: "fijo" as "fijo" | "impuesto", fecha_inicio: new Date().toISOString().slice(0, 10), pagado_por: "" });
+  const [nuevoFijo, setNuevoFijo] = useState({ concepto: "", importe_mensual: "", categoria: "otros", tipo: "fijo" as "fijo" | "impuesto" | "anual", fecha_inicio: new Date().toISOString().slice(0, 10), pagado_por: "" });
   const [editandoFijo, setEditandoFijo] = useState<string | null>(null);
-  const [edicionFijo, setEdicionFijo] = useState({ concepto: "", importe_mensual: "", categoria: "", tipo: "fijo" as "fijo" | "impuesto", pagado_por: "" });
+  const [edicionFijo, setEdicionFijo] = useState({ concepto: "", importe_mensual: "", categoria: "", tipo: "fijo" as "fijo" | "impuesto" | "anual", pagado_por: "" });
 
   const [gastosEmpresa, setGastosEmpresa] = useState<GastoEmpresa[]>([]);
   const [mostrarNuevoGastoEmpresa, setMostrarNuevoGastoEmpresa] = useState(false);
@@ -379,7 +380,7 @@ export default function ContabilidadManager() {
         pagado_por: nuevoFijo.pagado_por || null,
       }),
     });
-    setNuevoFijo({ concepto: "", importe_mensual: "", categoria: "otros", tipo: "fijo", fecha_inicio: new Date().toISOString().slice(0, 10), pagado_por: "" });
+    setNuevoFijo({ concepto: "", importe_mensual: "", categoria: "otros", tipo: "fijo" as "fijo" | "impuesto" | "anual", fecha_inicio: new Date().toISOString().slice(0, 10), pagado_por: "" });
     setMostrarNuevoFijo(false);
     cargarTodo();
   }
@@ -1032,6 +1033,16 @@ export default function ContabilidadManager() {
               </p>
             </div>
           )}
+          {balance.gastosFijos?.anuales && balance.gastosFijos.anuales.anual > 0 && (
+            <div className="analytics-card" style={{ borderLeft: "3px solid #7c3aed" }}>
+              <h3>Suscripciones anuales</h3>
+              <div className="analytics-stat-value">{fmt(balance.gastosFijos.anuales.anual)}/año</div>
+              <p>
+                Media {fmt(balance.gastosFijos.anuales.mensualEquiv)}/mes · Acumulado {fmt(balance.gastosFijos.anuales.acumulado)} ·{" "}
+                {balance.gastosFijos.anuales.pctSobreNetoOperativo.toFixed(1)}% del beneficio operativo
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -1141,10 +1152,17 @@ export default function ContabilidadManager() {
                   <div className="analytics-stat-value">{fmt(metricas.totalAnual.impuestos)}</div>
                   <p>{metricas.totalAnual.pctImpuestosSobreBruto.toFixed(1)}% del bruto · {metricas.totalAnual.pctImpuestosSobreNeto.toFixed(1)}% del beneficio operativo</p>
                 </div>
+                {metricas.totalAnual.anuales > 0 && (
+                  <div className="analytics-card" style={{ borderLeft: "3px solid #7c3aed" }}>
+                    <h3>Anuales {metricasAnio}</h3>
+                    <div className="analytics-stat-value">{fmt(metricas.totalAnual.anuales)}</div>
+                    <p>{metricas.totalAnual.pctAnualesSobreBruto.toFixed(1)}% del bruto · {metricas.totalAnual.pctAnualesSobreNeto.toFixed(1)}% del beneficio operativo</p>
+                  </div>
+                )}
                 <div className="analytics-card" style={{ borderLeft: "3px solid #059669" }}>
-                  <h3>Beneficio tras fijos + impuestos</h3>
+                  <h3>Beneficio tras fijos + impuestos + anuales</h3>
                   <div className="analytics-stat-value">{fmt(metricas.totalAnual.netoTrasFijos)}</div>
-                  <p>Neto operativo {fmt(metricas.totalAnual.neto)} − fijos {fmt(metricas.totalAnual.fijos)} − impuestos {fmt(metricas.totalAnual.impuestos)}</p>
+                  <p>Neto operativo {fmt(metricas.totalAnual.neto)} − fijos {fmt(metricas.totalAnual.fijos)} − impuestos {fmt(metricas.totalAnual.impuestos)} − anuales {fmt(metricas.totalAnual.anuales)}</p>
                 </div>
               </div>
 
@@ -1889,15 +1907,20 @@ export default function ContabilidadManager() {
           if (!deudaPorPersona[persona]) deudaPorPersona[persona] = 0;
           deudaPorPersona[persona] += importe;
         };
-        // Solo gastos fijos (NO impuestos) computan en la deuda
+        // Solo gastos fijos y anuales (NO impuestos) computan en la deuda
         for (const g of gastosFijos) {
           if (!g.pagado_por || g.tipo === "impuesto") continue;
           const inicio = new Date(g.fecha_inicio);
           const fin = g.fecha_fin ? new Date(g.fecha_fin) : hoy;
           const hasta = fin < hoy ? fin : hoy;
           if (hasta < inicio) continue;
-          const meses = (hasta.getUTCFullYear() - inicio.getUTCFullYear()) * 12 + (hasta.getUTCMonth() - inicio.getUTCMonth()) + 1;
-          sumar(g.pagado_por, g.importe_mensual * Math.max(meses, 0));
+          if (g.tipo === "anual") {
+            const anios = (hasta.getUTCFullYear() - inicio.getUTCFullYear()) + 1;
+            sumar(g.pagado_por, g.importe_mensual * Math.max(anios, 0));
+          } else {
+            const meses = (hasta.getUTCFullYear() - inicio.getUTCFullYear()) * 12 + (hasta.getUTCMonth() - inicio.getUTCMonth()) + 1;
+            sumar(g.pagado_por, g.importe_mensual * Math.max(meses, 0));
+          }
         }
         for (const g of gastosEmpresa) {
           sumar(g.pagado_por, g.importe);
@@ -1925,13 +1948,19 @@ export default function ContabilidadManager() {
             const fin = g.fecha_fin ? new Date(g.fecha_fin) : hoy;
             const hasta = fin < hoy ? fin : hoy;
             if (hasta < inicio) continue;
-            const cursor = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth(), 1));
-            const limiteMs = Date.UTC(hasta.getUTCFullYear(), hasta.getUTCMonth(), 1);
-            while (cursor.getTime() <= limiteMs) {
-              const m = cursor.getUTCMonth();
-              const y = cursor.getUTCFullYear();
-              lineas.push({ key: `${g.id}-${y}-${m}`, concepto: g.concepto, periodo: `${MESES_NOMBRE[m]} ${String(y).slice(2)}`, importe: g.importe_mensual, tipo: "fijo" });
-              cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+            if (g.tipo === "anual") {
+              for (let y = inicio.getUTCFullYear(); y <= hasta.getUTCFullYear(); y++) {
+                lineas.push({ key: `${g.id}-${y}`, concepto: g.concepto, periodo: String(y), importe: g.importe_mensual, tipo: "fijo" });
+              }
+            } else {
+              const cursor = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth(), 1));
+              const limiteMs = Date.UTC(hasta.getUTCFullYear(), hasta.getUTCMonth(), 1);
+              while (cursor.getTime() <= limiteMs) {
+                const m = cursor.getUTCMonth();
+                const y = cursor.getUTCFullYear();
+                lineas.push({ key: `${g.id}-${y}-${m}`, concepto: g.concepto, periodo: `${MESES_NOMBRE[m]} ${String(y).slice(2)}`, importe: g.importe_mensual, tipo: "fijo" });
+                cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+              }
             }
           }
           for (const g of gastosEmpresa) {
@@ -1964,17 +1993,18 @@ export default function ContabilidadManager() {
               <div className="lead-form-row">
                 <label>
                   Tipo
-                  <select value={nuevoFijo.tipo} onChange={(e) => setNuevoFijo({ ...nuevoFijo, tipo: e.target.value as "fijo" | "impuesto" })}>
+                  <select value={nuevoFijo.tipo} onChange={(e) => setNuevoFijo({ ...nuevoFijo, tipo: e.target.value as "fijo" | "impuesto" | "anual" })}>
                     <option value="fijo">Gasto fijo (mensual)</option>
                     <option value="impuesto">Impuesto trimestre</option>
+                    <option value="anual">Suscripción anual</option>
                   </select>
                 </label>
                 <label>
                   Concepto
-                  <input required value={nuevoFijo.concepto} onChange={(e) => setNuevoFijo({ ...nuevoFijo, concepto: e.target.value })} placeholder={nuevoFijo.tipo === "impuesto" ? "IVA Q1, IRPF Q2..." : "Vercel Pro, Anthropic..."} />
+                  <input required value={nuevoFijo.concepto} onChange={(e) => setNuevoFijo({ ...nuevoFijo, concepto: e.target.value })} placeholder={nuevoFijo.tipo === "impuesto" ? "IVA Q1, IRPF Q2..." : nuevoFijo.tipo === "anual" ? "Dominio, certificado SSL..." : "Vercel Pro, Anthropic..."} />
                 </label>
                 <label>
-                  {nuevoFijo.tipo === "impuesto" ? "Importe trimestral (€)" : "Importe mensual (€)"}
+                  {nuevoFijo.tipo === "impuesto" ? "Importe trimestral (€)" : nuevoFijo.tipo === "anual" ? "Importe anual (€)" : "Importe mensual (€)"}
                   <input type="number" min={0} step="0.01" required value={nuevoFijo.importe_mensual} onChange={(e) => setNuevoFijo({ ...nuevoFijo, importe_mensual: e.target.value })} />
                 </label>
               </div>
@@ -2054,14 +2084,17 @@ export default function ContabilidadManager() {
             const activos = gastosFijos.filter((g) => !g.fecha_fin);
             const fijosAct = activos.filter((g) => (g.tipo ?? "fijo") === "fijo");
             const impAct = activos.filter((g) => g.tipo === "impuesto");
+            const anualAct = activos.filter((g) => g.tipo === "anual");
             const totalFijoMes = fijosAct.reduce((s, g) => s + Number(g.importe_mensual), 0);
             const totalImpTrim = impAct.reduce((s, g) => s + Number(g.importe_mensual), 0);
+            const totalAnual = anualAct.reduce((s, g) => s + Number(g.importe_mensual), 0);
             const totalPuntuales = gastosEmpresa.reduce((s, g) => s + Number(g.importe), 0);
             return (
               <div className="pnl-card" style={{ marginBottom: 12 }}>
                 <div><b>{fmt(totalFijoMes)}</b><span>Fijos /mes</span></div>
                 <div><b>{fmt(totalImpTrim)}</b><span>Impuestos /trim</span></div>
-                <div><b>{fmt(totalFijoMes * 12 + totalImpTrim * 4)}</b><span>Anualizado total</span></div>
+                <div><b>{fmt(totalAnual)}</b><span>Anuales /año</span></div>
+                <div><b>{fmt(totalFijoMes * 12 + totalImpTrim * 4 + totalAnual)}</b><span>Anualizado total</span></div>
                 <div><b>{fmt(totalPuntuales)}</b><span>Puntuales total</span></div>
               </div>
             );
@@ -2071,8 +2104,10 @@ export default function ContabilidadManager() {
           {(() => {
             const fijosList = gastosFijos.filter((g) => (g.tipo ?? "fijo") === "fijo");
             const impList = gastosFijos.filter((g) => g.tipo === "impuesto");
+            const anualList = gastosFijos.filter((g) => g.tipo === "anual");
             const renderItem = (g: GastoFijo) => {
               const esImpuesto = g.tipo === "impuesto";
+              const esAnual = g.tipo === "anual";
               if (editandoFijo === g.id) {
                 return (
                   <div key={g.id} className="chat-widget-msg assistant" style={{ padding: 10 }}>
@@ -2082,7 +2117,7 @@ export default function ContabilidadManager() {
                         <input value={edicionFijo.concepto} onChange={(e) => setEdicionFijo({ ...edicionFijo, concepto: e.target.value })} />
                       </label>
                       <label style={{ flex: 1 }}>
-                        {edicionFijo.tipo === "impuesto" ? "€/trim" : "€/mes"}
+                        {edicionFijo.tipo === "impuesto" ? "€/trim" : edicionFijo.tipo === "anual" ? "€/año" : "€/mes"}
                         <input type="number" min={0} step="0.01" value={edicionFijo.importe_mensual} onChange={(e) => setEdicionFijo({ ...edicionFijo, importe_mensual: e.target.value })} />
                       </label>
                     </div>
@@ -2116,8 +2151,9 @@ export default function ContabilidadManager() {
               return (
                 <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", opacity: g.fecha_fin ? 0.5 : 1 }}>
                   <span>
-                    <b>{fmt(g.importe_mensual)}{esImpuesto ? "/trim" : "/mes"}</b>
+                    <b>{fmt(g.importe_mensual)}{esImpuesto ? "/trim" : esAnual ? "/año" : "/mes"}</b>
                     {esImpuesto && <span style={{ opacity: 0.6, marginLeft: 6, fontSize: 12 }}>(≈{fmt(g.importe_mensual / 3)}/mes)</span>}
+                    {esAnual && <span style={{ opacity: 0.6, marginLeft: 6, fontSize: 12 }}>(≈{fmt(g.importe_mensual / 12)}/mes)</span>}
                     <br />
                     <span style={{ fontSize: 13 }}>{g.concepto} · <span style={{ opacity: 0.6 }}>{g.categoria}</span></span>
                     {g.pagado_por && <span style={{ fontSize: 12, marginLeft: 6, padding: "1px 6px", background: "#e0e7ff", color: "#3730a3", borderRadius: 4 }}>Paga: {g.pagado_por}</span>}
@@ -2135,7 +2171,7 @@ export default function ContabilidadManager() {
               );
             };
             return (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
                 <div style={{ border: "1px solid #dbeafe", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
                   <h3 style={{ marginTop: 0, fontSize: 15, color: "#1e40af" }}>Gastos fijos mensuales ({fijosList.length})</h3>
                   {fijosList.length === 0 ? <p className="admin-empty" style={{ margin: 0 }}>Sin gastos fijos.</p> : fijosList.map(renderItem)}
@@ -2143,6 +2179,10 @@ export default function ContabilidadManager() {
                 <div style={{ border: "1px solid #fde68a", borderRadius: 12, padding: 12, background: "#fffbeb" }}>
                   <h3 style={{ marginTop: 0, fontSize: 15, color: "#b45309" }}>Impuestos trimestrales ({impList.length})</h3>
                   {impList.length === 0 ? <p className="admin-empty" style={{ margin: 0 }}>Sin impuestos.</p> : impList.map(renderItem)}
+                </div>
+                <div style={{ border: "1px solid #c4b5fd", borderRadius: 12, padding: 12, background: "#f5f3ff" }}>
+                  <h3 style={{ marginTop: 0, fontSize: 15, color: "#6d28d9" }}>Suscripciones anuales ({anualList.length})</h3>
+                  {anualList.length === 0 ? <p className="admin-empty" style={{ margin: 0 }}>Sin suscripciones anuales.</p> : anualList.map(renderItem)}
                 </div>
               </div>
             );
