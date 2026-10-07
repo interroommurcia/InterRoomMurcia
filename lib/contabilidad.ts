@@ -985,6 +985,49 @@ export async function eliminarGastoFijo(id: string) {
   if (error) throw error;
 }
 
+export async function listarGastoFijoDocumentos(gastoFijoId: string): Promise<Documento[]> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin.from("gasto_fijo_documentos").select("*").eq("gasto_fijo_id", gastoFijoId).order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Documento[];
+}
+
+export async function subirGastoFijoDocumento(gastoFijoId: string, nombre: string, buffer: Buffer, contentType: string): Promise<Documento> {
+  const admin = getSupabaseAdmin();
+  await admin.storage.createBucket(DOCUMENTOS_BUCKET, { public: false }).catch(() => {});
+  const path = `gastos-fijos/${gastoFijoId}/${Date.now()}-${sanitizeFilename(nombre)}`;
+  const { error: uploadError } = await admin.storage.from(DOCUMENTOS_BUCKET).upload(path, buffer, { contentType });
+  if (uploadError) throw uploadError;
+  const { data, error } = await admin
+    .from("gasto_fijo_documentos")
+    .insert({ gasto_fijo_id: gastoFijoId, nombre, storage_path: path })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Documento;
+}
+
+export async function descargarGastoFijoDocumento(id: string): Promise<{ nombre: string; buffer: Buffer } | null> {
+  const admin = getSupabaseAdmin();
+  const { data: doc, error } = await admin.from("gasto_fijo_documentos").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  if (!doc) return null;
+  const { data: file, error: downloadError } = await admin.storage.from(DOCUMENTOS_BUCKET).download(doc.storage_path);
+  if (downloadError) throw downloadError;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return { nombre: doc.nombre, buffer };
+}
+
+export async function eliminarGastoFijoDocumento(id: string) {
+  const admin = getSupabaseAdmin();
+  const { data: doc, error: getError } = await admin.from("gasto_fijo_documentos").select("*").eq("id", id).maybeSingle();
+  if (getError) throw getError;
+  if (!doc) return;
+  await admin.storage.from(DOCUMENTOS_BUCKET).remove([doc.storage_path]);
+  const { error } = await admin.from("gasto_fijo_documentos").delete().eq("id", id);
+  if (error) throw error;
+}
+
 function gastoFijoActivoEnMes(g: GastoFijo, primerDiaMes: Date, ultimoDiaMes: Date): boolean {
   const inicio = new Date(g.fecha_inicio);
   if (inicio > ultimoDiaMes) return false;

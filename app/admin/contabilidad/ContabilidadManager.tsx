@@ -272,6 +272,9 @@ export default function ContabilidadManager() {
   const [nuevoFijo, setNuevoFijo] = useState({ concepto: "", importe_mensual: "", categoria: "otros", tipo: "fijo" as "fijo" | "impuesto" | "anual", fecha_inicio: new Date().toISOString().slice(0, 10), pagado_por: "" });
   const [editandoFijo, setEditandoFijo] = useState<string | null>(null);
   const [edicionFijo, setEdicionFijo] = useState({ concepto: "", importe_mensual: "", categoria: "", tipo: "fijo" as "fijo" | "impuesto" | "anual", pagado_por: "" });
+  const [gastoFijoDocumentos, setGastoFijoDocumentos] = useState<Record<string, Documento[]>>({});
+  const [subiendoDocGastoFijo, setSubiendoDocGastoFijo] = useState(false);
+  const [gastoFijoDocsAbierto, setGastoFijoDocsAbierto] = useState<string | null>(null);
 
   const [gastosEmpresa, setGastosEmpresa] = useState<GastoEmpresa[]>([]);
   const [mostrarNuevoGastoEmpresa, setMostrarNuevoGastoEmpresa] = useState(false);
@@ -399,6 +402,41 @@ export default function ContabilidadManager() {
     });
     setEditandoFijo(null);
     cargarTodo();
+  }
+
+  async function toggleGastoFijoDocs(gastoId: string) {
+    const next = gastoFijoDocsAbierto === gastoId ? null : gastoId;
+    setGastoFijoDocsAbierto(next);
+    if (next && !gastoFijoDocumentos[gastoId]) {
+      const data = await fetch(`/api/admin/gastos-fijos/${gastoId}/documentos`).then((r) => r.json());
+      setGastoFijoDocumentos((prev) => ({ ...prev, [gastoId]: Array.isArray(data) ? data : [] }));
+    }
+  }
+
+  async function subirDocumentoGastoFijo(gastoId: string, file: File) {
+    setSubiendoDocGastoFijo(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`/api/admin/gastos-fijos/${gastoId}/documentos`, { method: "POST", body: form });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`Error subiendo documento: ${err.error || res.statusText}`);
+        return;
+      }
+      const data = await fetch(`/api/admin/gastos-fijos/${gastoId}/documentos`).then((r) => r.json());
+      setGastoFijoDocumentos((prev) => ({ ...prev, [gastoId]: Array.isArray(data) ? data : [] }));
+    } catch (e) {
+      alert(`Error subiendo documento: ${e instanceof Error ? e.message : "Error desconocido"}`);
+    } finally {
+      setSubiendoDocGastoFijo(false);
+    }
+  }
+
+  async function eliminarDocumentoGastoFijo(gastoId: string, docId: string) {
+    await fetch(`/api/admin/gastos-fijos/${gastoId}/documentos/${docId}`, { method: "DELETE" });
+    const data = await fetch(`/api/admin/gastos-fijos/${gastoId}/documentos`).then((r) => r.json());
+    setGastoFijoDocumentos((prev) => ({ ...prev, [gastoId]: Array.isArray(data) ? data : [] }));
   }
 
   async function crearGastoEmpresaFn(e: React.FormEvent) {
@@ -2149,24 +2187,55 @@ export default function ContabilidadManager() {
                 );
               }
               return (
-                <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", opacity: g.fecha_fin ? 0.5 : 1 }}>
-                  <span>
-                    <b>{fmt(g.importe_mensual)}{esImpuesto ? "/trim" : esAnual ? "/año" : "/mes"}</b>
-                    {esImpuesto && <span style={{ opacity: 0.6, marginLeft: 6, fontSize: 12 }}>(≈{fmt(g.importe_mensual / 3)}/mes)</span>}
-                    {esAnual && <span style={{ opacity: 0.6, marginLeft: 6, fontSize: 12 }}>(≈{fmt(g.importe_mensual / 12)}/mes)</span>}
-                    <br />
-                    <span style={{ fontSize: 13 }}>{g.concepto} · <span style={{ opacity: 0.6 }}>{g.categoria}</span></span>
-                    {g.pagado_por && <span style={{ fontSize: 12, marginLeft: 6, padding: "1px 6px", background: "#e0e7ff", color: "#3730a3", borderRadius: 4 }}>Paga: {g.pagado_por}</span>}
-                    <br />
-                    <span style={{ opacity: 0.5, fontSize: 11 }}>desde {g.fecha_inicio}{g.fecha_fin && ` · hasta ${g.fecha_fin}`}</span>
-                  </span>
-                  <span style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
-                    <button type="button" className="btn-ghost" onClick={() => { setEditandoFijo(g.id); setEdicionFijo({ concepto: g.concepto, importe_mensual: String(g.importe_mensual), categoria: g.categoria, tipo: g.tipo, pagado_por: g.pagado_por || "" }); }}>Editar</button>
-                    {!g.fecha_fin && (
-                      <button type="button" className="btn-ghost" onClick={() => terminarGastoFijo(g.id)}>Finalizar</button>
-                    )}
-                    <button type="button" className="btn-ghost" onClick={() => eliminarGastoFijo(g.id)}>Borrar</button>
-                  </span>
+                <div key={g.id} style={{ opacity: g.fecha_fin ? 0.5 : 1 }}>
+                  <div className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+                    <span>
+                      <b>{fmt(g.importe_mensual)}{esImpuesto ? "/trim" : esAnual ? "/año" : "/mes"}</b>
+                      {esImpuesto && <span style={{ opacity: 0.6, marginLeft: 6, fontSize: 12 }}>(≈{fmt(g.importe_mensual / 3)}/mes)</span>}
+                      {esAnual && <span style={{ opacity: 0.6, marginLeft: 6, fontSize: 12 }}>(≈{fmt(g.importe_mensual / 12)}/mes)</span>}
+                      <br />
+                      <span style={{ fontSize: 13 }}>{g.concepto} · <span style={{ opacity: 0.6 }}>{g.categoria}</span></span>
+                      {g.pagado_por && <span style={{ fontSize: 12, marginLeft: 6, padding: "1px 6px", background: "#e0e7ff", color: "#3730a3", borderRadius: 4 }}>Paga: {g.pagado_por}</span>}
+                      <br />
+                      <span style={{ opacity: 0.5, fontSize: 11 }}>desde {g.fecha_inicio}{g.fecha_fin && ` · hasta ${g.fecha_fin}`}</span>
+                    </span>
+                    <span style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                      <button type="button" className="btn-ghost" onClick={() => toggleGastoFijoDocs(g.id)}>
+                        {gastoFijoDocsAbierto === g.id ? "Cerrar docs" : `Docs${(gastoFijoDocumentos[g.id]?.length ?? 0) > 0 ? ` (${gastoFijoDocumentos[g.id].length})` : ""}`}
+                      </button>
+                      <button type="button" className="btn-ghost" onClick={() => { setEditandoFijo(g.id); setEdicionFijo({ concepto: g.concepto, importe_mensual: String(g.importe_mensual), categoria: g.categoria, tipo: g.tipo, pagado_por: g.pagado_por || "" }); }}>Editar</button>
+                      {!g.fecha_fin && (
+                        <button type="button" className="btn-ghost" onClick={() => terminarGastoFijo(g.id)}>Finalizar</button>
+                      )}
+                      <button type="button" className="btn-ghost" onClick={() => eliminarGastoFijo(g.id)}>Borrar</button>
+                    </span>
+                  </div>
+                  {gastoFijoDocsAbierto === g.id && (
+                    <div style={{ padding: "8px 12px", background: "#f9fafb", borderRadius: 8, marginTop: 4 }}>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+                        disabled={subiendoDocGastoFijo}
+                        style={{ fontSize: 12, marginBottom: 6 }}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            await subirDocumentoGastoFijo(g.id, file);
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                      {(gastoFijoDocumentos[g.id] ?? []).map((doc) => (
+                        <div key={doc.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, padding: "3px 0" }}>
+                          <a href={`/api/admin/gastos-fijos/${g.id}/documentos/${doc.id}`} target="_blank" rel="noreferrer" style={{ color: "#2563eb" }}>
+                            {doc.nombre}
+                          </a>
+                          <button type="button" className="btn-ghost" style={{ fontSize: 11 }} onClick={() => eliminarDocumentoGastoFijo(g.id, doc.id)}>Borrar</button>
+                        </div>
+                      ))}
+                      {(gastoFijoDocumentos[g.id] ?? []).length === 0 && <p className="admin-empty" style={{ margin: 0, fontSize: 12 }}>Sin documentos adjuntos.</p>}
+                    </div>
+                  )}
                 </div>
               );
             };
