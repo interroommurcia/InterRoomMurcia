@@ -58,6 +58,10 @@ function calcRange(periodo: Periodo, mesVal: string, anioVal: number, customDesd
   return null;
 }
 
+function HelpTip({ tip }: { tip: string }) {
+  return <span className="analytics-help-tip" data-tip={tip}>?</span>;
+}
+
 function Bar({ label, value, max }: { label: string; value: number; max: number }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
@@ -196,11 +200,12 @@ export default function AnalyticsManager() {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  function SectionHead({ id, title }: { id: string; title: string }) {
+  function SectionHead({ id, title, tip }: { id: string; title: string; tip?: string }) {
     return (
       <div className="analytics-section-head" onClick={() => toggleSection(id)} style={{ cursor: "pointer" }}>
         <span style={{ fontSize: "0.75rem", marginRight: 6, opacity: 0.5 }}>{openSections[id] ? "▼" : "▶"}</span>
         <h2>{title}</h2>
+        {tip && <HelpTip tip={tip} />}
       </div>
     );
   }
@@ -269,7 +274,7 @@ export default function AnalyticsManager() {
       </div>
 
       {/* ── Resumen ── */}
-      <SectionHead id="resumen" title={`Resumen — ${pLabel}`} />
+      <SectionHead id="resumen" title={`Resumen — ${pLabel}`} tip="Métricas clave del rendimiento de tu web en el periodo seleccionado" />
       {openSections.resumen && (
         <div className="analytics-stat-row">
           {[
@@ -287,7 +292,7 @@ export default function AnalyticsManager() {
               <div className="analytics-stat-value">{s.value}</div>
               <div className="analytics-stat-label">
                 {s.label}
-                <span className="analytics-stat-help" data-tip={s.tip}>❓</span>
+                <HelpTip tip={s.tip} />
               </div>
             </div>
           ))}
@@ -297,11 +302,11 @@ export default function AnalyticsManager() {
       {/* ── Leads ── */}
       {leads && (
         <>
-          <SectionHead id="leads" title="Leads y conversión" />
+          <SectionHead id="leads" title="Leads y conversión" tip="Formularios de contacto recibidos y tasa de conversión de visitantes a leads" />
           {openSections.leads && (
             <div className="analytics-grid">
               <div className="analytics-card">
-                <h3>Leads y conversión</h3>
+                <h3>Leads y conversión <HelpTip tip="Formularios de contacto enviados por visitantes interesados en alquilar" /></h3>
                 <div className="analytics-row"><span>Leads (7d)</span><span>{leads.total7d}</span></div>
                 <div className="analytics-row"><span>Leads (30d)</span><span>{leads.total30d}</span></div>
                 {data.stats.visitors > 0 && (
@@ -312,7 +317,7 @@ export default function AnalyticsManager() {
                 )}
               </div>
               <div className="analytics-card">
-                <h3>Leads por origen (30d)</h3>
+                <h3>Leads por origen (30d) <HelpTip tip="Desde qué canal llegaron los leads: web, WhatsApp, redes sociales, etc." /></h3>
                 {leads.byOrigen.length === 0 ? (
                   <p className="admin-empty">Sin leads todavía.</p>
                 ) : (
@@ -327,11 +332,11 @@ export default function AnalyticsManager() {
       )}
 
       {/* ── Audiencia ── */}
-      <SectionHead id="audiencia" title="Audiencia" />
+      <SectionHead id="audiencia" title="Audiencia" tip="Quiénes son tus visitantes: nuevos vs recurrentes, dispositivos, países y tendencias diarias" />
       {openSections.audiencia && (
         <div className="analytics-grid">
           <div className="analytics-card">
-            <h3>Nuevos vs recurrentes por día</h3>
+            <h3>Nuevos vs recurrentes por día <HelpTip tip="Comparativa diaria entre usuarios que visitan por primera vez y los que ya habían visitado antes" /></h3>
             <div style={{ display: "flex", gap: 16, fontSize: 12, marginBottom: 8, color: "#6b7280" }}>
               <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#22c55e", marginRight: 4 }} />Nuevos</span>
               <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#6366f1", marginRight: 4 }} />Recurrentes</span>
@@ -356,7 +361,7 @@ export default function AnalyticsManager() {
           </div>
 
           <div className="analytics-card">
-            <h3>Usuarios nuevos por día</h3>
+            <h3>Usuarios nuevos por día <HelpTip tip="Número de personas que visitan la web por primera vez cada día" /></h3>
             <div className="analytics-daily-chart analytics-daily-chart--tall">
               {data.newUsersDaily.map((d) => (
                 <div key={d.day} className="analytics-daily-col">
@@ -369,7 +374,7 @@ export default function AnalyticsManager() {
           </div>
 
           <div className="analytics-card">
-            <h3>Pageviews por día</h3>
+            <h3>Pageviews por día <HelpTip tip="Total de páginas cargadas por día. Un usuario puede generar varias pageviews en una sesión" /></h3>
             <div className="analytics-daily-chart analytics-daily-chart--tall">
               {data.dailyViews.map((d) => (
                 <div key={d.day} className="analytics-daily-col">
@@ -382,7 +387,7 @@ export default function AnalyticsManager() {
           </div>
 
           <div className="analytics-card">
-            <h3>Pico concurrentes por día</h3>
+            <h3>Pico concurrentes por día <HelpTip tip="Máximo de usuarios activos al mismo tiempo en una hora, para cada día del periodo" /></h3>
             <div className="analytics-daily-chart analytics-daily-chart--tall">
               {data.peakConcurrentDaily.map((d) => (
                 <div key={d.day} className="analytics-daily-col">
@@ -395,14 +400,14 @@ export default function AnalyticsManager() {
           </div>
 
           <div className="analytics-card">
-            <h3>Dispositivos</h3>
+            <h3>Dispositivos <HelpTip tip="Tipo de dispositivo usado: móvil, escritorio o tablet" /></h3>
             {data.devices.map((d) => (
               <div key={d.device} className="analytics-row"><span>{d.device}</span><span>{d.visits}</span></div>
             ))}
           </div>
 
           <div className="analytics-card">
-            <h3>Países</h3>
+            <h3>Países <HelpTip tip="País desde el que acceden los visitantes, basado en su dirección IP" /></h3>
             {data.countries.map((c) => (
               <Bar key={c.country} label={c.country} value={c.visits} max={maxCountry} />
             ))}
@@ -411,11 +416,11 @@ export default function AnalyticsManager() {
       )}
 
       {/* ── De dónde vienen ── */}
-      <SectionHead id="trafico" title="De dónde vienen" />
+      <SectionHead id="trafico" title="De dónde vienen" tip="Canales y webs que traen visitantes: buscadores, redes sociales, campañas y referrers" />
       {openSections.trafico && (
         <div className="analytics-grid">
           <div className="analytics-card">
-            <h3>Origen del tráfico</h3>
+            <h3>Origen del tráfico <HelpTip tip="Fuente desde la que los usuarios llegan a tu web: buscadores (Google), directo (escriben la URL), redes sociales, etc." /></h3>
             <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 8px" }}>Google, directo, redes sociales…</p>
             {data.sources.length === 0 ? (
               <p className="admin-empty">Sin datos.</p>
@@ -424,12 +429,12 @@ export default function AnalyticsManager() {
             )}
           </div>
           <div className="analytics-card">
-            <h3>Webs que nos enlazan</h3>
+            <h3>Webs que nos enlazan <HelpTip tip="Páginas externas con un enlace a tu web desde las que llegan visitantes (referrers)" /></h3>
             <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 8px" }}>Páginas desde las que llegan</p>
             <ReferrerCard referrers={data.referrers} />
           </div>
           <div className="analytics-card">
-            <h3>Campañas (UTM)</h3>
+            <h3>Campañas (UTM) <HelpTip tip="Tráfico que llega con parámetros UTM en la URL, usados para rastrear campañas de marketing (anuncios, newsletters, etc.)" /></h3>
             <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 8px" }}>Tráfico de campañas con parámetros UTM</p>
             {data.utmSources.length === 0 ? (
               <p className="admin-empty">Sin campañas activas.</p>
@@ -445,11 +450,11 @@ export default function AnalyticsManager() {
       )}
 
       {/* ── Qué ven y qué hacen ── */}
-      <SectionHead id="contenido" title="Qué páginas visitan" />
+      <SectionHead id="contenido" title="Qué páginas visitan" tip="Páginas más populares, por dónde entran los visitantes y en qué elementos hacen clic" />
       {openSections.contenido && (
         <div className="analytics-grid">
           <div className="analytics-card">
-            <h3>Páginas más vistas</h3>
+            <h3>Páginas más vistas <HelpTip tip="Ranking de las páginas con más visitas en el periodo seleccionado" /></h3>
             {data.topPages.map((p) => {
               const raw = p.path || "/";
               const clean = raw.split("?")[0] || "/";
@@ -463,7 +468,7 @@ export default function AnalyticsManager() {
             })}
           </div>
           <div className="analytics-card">
-            <h3>Primera página que ven</h3>
+            <h3>Primera página que ven <HelpTip tip="La primera página que carga cada visitante al entrar en la web (landing page)" /></h3>
             <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 8px" }}>Por dónde entran los visitantes</p>
             {data.entryPages.map((e) => {
               const raw = e.path || "/";
@@ -478,7 +483,7 @@ export default function AnalyticsManager() {
             })}
           </div>
           <div className="analytics-card">
-            <h3>En qué hacen clic</h3>
+            <h3>En qué hacen clic <HelpTip tip="Botones, enlaces y elementos interactivos en los que más hacen clic los usuarios" /></h3>
             <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 8px" }}>Botones y enlaces más pulsados</p>
             {data.clicks.length === 0 ? (
               <p className="admin-empty">Sin datos.</p>
