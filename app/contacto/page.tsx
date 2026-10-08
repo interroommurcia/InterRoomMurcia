@@ -226,8 +226,7 @@ export default function ContactoPage() {
               <div>
                 <h2>Pide tu valoracion gratuita</h2>
                 <p>
-                  Cuentanos donde esta tu vivienda y te decimos, sin compromiso, cuanto puede
-                  generar gestionada por nosotros.
+                  Dejanos tu contacto y te llamamos en menos de 24h para valorar tu vivienda sin compromiso.
                 </p>
               </div>
               <LeadForm />

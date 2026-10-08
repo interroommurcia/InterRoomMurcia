@@ -20,11 +20,6 @@ export default function LeadForm() {
     nombre: "",
     telefono: "",
     email: "",
-    direccion: "",
-    tipo: "",
-    metros: "",
-    precioDeseado: "",
-    mensaje: "",
     website: "",
   });
 
@@ -50,7 +45,7 @@ export default function LeadForm() {
         <h3>Solicitud recibida</h3>
         <p>Te contactamos en menos de 24h. Si quieres ir mas rapido, escribenos ya por WhatsApp.</p>
         <a
-          href={whatsappHref(`Direccion: ${form.direccion}.`)}
+          href={whatsappHref()}
           target="_blank"
           rel="noopener noreferrer"
           className="btn-primary"
@@ -73,39 +68,28 @@ export default function LeadForm() {
         aria-hidden="true"
         style={{ position: "absolute", left: "-9999px", opacity: 0, height: 0, width: 0 }}
       />
+      <label>
+        Nombre
+        <input
+          required
+          maxLength={120}
+          value={form.nombre}
+          onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+          placeholder="Tu nombre"
+        />
+      </label>
       <div className="lead-form-row">
-        <label>
-          Nombre
-          <input
-            required
-            maxLength={120}
-            value={form.nombre}
-            onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-            placeholder="Tu nombre"
-          />
-        </label>
         <label>
           Telefono
           <input
             required
+            type="tel"
             maxLength={30}
             value={form.telefono}
             onChange={(e) => setForm({ ...form, telefono: e.target.value })}
             placeholder="600 000 000"
           />
         </label>
-      </div>
-      <label>
-        Direccion o zona de la vivienda
-        <input
-          required
-          maxLength={200}
-          value={form.direccion}
-          onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-          placeholder="Calle, barrio o zona en Murcia o Cartagena"
-        />
-      </label>
-      <div className="lead-form-row">
         <label>
           Email (opcional)
           <input
@@ -116,47 +100,7 @@ export default function LeadForm() {
             placeholder="tu@email.com"
           />
         </label>
-        <label>
-          Tipo de vivienda
-          <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
-            <option value="">Selecciona...</option>
-            <option value="Piso completo">Piso completo</option>
-            <option value="Habitacion">Habitacion</option>
-          </select>
-        </label>
       </div>
-      <div className="lead-form-row">
-        <label>
-          Metros cuadrados (opcional)
-          <input
-            type="number"
-            min={0}
-            value={form.metros}
-            onChange={(e) => setForm({ ...form, metros: e.target.value })}
-            placeholder="70"
-          />
-        </label>
-        <label>
-          Precio que esperas cobrar/mes (opcional)
-          <input
-            type="number"
-            min={0}
-            value={form.precioDeseado}
-            onChange={(e) => setForm({ ...form, precioDeseado: e.target.value })}
-            placeholder="600"
-          />
-        </label>
-      </div>
-      <label>
-        Cuentanos algo mas (opcional)
-        <textarea
-          maxLength={500}
-          rows={3}
-          value={form.mensaje}
-          onChange={(e) => setForm({ ...form, mensaje: e.target.value })}
-          placeholder="Numero de habitaciones, estado del piso..."
-        />
-      </label>
       <div className="lead-form-actions">
         <button type="submit" className="btn-primary" disabled={status === "sending"}>
           {status === "sending" ? "Enviando..." : "Quiero mi valoracion gratuita"}
