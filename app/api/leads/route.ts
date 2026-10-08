@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  if (!nombre || !telefono) {
+  if (!telefono) {
     return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
   }
 
