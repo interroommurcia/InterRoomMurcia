@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "../../../../../lib/supabaseAdmin";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
-async function generateImageGemini(prompt: string): Promise<{ buffer: Buffer | null; error?: string }> {
+const STYLE_SUFFIX =
+  "Style: ultra-realistic professional photography of the Region of Murcia (Spain), 16:9 landscape aspect ratio, 8K, warm Mediterranean golden-hour light, terracotta and ochre palette, palm trees and Levantine architecture when appropriate, no watermarks, no text overlays, no logos, no people";
+
+const DELAY_MS = 3000;
+function delay(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function generateImageGemini(prompt: string): Promise<{ buffer: Buffer | null; error?: string; rateLimited?: boolean }> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return { buffer: null, error: "GEMINI_API_KEY no configurada" };
 
-  const styledPrompt = `${prompt}. Style: ultra-realistic professional photography of the Region of Murcia (Spain), 16:9 landscape aspect ratio, 8K, warm Mediterranean golden-hour light, terracotta and ochre palette, palm trees and Levantine architecture when appropriate, no watermarks, no text overlays, no logos, no people`;
+  const styledPrompt = `${prompt}. ${STYLE_SUFFIX}`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`,
@@ -24,14 +32,66 @@ async function generateImageGemini(prompt: string): Promise<{ buffer: Buffer | n
   if (!res.ok) {
     const err = await res.text();
     console.error("[gemini-imagen]", res.status, err);
-    return { buffer: null, error: `API ${res.status}: ${err.slice(0, 200)}` };
+    return { buffer: null, error: `Gemini ${res.status}`, rateLimited: res.status === 429 };
   }
   const data = await res.json();
   const parts = data?.candidates?.[0]?.content?.parts;
   const imgPart = parts?.find((p: { inlineData?: { data: string } }) => p.inlineData?.data);
   const b64 = imgPart?.inlineData?.data;
-  if (!b64) return { buffer: null, error: "Sin imagen en respuesta: " + JSON.stringify(data).slice(0, 300) };
+  if (!b64) return { buffer: null, error: "Sin imagen en respuesta Gemini" };
   return { buffer: Buffer.from(b64, "base64") };
+}
+
+async function generateImageTogether(prompt: string): Promise<{ buffer: Buffer | null; error?: string }> {
+  const apiKey = process.env.TOGETHER_API_KEY;
+  if (!apiKey) return { buffer: null, error: "TOGETHER_API_KEY no configurada" };
+
+  const styledPrompt = `${prompt}. ${STYLE_SUFFIX}`;
+
+  const res = await fetch("https://api.together.xyz/v1/images/generations", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "black-forest-labs/FLUX.1-schnell-Free",
+      prompt: styledPrompt,
+      width: 1024,
+      height: 576,
+      n: 1,
+      response_format: "b64_json",
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error("[together-imagen]", res.status, err);
+    return { buffer: null, error: `Together ${res.status}: ${err.slice(0, 200)}` };
+  }
+  const data = await res.json();
+  const b64 = data?.data?.[0]?.b64_json;
+  if (!b64) return { buffer: null, error: "Sin imagen en respuesta Together" };
+  return { buffer: Buffer.from(b64, "base64") };
+}
+
+async function generateImage(prompt: string): Promise<{ buffer: Buffer | null; error?: string }> {
+  if (process.env.GEMINI_API_KEY) {
+    const gemini = await generateImageGemini(prompt);
+    if (gemini.buffer) return gemini;
+    if (gemini.rateLimited && process.env.TOGETHER_API_KEY) {
+      console.log("[generate-image] Gemini 429, fallback a Together AI");
+      return generateImageTogether(prompt);
+    }
+    if (!gemini.buffer && process.env.TOGETHER_API_KEY) {
+      return generateImageTogether(prompt);
+    }
+    return gemini;
+  }
+  if (process.env.TOGETHER_API_KEY) {
+    return generateImageTogether(prompt);
+  }
+  return { buffer: null, error: "Ninguna API de imágenes configurada" };
 }
 
 async function uploadImage(buffer: Buffer, path: string): Promise<string | null> {
@@ -49,8 +109,8 @@ async function uploadImage(buffer: Buffer, path: string): Promise<string | null>
 }
 
 export async function POST(req: NextRequest) {
-  if (!process.env.GEMINI_API_KEY) {
-    return NextResponse.json({ error: "GEMINI_API_KEY no configurada" }, { status: 500 });
+  if (!process.env.GEMINI_API_KEY && !process.env.TOGETHER_API_KEY) {
+    return NextResponse.json({ error: "Ninguna API de imágenes configurada (GEMINI_API_KEY o TOGETHER_API_KEY)" }, { status: 500 });
   }
 
   const { slug, heroImagePrompt, sectionPrompts } = await req.json();
@@ -69,23 +129,19 @@ export async function POST(req: NextRequest) {
   ];
 
   const errors: string[] = [];
-  const results = await Promise.allSettled(
-    jobs.map(async (job) => {
-      const { buffer, error } = await generateImageGemini(job.prompt);
-      if (!buffer) {
-        errors.push(`${job.key}: ${error || "generación falló"}`);
-        return { key: job.key, url: null };
-      }
+  const images: Record<string, string | null> = {};
+
+  for (const job of jobs) {
+    const { buffer, error } = await generateImage(job.prompt);
+    if (!buffer) {
+      errors.push(`${job.key}: ${error || "generación falló"}`);
+      images[job.key] = null;
+    } else {
       const url = await uploadImage(buffer, job.path);
       if (!url) errors.push(`${job.key}: upload falló`);
-      return { key: job.key, url };
-    })
-  );
-
-  const images: Record<string, string | null> = {};
-  for (const r of results) {
-    if (r.status === "fulfilled") images[r.value.key] = r.value.url;
-    else errors.push(`rejected: ${r.reason}`);
+      images[job.key] = url;
+    }
+    if (job !== jobs[jobs.length - 1]) await delay(DELAY_MS);
   }
 
   if (errors.length) console.warn("[generate-images] errores:", errors);
