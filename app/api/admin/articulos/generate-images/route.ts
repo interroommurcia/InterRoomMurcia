@@ -42,56 +42,37 @@ async function generateImageGemini(prompt: string): Promise<{ buffer: Buffer | n
   return { buffer: Buffer.from(b64, "base64") };
 }
 
-async function generateImageTogether(prompt: string): Promise<{ buffer: Buffer | null; error?: string }> {
-  const apiKey = process.env.TOGETHER_API_KEY;
-  if (!apiKey) return { buffer: null, error: "TOGETHER_API_KEY no configurada" };
-
+async function generateImagePollinations(prompt: string): Promise<{ buffer: Buffer | null; error?: string }> {
   const styledPrompt = `${prompt}. ${STYLE_SUFFIX}`;
+  const encoded = encodeURIComponent(styledPrompt);
+  const url = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=576&nologo=true&seed=${Date.now()}`;
 
-  const res = await fetch("https://api.together.xyz/v1/images/generations", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "black-forest-labs/FLUX.1-schnell-Free",
-      prompt: styledPrompt,
-      width: 1024,
-      height: 576,
-      n: 1,
-      response_format: "b64_json",
-    }),
-  });
+  const res = await fetch(url, { redirect: "follow" });
 
   if (!res.ok) {
-    const err = await res.text();
-    console.error("[together-imagen]", res.status, err);
-    return { buffer: null, error: `Together ${res.status}: ${err.slice(0, 200)}` };
+    console.error("[pollinations-imagen]", res.status);
+    return { buffer: null, error: `Pollinations ${res.status}` };
   }
-  const data = await res.json();
-  const b64 = data?.data?.[0]?.b64_json;
-  if (!b64) return { buffer: null, error: "Sin imagen en respuesta Together" };
-  return { buffer: Buffer.from(b64, "base64") };
+
+  const arrayBuffer = await res.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  if (buffer.length < 1000) {
+    return { buffer: null, error: "Pollinations devolvió respuesta demasiado pequeña" };
+  }
+  return { buffer };
 }
 
 async function generateImage(prompt: string): Promise<{ buffer: Buffer | null; error?: string }> {
   if (process.env.GEMINI_API_KEY) {
     const gemini = await generateImageGemini(prompt);
     if (gemini.buffer) return gemini;
-    if (gemini.rateLimited && process.env.TOGETHER_API_KEY) {
-      console.log("[generate-image] Gemini 429, fallback a Together AI");
-      return generateImageTogether(prompt);
-    }
-    if (!gemini.buffer && process.env.TOGETHER_API_KEY) {
-      return generateImageTogether(prompt);
+    if (!gemini.buffer) {
+      console.log("[generate-image] Gemini falló, fallback a Pollinations");
+      return generateImagePollinations(prompt);
     }
     return gemini;
   }
-  if (process.env.TOGETHER_API_KEY) {
-    return generateImageTogether(prompt);
-  }
-  return { buffer: null, error: "Ninguna API de imágenes configurada" };
+  return generateImagePollinations(prompt);
 }
 
 async function uploadImage(buffer: Buffer, path: string): Promise<string | null> {
@@ -109,9 +90,6 @@ async function uploadImage(buffer: Buffer, path: string): Promise<string | null>
 }
 
 export async function POST(req: NextRequest) {
-  if (!process.env.GEMINI_API_KEY && !process.env.TOGETHER_API_KEY) {
-    return NextResponse.json({ error: "Ninguna API de imágenes configurada (GEMINI_API_KEY o TOGETHER_API_KEY)" }, { status: 500 });
-  }
 
   const { slug, heroImagePrompt, sectionPrompts } = await req.json();
   if (!slug || !heroImagePrompt) {
