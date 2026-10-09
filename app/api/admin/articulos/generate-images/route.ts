@@ -6,7 +6,7 @@ export const maxDuration = 120;
 const STYLE_SUFFIX =
   "Style: ultra-realistic professional photography of the Region of Murcia (Spain), 16:9 landscape aspect ratio, 8K, warm Mediterranean golden-hour light, terracotta and ochre palette, palm trees and Levantine architecture when appropriate, no watermarks, no text overlays, no logos, no people";
 
-const DELAY_MS = 3000;
+const DELAY_MS = 6000;
 function delay(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -43,23 +43,36 @@ async function generateImageGemini(prompt: string): Promise<{ buffer: Buffer | n
 }
 
 async function generateImagePollinations(prompt: string): Promise<{ buffer: Buffer | null; error?: string }> {
-  const styledPrompt = `${prompt}. ${STYLE_SUFFIX}`;
+  const shortStyle = "ultra-realistic photo, Murcia Spain, 16:9, golden-hour light, no text, no watermarks, no people";
+  const styledPrompt = `${prompt}. ${shortStyle}`;
   const encoded = encodeURIComponent(styledPrompt);
   const url = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=576&nologo=true&seed=${Date.now()}`;
 
-  const res = await fetch(url, { redirect: "follow" });
-
-  if (!res.ok) {
-    console.error("[pollinations-imagen]", res.status);
-    return { buffer: null, error: `Pollinations ${res.status}` };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await delay(5000);
+    try {
+      const res = await fetch(url, { redirect: "follow" });
+      if (res.status === 429 || res.status === 402 || res.status === 500) {
+        console.warn(`[pollinations-imagen] intento ${attempt + 1}: status ${res.status}`);
+        continue;
+      }
+      if (!res.ok) {
+        console.error("[pollinations-imagen]", res.status);
+        return { buffer: null, error: `Pollinations ${res.status}` };
+      }
+      const arrayBuffer = await res.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      if (buffer.length < 1000) {
+        console.warn(`[pollinations-imagen] intento ${attempt + 1}: respuesta muy pequeña (${buffer.length}b)`);
+        continue;
+      }
+      return { buffer };
+    } catch (err) {
+      console.warn(`[pollinations-imagen] intento ${attempt + 1}: ${err}`);
+      continue;
+    }
   }
-
-  const arrayBuffer = await res.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  if (buffer.length < 1000) {
-    return { buffer: null, error: "Pollinations devolvió respuesta demasiado pequeña" };
-  }
-  return { buffer };
+  return { buffer: null, error: "Pollinations falló tras 3 intentos" };
 }
 
 async function generateImage(prompt: string): Promise<{ buffer: Buffer | null; error?: string }> {
