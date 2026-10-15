@@ -272,6 +272,13 @@ export default function CalculadoraRentabilidad() {
         </a>
       </section>
 
+      <section className={styles.ctaVenta}>
+        <div className={styles.ctaL}>
+          Vendemos tu casa por solo el <b>1,5% de comisión</b> — ¡Llámanos!
+        </div>
+        <a href="tel:+34613096518">Llamar 613 096 518</a>
+      </section>
+
       <div className={styles.foot}>
         <b>InterRoom Murcia</b> · interroommurcia@gmail.com · L–V 9:30–13:30 y 17:00–20:30
       </div>
