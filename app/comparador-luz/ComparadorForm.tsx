@@ -25,6 +25,7 @@ export default function ComparadorForm({
   const [telefono, setTelefono] = useState("");
   const [nombre, setNombre] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [consentimiento, setConsentimiento] = useState(false);
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [ahorro, setAhorro] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -236,6 +237,23 @@ export default function ComparadorForm({
             maxLength={15}
           />
         </div>
+
+        <label className="comp-consent">
+          <input
+            type="checkbox"
+            required
+            checked={consentimiento}
+            onChange={(e) => setConsentimiento(e.target.checked)}
+          />
+          <span>
+            Acepto que InterRoom trate mis datos para analizar mi factura y contactarme con una
+            propuesta de ahorro. Mis datos podrán ser cedidos a comercializadoras de energía
+            colaboradoras con este fin.{" "}
+            <a href="/politica-privacidad" target="_blank" rel="noopener noreferrer">
+              Política de privacidad
+            </a>
+          </span>
+        </label>
 
         <button type="submit" className="btn-primary comp-submit" disabled={status === "sending"}>
           {status === "sending" ? "Enviando..." : "Quiero saber cuánto ahorro"}
