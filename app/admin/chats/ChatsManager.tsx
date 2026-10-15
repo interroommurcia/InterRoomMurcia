@@ -11,6 +11,7 @@ type Conversacion = {
   nombre: string | null;
   contacto: string | null;
   pagina_origen: string | null;
+  tipo_usuario: string | null;
   mensajes: Mensaje[];
   leido: boolean;
   created_at: string;
@@ -161,6 +162,11 @@ export default function ChatsManager() {
                   {c.nombre || "Visitante anónimo"}
                   {!c.leido && <span className="editor-badge-hidden"> · sin leer</span>}
                   {c.estado === "escalada" && <span className="editor-badge-hidden"> · escalada</span>}
+                  {c.tipo_usuario && (
+                    <span className={`seccion-badge seccion-${c.tipo_usuario === "estudiante" ? "estudiantes" : c.tipo_usuario === "inversor" ? "inversores" : "propietarios"}`} style={{ marginLeft: 6, fontSize: "0.7rem" }}>
+                      {c.tipo_usuario}
+                    </span>
+                  )}
                 </h4>
                 <div className="loc">
                   {c.motivo_escalado && <>{c.motivo_escalado} · </>}

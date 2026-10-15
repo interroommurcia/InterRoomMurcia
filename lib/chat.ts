@@ -38,10 +38,11 @@ export async function getConversacion(id: string): Promise<ChatConversacion | nu
 export async function guardarMensajes(
   id: string,
   mensajes: ChatMensaje[],
-  clasificacion?: { escalar: boolean; motivo: string | null; nombre: string | null; contacto: string | null }
+  clasificacion?: { escalar: boolean; motivo: string | null; nombre: string | null; contacto: string | null; tipo_usuario?: string | null }
 ) {
   const admin = getSupabaseAdmin();
   const update: Record<string, unknown> = { mensajes, updated_at: new Date().toISOString() };
+  if (clasificacion?.tipo_usuario) update.tipo_usuario = clasificacion.tipo_usuario;
   if (clasificacion?.escalar) {
     update.estado = "escalada";
     update.motivo_escalado = clasificacion.motivo;
@@ -97,8 +98,9 @@ Cuando alguien te dé su contacto o pida hablar con una persona, dile que avisas
 
 JSON DE CLASIFICACIÓN (interno, el usuario no lo ve):
 Al final de cada respuesta, en línea nueva, pon siempre:
-{"escalar":false,"motivo":null,"nombre":null,"contacto":null}
+{"escalar":false,"motivo":null,"nombre":null,"contacto":null,"tipo_usuario":null}
 escalar=true solo si piden hablar con alguien, o si un propietario quiere alquilar de verdad. nombre y contacto solo si los ha dado.
+tipo_usuario: "propietario" si busca alquilar/gestionar su vivienda, "estudiante" si busca habitación/piso para vivir, "inversor" si busca comprar/invertir. null si aún no queda claro. Actualízalo en cuanto lo detectes.
 
 CATÁLOGO ACTUAL:
 ${catalogo}

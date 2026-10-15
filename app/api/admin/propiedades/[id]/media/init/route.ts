@@ -3,6 +3,20 @@ import { getSupabaseAdmin } from "../../../../../../../lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 60;
+
+const MAX_FILE_SIZE = 100 * 1024 * 1024;
+
+let bucketReady = false;
+async function ensureBucket(admin: ReturnType<typeof getSupabaseAdmin>) {
+  if (bucketReady) return;
+  await admin.storage.updateBucket("propiedades", {
+    public: false,
+    fileSizeLimit: MAX_FILE_SIZE,
+    allowedMimeTypes: ["image/*", "video/*"],
+  }).catch(() => {});
+  bucketReady = true;
+}
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json().catch(() => null);
@@ -20,6 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const path = `${params.id}/${habitacion_id ?? "general"}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
   const admin = getSupabaseAdmin();
+  await ensureBucket(admin);
   const { data, error } = await admin.storage.from("propiedades").createSignedUploadUrl(path);
   if (error || !data) return NextResponse.json({ error: error?.message || "Error creando signed URL" }, { status: 500 });
 

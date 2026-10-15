@@ -29,16 +29,18 @@ function checkChatRate(ip: string): boolean {
   return entry.count <= CHAT_LIMIT;
 }
 
-type Clasificacion = { escalar: boolean; motivo: string | null; nombre: string | null; contacto: string | null };
+type Clasificacion = { escalar: boolean; motivo: string | null; nombre: string | null; contacto: string | null; tipo_usuario: string | null };
 
 function parseClasificacion(raw: string): { textoLimpio: string; clasificacion: Clasificacion } {
-  const defaultClasif: Clasificacion = { escalar: false, motivo: null, nombre: null, contacto: null };
+  const defaultClasif: Clasificacion = { escalar: false, motivo: null, nombre: null, contacto: null, tipo_usuario: null };
   const match = raw.match(/\n?\s*(\{[\s\S]*\})\s*$/);
   if (!match) return { textoLimpio: raw, clasificacion: defaultClasif };
 
   const textoLimpio = raw.slice(0, match.index).trimEnd();
   try {
     const parsed = JSON.parse(match[1]);
+    const tipoRaw = typeof parsed.tipo_usuario === "string" ? parsed.tipo_usuario.trim().toLowerCase() : null;
+    const tipoValido = tipoRaw && ["propietario", "estudiante", "inversor"].includes(tipoRaw) ? tipoRaw : null;
     return {
       textoLimpio,
       clasificacion: {
@@ -46,6 +48,7 @@ function parseClasificacion(raw: string): { textoLimpio: string; clasificacion: 
         motivo: typeof parsed.motivo === "string" ? parsed.motivo.slice(0, 200) : null,
         nombre: typeof parsed.nombre === "string" && parsed.nombre.trim() ? parsed.nombre.slice(0, 120) : null,
         contacto: typeof parsed.contacto === "string" && parsed.contacto.trim() ? parsed.contacto.slice(0, 120) : null,
+        tipo_usuario: tipoValido,
       },
     };
   } catch {
