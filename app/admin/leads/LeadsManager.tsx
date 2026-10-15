@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ConvertirClienteButton from "../ConvertirClienteButton";
+import { markLeadsSeen } from "../../../components/LeadsBadge";
 import type { Lead } from "../../../lib/leads";
 
 const CATEGORIAS = [
@@ -29,6 +30,10 @@ function seccionLabel(s: string | null): string {
 
 export default function LeadsManager({ leads }: { leads: Lead[] }) {
   const [filtro, setFiltro] = useState<CatKey>("todos");
+
+  useEffect(() => {
+    markLeadsSeen();
+  }, []);
 
   const filtered = filtro === "todos"
     ? leads

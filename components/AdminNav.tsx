@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSesion, type Rol } from "../lib/auth";
 import { LogoutButton } from "./LogoutButton";
+import LeadsBadge from "./LeadsBadge";
 
 type NavItem = {
   href: string;
@@ -35,6 +36,7 @@ export async function AdminNav({ active }: { active: string }) {
       {visibles.map((item) => (
         <Link key={item.href} href={item.href} className={`admin-nav-item${item.href === active ? " active" : ""}`}>
           {item.label}
+          {item.href === "/admin/leads" && <LeadsBadge />}
         </Link>
       ))}
       {session && (
