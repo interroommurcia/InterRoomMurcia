@@ -140,9 +140,14 @@ export default function CalculadoraRentabilidad() {
       <section className={styles.panel}>
         <div className={styles.panelHead}>
           <h2>Datos de tu vivienda</h2>
-          <button type="button" className={styles.reset} onClick={reset}>
-            Restablecer ejemplo
-          </button>
+          <div className={styles.headActions}>
+            <button type="button" className={styles.reset} onClick={reset}>
+              Restablecer
+            </button>
+            <button type="button" className={styles.pdfBtn} onClick={descargarPdf} disabled={pdfBusy}>
+              {pdfBusy ? "Generando…" : "Descargar PDF"}
+            </button>
+          </div>
         </div>
         <div className={styles.grid}>
           <Field label="Nº habitaciones">
@@ -283,10 +288,6 @@ export default function CalculadoraRentabilidad() {
         <b>InterRoom Murcia</b> · interroommurcia@gmail.com · L–V 9:30–13:30 y 17:00–20:30
       </div>
       </div>
-
-      <button type="button" className={styles.pdfBtn} onClick={descargarPdf} disabled={pdfBusy}>
-        {pdfBusy ? "Generando PDF…" : "Descargar PDF"}
-      </button>
     </main>
   );
 }
