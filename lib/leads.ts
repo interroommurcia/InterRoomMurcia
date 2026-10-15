@@ -1,4 +1,5 @@
 import { sql } from "@vercel/postgres";
+import { telegramSendMessage } from "./telegram";
 
 export type Lead = {
   id: number;
@@ -53,6 +54,37 @@ export async function crearLead(data: {
     INSERT INTO leads_propietarios (nombre, telefono, direccion, email, tipo, metros, precio_deseado, mensaje, origen, seccion)
     VALUES (${data.nombre}, ${data.telefono}, ${data.direccion}, ${data.email || null}, ${data.tipo || null}, ${data.metros ?? null}, ${data.precio_deseado ?? null}, ${data.mensaje || null}, ${data.origen || null}, ${data.seccion || null});
   `;
+
+  notificarNuevoLead(data).catch((e) => console.error("[leads/notify]", e));
+}
+
+const SECCION_EMOJI: Record<string, string> = {
+  propietarios: "🏠",
+  inversores: "💰",
+  venta: "🏷️",
+  estudiantes: "🎓",
+  luz: "⚡",
+};
+
+async function notificarNuevoLead(data: { nombre: string; telefono: string; seccion?: string; origen?: string; mensaje?: string }) {
+  const chatIds = (process.env.TELEGRAM_CHAT_ID ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  if (!chatIds.length) return;
+
+  const cat = data.seccion || "propietarios";
+  const emoji = SECCION_EMOJI[cat] || "📋";
+
+  const texto = [
+    `${emoji} Nuevo lead: ${cat.toUpperCase()}`,
+    `Nombre: ${data.nombre || "—"}`,
+    `Teléfono: ${data.telefono}`,
+    data.origen ? `Origen: ${data.origen}` : null,
+    data.mensaje ? `Mensaje: ${data.mensaje.slice(0, 200)}` : null,
+  ].filter(Boolean).join("\n");
+
+  await Promise.all(chatIds.map((id) => telegramSendMessage(id, texto).catch(() => {})));
 }
 
 export async function listarLeads(): Promise<Lead[]> {
