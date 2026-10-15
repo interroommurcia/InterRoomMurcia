@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       tipo: "",
       mensaje,
       origen: "comparador-luz",
-      seccion: "propietarios",
+      seccion: "luz",
     });
     return NextResponse.json({ ok: true });
   } catch (err) {

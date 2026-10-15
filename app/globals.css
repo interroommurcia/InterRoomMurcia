@@ -1359,6 +1359,52 @@ button {
   background: #d1fae5;
   color: #065f46;
 }
+.seccion-estudiantes {
+  background: #fef3c7;
+  color: #92400e;
+}
+.seccion-luz {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+/* Filtros leads */
+.leads-filtros {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.leads-filtro {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 100px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: inherit;
+}
+.leads-filtro:hover {
+  border-color: var(--orange);
+}
+.leads-filtro-active {
+  background: var(--orange);
+  color: #fff;
+  border-color: var(--orange);
+}
+.leads-filtro-count {
+  font-size: 0.72rem;
+  opacity: 0.7;
+  font-weight: 500;
+}
+.leads-filtro-active .leads-filtro-count {
+  opacity: 0.9;
+}
 
 /* ── Venta page ── */
 
