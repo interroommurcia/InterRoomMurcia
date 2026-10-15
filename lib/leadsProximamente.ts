@@ -63,11 +63,12 @@ export async function listarLeadsProximamente(): Promise<LeadProximamente[]> {
 }
 
 async function limpiarLeadsExpirados() {
-  await sql`
-    DELETE FROM leads_proximamente
-    WHERE piso_id NOT IN (
-      SELECT id::text FROM pisos WHERE estado = 'proximamente'
-    )
-    AND created_at < now() - interval '15 days';
-  `;
+  try {
+    await sql`
+      DELETE FROM leads_proximamente
+      WHERE created_at < now() - interval '15 days';
+    `;
+  } catch {
+    // tabla aún no creada — nada que limpiar
+  }
 }
