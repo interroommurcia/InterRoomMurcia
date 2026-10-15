@@ -11,21 +11,22 @@ export default function ProximamenteCard({ piso }: { piso: Piso }) {
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
 
+  const esCompraventa = piso.categoria === "compraventa";
+
   async function enviarInteres(e: React.FormEvent) {
     e.preventDefault();
     if (!telefono.trim()) return;
     setEnviando(true);
     try {
-      await fetch("/api/leads", {
+      await fetch("/api/leads-proximamente", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          piso_id: piso.id,
+          piso_titulo: piso.titulo,
+          piso_categoria: piso.categoria,
           nombre: nombre.trim(),
           telefono: telefono.trim(),
-          direccion: "",
-          mensaje: `Interesado en propiedad próximamente: ${piso.titulo}`,
-          seccion: "estudiantes",
-          origen: "catalogo-proximamente",
         }),
       });
       setEnviado(true);
@@ -50,6 +51,9 @@ export default function ProximamenteCard({ piso }: { piso: Piso }) {
           />
         )}
         <span className="piso-badge estado-proximamente">Próximamente</span>
+        <span className={`piso-badge proximamente-tipo ${esCompraventa ? "tipo-compraventa" : "tipo-alquiler"}`}>
+          {esCompraventa ? "Compraventa" : "Alquiler"}
+        </span>
       </div>
       <div className="piso-body">
         <h4>{piso.titulo}</h4>

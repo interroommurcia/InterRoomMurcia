@@ -558,6 +558,21 @@ h1 em {
   color: #fff !important;
 }
 
+.proximamente-tipo {
+  top: auto !important;
+  bottom: 12px;
+  left: 12px;
+  font-size: 0.65rem !important;
+}
+.tipo-alquiler {
+  background: hsla(210, 70%, 50%, 0.92) !important;
+  color: #fff !important;
+}
+.tipo-compraventa {
+  background: hsla(270, 60%, 50%, 0.92) !important;
+  color: #fff !important;
+}
+
 .proximamente-specs {
   display: flex;
   gap: 12px;
