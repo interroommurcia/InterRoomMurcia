@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 type Aparicion = {
   medio: string;
-  badge: string;
+  logo: string;
   tipo: "Prensa" | "TV";
   fecha: string;
   titulo: string;
@@ -23,7 +23,7 @@ type Aparicion = {
 const APARICIONES: Aparicion[] = [
   {
     medio: "La Verdad",
-    badge: "La\nVerdad",
+    logo: "/logos/laverdad.png",
     tipo: "Prensa",
     fecha: "Septiembre 2024",
     titulo: "Murcia, un 'oasis' para los estudiantes que buscan piso",
@@ -59,9 +59,12 @@ export default async function BlogPage() {
                   rel="noopener noreferrer"
                   className="prensa-card"
                 >
-                  <div className="prensa-card-badge" style={{ whiteSpace: "pre-line" }}>
-                    {a.badge}
-                  </div>
+                  <div
+                    className="prensa-card-badge"
+                    style={{ backgroundImage: `url(${a.logo})` }}
+                    aria-label={a.medio}
+                  />
+
                   <div className="prensa-card-body">
                     <div className="prensa-card-meta">
                       <span>{a.medio} · {a.fecha}</span>

@@ -3720,17 +3720,11 @@ button {
   width: 68px;
   height: 68px;
   border-radius: 10px;
-  background: var(--ink);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  text-align: center;
-  line-height: 1.1;
-  padding: 6px;
+  background-color: var(--paper);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 .prensa-card-body {
   flex: 1;
