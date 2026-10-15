@@ -544,6 +544,77 @@ h1 em {
   font-size: 0.9rem;
 }
 
+/* Próximamente cards */
+.proximamente-card {
+  background: var(--paper);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 2px dashed var(--orange);
+  position: relative;
+}
+
+.estado-proximamente {
+  background: var(--orange) !important;
+  color: #fff !important;
+}
+
+.proximamente-specs {
+  display: flex;
+  gap: 12px;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+
+.proximamente-btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: var(--orange);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  margin-top: 8px;
+}
+.proximamente-btn:hover {
+  background: var(--orange-dark);
+}
+
+.proximamente-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.proximamente-form input {
+  padding: 8px 12px;
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+.proximamente-form button {
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: var(--orange);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.proximamente-form button:disabled {
+  opacity: 0.6;
+}
+
+.proximamente-gracias {
+  color: var(--orange-dark);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
+  margin-top: 8px;
+}
+
 .zona-hero {
   padding: 70px 0 40px;
 }

@@ -16,7 +16,7 @@ export type CategoriaPiso = "alquiler" | "compraventa";
 
 export type TipoAlquiler = "completo" | "habitacion";
 
-export type EstadoPiso = "disponible" | "reservada" | "alquilada" | "vendida" | "no_disponible";
+export type EstadoPiso = "disponible" | "reservada" | "alquilada" | "vendida" | "no_disponible" | "proximamente";
 
 export type Piso = {
   id: string;
@@ -35,6 +35,8 @@ export type Piso = {
   videoUrl: string | null;
   categoria: CategoriaPiso;
   tipoAlquiler: TipoAlquiler;
+  numHabitaciones: number | null;
+  numBanos: number | null;
 };
 
 export const zonas: Zona[] = [
@@ -96,10 +98,12 @@ type PisoRow = {
   video_url: string | null;
   categoria: CategoriaPiso;
   tipo_alquiler: TipoAlquiler | null;
+  num_habitaciones: number | null;
+  num_banos: number | null;
 };
 
 function deriveEstado(row: { estado?: string | null; disponible: boolean; reservada?: boolean }): EstadoPiso {
-  if (row.estado && ["disponible", "reservada", "alquilada", "vendida", "no_disponible"].includes(row.estado)) {
+  if (row.estado && ["disponible", "reservada", "alquilada", "vendida", "no_disponible", "proximamente"].includes(row.estado)) {
     return row.estado as EstadoPiso;
   }
   if (row.reservada) return "reservada";
@@ -126,10 +130,12 @@ function mapPiso(row: PisoRow): Piso {
     videoUrl: row.video_url ?? null,
     categoria: row.categoria ?? "alquiler",
     tipoAlquiler: row.tipo_alquiler ?? "completo",
+    numHabitaciones: row.num_habitaciones ?? null,
+    numBanos: row.num_banos ?? null,
   };
 }
 
-function mapPisoCard(row: Pick<PisoRow, "id" | "slug" | "titulo" | "zona" | "barrio" | "precio_mes" | "disponible" | "reservada" | "image_url" | "categoria" | "tipo_alquiler">): Piso {
+function mapPisoCard(row: Pick<PisoRow, "id" | "slug" | "titulo" | "zona" | "barrio" | "precio_mes" | "disponible" | "reservada" | "image_url" | "categoria" | "tipo_alquiler" | "num_habitaciones" | "num_banos"> & { estado?: string | null }): Piso {
   const estado = deriveEstado(row);
   return {
     id: row.id,
@@ -148,10 +154,12 @@ function mapPisoCard(row: Pick<PisoRow, "id" | "slug" | "titulo" | "zona" | "bar
     videoUrl: null,
     categoria: row.categoria ?? "alquiler",
     tipoAlquiler: row.tipo_alquiler ?? "completo",
+    numHabitaciones: row.num_habitaciones ?? null,
+    numBanos: row.num_banos ?? null,
   };
 }
 
-const CARD_COLS = "id,slug,titulo,zona,barrio,precio_mes,disponible,reservada,image_url,categoria,tipo_alquiler" as const;
+const CARD_COLS = "id,slug,titulo,zona,barrio,precio_mes,disponible,reservada,estado,image_url,categoria,tipo_alquiler,num_habitaciones,num_banos" as const;
 
 export async function getPisos(): Promise<Piso[]> {
   const { data, error } = await supabasePublic

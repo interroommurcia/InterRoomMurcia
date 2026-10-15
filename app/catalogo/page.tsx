@@ -2,6 +2,7 @@ import Link from "next/link";
 import { zonas, getPisos } from "../../lib/pisos";
 import Reveal, { RevealStagger } from "../../components/Reveal";
 import PisoCard from "../../components/PisoCard";
+import ProximamenteCard from "../../components/ProximamenteCard";
 
 export const metadata = {
   title: "Catálogo de habitaciones",
@@ -11,8 +12,10 @@ export const metadata = {
 
 export default async function CatalogoPage() {
   const pisos = await getPisos();
-  const alquileres = pisos.filter((p) => p.categoria === "alquiler");
-  const compraventas = pisos.filter((p) => p.categoria === "compraventa");
+  const proximamente = pisos.filter((p) => p.estado === "proximamente");
+  const publicados = pisos.filter((p) => p.estado !== "proximamente");
+  const alquileres = publicados.filter((p) => p.categoria === "alquiler");
+  const compraventas = publicados.filter((p) => p.categoria === "compraventa");
 
   return (
     <>
@@ -76,6 +79,24 @@ export default async function CatalogoPage() {
           )}
         </div>
       </section>
+
+      {proximamente.length > 0 && (
+        <section className="catalog" id="proximamente">
+          <div className="wrap">
+            <Reveal direction="up">
+              <div className="section-head">
+                <h2>Próximamente</h2>
+                <p>Propiedades que estamos captando. Déjanos tus datos y te avisamos cuando estén listas.</p>
+              </div>
+            </Reveal>
+            <RevealStagger className="card-grid" stagger={90}>
+              {proximamente.map((piso) => (
+                <ProximamenteCard piso={piso} key={piso.id} />
+              ))}
+            </RevealStagger>
+          </div>
+        </section>
+      )}
 
       <section className="section buscas-casa">
         <div className="wrap">

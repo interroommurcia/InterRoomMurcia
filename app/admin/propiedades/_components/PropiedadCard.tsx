@@ -239,6 +239,8 @@ export function PropiedadCard({
               tipoProp={propView.tipo}
               habitaciones={p.habitaciones}
               media={p.media}
+              numHabitaciones={propView.num_habitaciones}
+              numBanos={propView.num_banos}
             />
           )}
 

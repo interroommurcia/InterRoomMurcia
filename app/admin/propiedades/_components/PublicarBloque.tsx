@@ -19,6 +19,8 @@ export function PublicarBloque({
   tipoProp,
   habitaciones,
   media,
+  numHabitaciones,
+  numBanos,
 }: {
   propiedadId: string;
   habitacionId: string | null;
@@ -27,6 +29,8 @@ export function PublicarBloque({
   tipoProp?: string;
   habitaciones?: Habitacion[];
   media?: Media[];
+  numHabitaciones?: number;
+  numBanos?: number;
 }) {
   const [abierto, setAbierto] = useState(false);
   const [categoria, setCategoria] = useState<"alquiler" | "compraventa">(tipoProp === "venta_activo" ? "compraventa" : "alquiler");
@@ -36,6 +40,7 @@ export function PublicarBloque({
   const [precio, setPrecio] = useState(sugerencias.precio || 0);
   const [barrio, setBarrio] = useState(sugerencias.direccion);
   const [descripcion, setDescripcion] = useState(sugerencias.descripcion || "");
+  const [esProximamente, setEsProximamente] = useState(false);
   const [publicando, setPublicando] = useState(false);
   const [resultado, setResultado] = useState<{ url: string } | { urls: string[] } | null>(null);
 
@@ -98,6 +103,9 @@ export function PublicarBloque({
             categoria,
             tipo_alquiler: "habitacion",
             foto_ids: hf.fotoIds.length > 0 ? hf.fotoIds : undefined,
+            estado: esProximamente ? "proximamente" : "disponible",
+            num_habitaciones: numHabitaciones ?? null,
+            num_banos: numBanos ?? null,
           }),
         });
         const data = await res.json();
@@ -122,7 +130,7 @@ export function PublicarBloque({
     const res = await fetch(`/api/admin/propiedades/${propiedadId}/publicar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ habitacion_id: habitacionId, zona, titulo, barrio, precio_mes: precio, descripcion, categoria }),
+      body: JSON.stringify({ habitacion_id: habitacionId, zona, titulo, barrio, precio_mes: precio, descripcion, categoria, estado: esProximamente ? "proximamente" : "disponible", num_habitaciones: numHabitaciones ?? null, num_banos: numBanos ?? null }),
     });
     const data = await res.json();
     setPublicando(false);
@@ -276,7 +284,11 @@ export function PublicarBloque({
             </div>
           )}
 
-          <div style={{ marginTop: 12, textAlign: "right" }}>
+          <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6b7280", cursor: "pointer" }}>
+              <input type="checkbox" checked={esProximamente} onChange={(e) => setEsProximamente(e.target.checked)} />
+              Publicar como <b style={{ color: "var(--orange)" }}>Próximamente</b>
+            </label>
             <button type="button" disabled={publicando} onClick={publicar} style={{ padding: "8px 20px", borderRadius: 8, background: "var(--orange)", color: "#fff", border: "none", cursor: publicando ? "wait" : "pointer", fontSize: 14, fontWeight: 500, fontFamily: FONT }}>
               {publicando
                 ? "Publicando…"

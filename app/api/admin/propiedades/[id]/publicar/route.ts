@@ -23,7 +23,7 @@ function slugify(s: string) {
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
-  const { habitacion_id, zona, slug, titulo, barrio, precio_mes, metros, descripcion, categoria: catRaw, foto_ids, tipo_alquiler } = body as Record<string, unknown>;
+  const { habitacion_id, zona, slug, titulo, barrio, precio_mes, metros, descripcion, categoria: catRaw, foto_ids, tipo_alquiler, num_habitaciones, num_banos, estado: estadoRaw } = body as Record<string, unknown>;
   const categoria = catRaw === "compraventa" ? "compraventa" : "alquiler";
   const tipoAlquiler = tipo_alquiler === "habitacion" ? "habitacion" : "completo";
   const zonaStr = String(zona || "") || slugify(String(barrio || "general")).slice(0, 40) || "general";
@@ -68,9 +68,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       precioMes: Number(precio_mes),
       metros: metros ? Number(metros) : null,
       descripcion: String(descripcion),
-      disponible: true,
+      disponible: estadoRaw !== "proximamente",
       reservada: false,
-      estado: "disponible",
+      estado: estadoRaw === "proximamente" ? "proximamente" : "disponible",
+      numHabitaciones: num_habitaciones ? Number(num_habitaciones) : null,
+      numBanos: num_banos ? Number(num_banos) : null,
       imageUrl,
       gallery,
       videoUrl,

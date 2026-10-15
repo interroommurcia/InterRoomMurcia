@@ -19,6 +19,8 @@ export type PisoInput = {
   videoUrl?: string | null;
   categoria?: CategoriaPiso;
   tipoAlquiler?: TipoAlquiler;
+  numHabitaciones?: number | null;
+  numBanos?: number | null;
 };
 
 function toRow(input: Partial<PisoInput>) {
@@ -38,6 +40,8 @@ function toRow(input: Partial<PisoInput>) {
   if (input.videoUrl !== undefined) row.video_url = input.videoUrl;
   if (input.categoria !== undefined) row.categoria = input.categoria;
   if (input.tipoAlquiler !== undefined) row.tipo_alquiler = input.tipoAlquiler;
+  if (input.numHabitaciones !== undefined) row.num_habitaciones = input.numHabitaciones;
+  if (input.numBanos !== undefined) row.num_banos = input.numBanos;
   return row;
 }
 
