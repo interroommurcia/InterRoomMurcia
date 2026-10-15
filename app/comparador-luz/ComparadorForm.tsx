@@ -2,15 +2,15 @@
 
 import { useState, useRef } from "react";
 
-const MARGENES: Record<string, number> = {
-  Iberdrola: 0.18,
-  Endesa: 0.16,
-  Naturgy: 0.17,
-  Repsol: 0.14,
-  TotalEnergies: 0.13,
-  Holaluz: 0.08,
-  "Octopus Energy": 0.07,
-  Otra: 0.15,
+const AHORRO_PCTS: Record<string, { min: number; max: number }> = {
+  Iberdrola: { min: 0.12, max: 0.20 },
+  Endesa: { min: 0.10, max: 0.18 },
+  Naturgy: { min: 0.11, max: 0.19 },
+  Repsol: { min: 0.08, max: 0.15 },
+  TotalEnergies: { min: 0.07, max: 0.14 },
+  Holaluz: { min: 0.04, max: 0.10 },
+  "Octopus Energy": { min: 0.03, max: 0.09 },
+  Otra: { min: 0.08, max: 0.18 },
 };
 
 export default function ComparadorForm({
@@ -27,15 +27,20 @@ export default function ComparadorForm({
   const [file, setFile] = useState<File | null>(null);
   const [consentimiento, setConsentimiento] = useState(false);
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [ahorro, setAhorro] = useState<number | null>(null);
+  const [ahorro, setAhorro] = useState<{ min: number; max: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  function calcularAhorro() {
+  function calcularAhorro(): { min: number; max: number } | null {
     const imp = parseFloat(importe);
-    if (!imp || imp <= 0) return null;
-    const margen = MARGENES[comercializadora] ?? 0.15;
-    return Math.round(imp * margen * 12);
+    if (!imp || imp <= 0 || !comercializadora) return null;
+    const pcts = AHORRO_PCTS[comercializadora] ?? AHORRO_PCTS["Otra"];
+    return {
+      min: Math.round(imp * pcts.min * 12),
+      max: Math.round(imp * pcts.max * 12),
+    };
   }
+
+  const ahorroPreview = mode === "datos" ? calcularAhorro() : null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,8 +61,7 @@ export default function ComparadorForm({
     try {
       const res = await fetch("/api/comparador-luz", { method: "POST", body: fd });
       if (!res.ok) throw new Error("fail");
-      const estimado = calcularAhorro();
-      setAhorro(estimado);
+      setAhorro(calcularAhorro());
       setStatus("sent");
     } catch {
       setStatus("error");
@@ -74,9 +78,9 @@ export default function ComparadorForm({
           </svg>
         </div>
         <h2>¡Recibido!</h2>
-        {ahorro && ahorro > 0 ? (
+        {ahorro ? (
           <p className="comp-result-ahorro">
-            Podrías ahorrar hasta <strong>{ahorro}€/año</strong> en tu factura de la luz.
+            Podrías ahorrar entre <strong>{ahorro.min}€</strong> y <strong>{ahorro.max}€/año</strong> en tu factura de la luz.
           </p>
         ) : (
           <p>Hemos recibido tus datos correctamente.</p>
@@ -163,6 +167,24 @@ export default function ComparadorForm({
                 className="comp-input"
               />
             </div>
+            {ahorroPreview && (
+              <div className="comp-ahorro-preview">
+                <div className="comp-ahorro-icon">
+                  <svg viewBox="0 0 24 24" fill="none" width="22" height="22" aria-hidden="true">
+                    <path d="M12 2L8 12h4l-1 10 5-14h-4l1-6z" fill="var(--orange)" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="comp-ahorro-title">Estimación de ahorro anual</p>
+                  <p className="comp-ahorro-range">
+                    Entre <strong>{ahorroPreview.min}€</strong> y <strong>{ahorroPreview.max}€</strong> al año
+                  </p>
+                  <p className="comp-ahorro-note">
+                    Déjanos tu teléfono y te confirmamos la cifra exacta
+                  </p>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <div className="comp-upload-zone" onClick={() => fileRef.current?.click()}>

@@ -4438,6 +4438,46 @@ select.comp-input {
   text-decoration: underline;
 }
 
+.comp-ahorro-preview {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: rgba(234, 106, 18, 0.07);
+  border: 1.5px solid rgba(234, 106, 18, 0.25);
+  border-radius: 14px;
+  padding: 18px 20px;
+  animation: comp-fade-in 0.3s ease;
+}
+@keyframes comp-fade-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.comp-ahorro-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.comp-ahorro-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+  margin: 0 0 4px;
+}
+.comp-ahorro-range {
+  font-size: 1.15rem;
+  margin: 0 0 4px;
+}
+.comp-ahorro-range strong {
+  color: var(--orange);
+  font-size: 1.3rem;
+}
+.comp-ahorro-note {
+  font-size: 0.8rem;
+  opacity: 0.55;
+  margin: 0;
+}
+
 .comp-divider {
   border: none;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
