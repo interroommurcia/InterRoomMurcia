@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { listarLeads } from "../../../lib/leads";
+import { listarLeadsProximamente } from "../../../lib/leadsProximamente";
 import { AdminNav } from "../../../components/AdminNav";
 import LeadsManager from "./LeadsManager";
 
@@ -11,13 +12,13 @@ export const metadata: Metadata = {
 };
 
 export default async function LeadsPage() {
-  const leads = await listarLeads();
+  const [leads, leadsProx] = await Promise.all([listarLeads(), listarLeadsProximamente()]);
 
   return (
     <section className="section admin">
       <div className="wrap">
         <AdminNav active="/admin/leads" />
-        <LeadsManager leads={leads} />
+        <LeadsManager leads={leads} leadsProximamente={leadsProx} />
       </div>
     </section>
   );
