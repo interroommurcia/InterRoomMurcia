@@ -3,6 +3,30 @@
 import { useMemo, useState } from "react";
 import styles from "./rentabilidad.module.css";
 
+declare global {
+  interface Window {
+    html2pdf?: () => {
+      from: (el: Element) => {
+        set: (opts: Record<string, unknown>) => { save: () => Promise<void> };
+      };
+    };
+  }
+}
+
+const PDF_CDN = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+
+function loadScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[data-src="${src}"]`)) return resolve();
+    const s = document.createElement("script");
+    s.src = src;
+    s.dataset.src = src;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("No se pudo cargar el generador de PDF"));
+    document.head.appendChild(s);
+  });
+}
+
 const IVA = 1.21;
 const COM_A = 0.1;
 const COM_B = 0.15;
@@ -13,6 +37,33 @@ const fmt = (n: number) => (isFinite(n) ? `${Math.round(n).toLocaleString("es-ES
 
 export default function CalculadoraRentabilidad() {
   const [v, setV] = useState(defaults);
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  const descargarPdf = async () => {
+    if (pdfBusy) return;
+    setPdfBusy(true);
+    try {
+      await loadScript(PDF_CDN);
+      const el = document.getElementById("pdf-root");
+      if (!el || !window.html2pdf) throw new Error("PDF no disponible");
+      await window
+        .html2pdf()
+        .from(el)
+        .set({
+          margin: [8, 8, 8, 8],
+          filename: "rentabilidad-interroom.pdf",
+          image: { type: "jpeg", quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        })
+        .save();
+    } catch (err) {
+      alert("No se pudo generar el PDF. Prueba desde Chrome o Safari.");
+      console.error(err);
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   const set = (k: keyof typeof defaults) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const raw = parseFloat(e.target.value);
@@ -73,6 +124,7 @@ export default function CalculadoraRentabilidad() {
 
   return (
     <main className={styles.main}>
+      <div id="pdf-root">
       <div className={styles.title}>
         <h1>
           Tu piso puede rentar <em>más</em>.
@@ -223,6 +275,11 @@ export default function CalculadoraRentabilidad() {
       <div className={styles.foot}>
         <b>InterRoom Murcia</b> · interroommurcia@gmail.com · L–V 9:30–13:30 y 17:00–20:30
       </div>
+      </div>
+
+      <button type="button" className={styles.pdfBtn} onClick={descargarPdf} disabled={pdfBusy}>
+        {pdfBusy ? "Generando PDF…" : "Descargar PDF"}
+      </button>
     </main>
   );
 }

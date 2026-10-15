@@ -85,8 +85,28 @@
 .foot { text-align: center; padding: 22px 0 0; font-size: 0.75rem; color: var(--ink-soft); }
 .foot b { color: var(--ink); }
 
+.pdfBtn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--orange);
+  color: #fff;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.95rem;
+  padding: 14px 22px;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(234, 106, 18, 0.4);
+  z-index: 100;
+  transition: 0.2s;
+}
+.pdfBtn:hover { background: var(--orange-dark); }
+.pdfBtn:disabled { opacity: 0.6; cursor: wait; }
+
 @media print {
-  .reset, .cta { display: none !important; }
+  .reset, .cta, .pdfBtn { display: none !important; }
   .main { padding: 0; }
   .card, .compare, .panel { break-inside: avoid; box-shadow: none; }
 }
