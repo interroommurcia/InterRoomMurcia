@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import styles from "./rentabilidad.module.css";
 
 declare global {
@@ -10,10 +10,17 @@ declare global {
         set: (opts: Record<string, unknown>) => { save: () => Promise<void> };
       };
     };
+    qrcode?: (typeNumber: number, errorCorrectionLevel: string) => {
+      addData: (data: string) => void;
+      make: () => void;
+      createDataURL: (cellSize?: number, margin?: number) => string;
+    };
   }
 }
 
 const PDF_CDN = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+const QR_CDN = "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js";
+const SITE_URL = "https://interroommurcia.com";
 
 function loadScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -22,7 +29,7 @@ function loadScript(src: string): Promise<void> {
     s.src = src;
     s.dataset.src = src;
     s.onload = () => resolve();
-    s.onerror = () => reject(new Error("No se pudo cargar el generador de PDF"));
+    s.onerror = () => reject(new Error("No se pudo cargar el script"));
     document.head.appendChild(s);
   });
 }
@@ -38,6 +45,22 @@ const fmt = (n: number) => (isFinite(n) ? `${Math.round(n).toLocaleString("es-ES
 export default function CalculadoraRentabilidad() {
   const [v, setV] = useState(defaults);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [qrData, setQrData] = useState<string>("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        await loadScript(QR_CDN);
+        if (!window.qrcode) return;
+        const qr = window.qrcode(0, "M");
+        qr.addData(SITE_URL);
+        qr.make();
+        setQrData(qr.createDataURL(6, 2));
+      } catch {
+        /* QR silencioso si falla */
+      }
+    })();
+  }, []);
 
   const descargarPdf = async () => {
     if (pdfBusy) return;
@@ -50,11 +73,12 @@ export default function CalculadoraRentabilidad() {
         .html2pdf()
         .from(el)
         .set({
-          margin: [8, 8, 8, 8],
+          margin: [10, 10, 10, 10],
           filename: "rentabilidad-interroom.pdf",
           image: { type: "jpeg", quality: 0.95 },
           html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          pagebreak: { mode: ["avoid-all", "css", "legacy"] },
         })
         .save();
     } catch (err) {
@@ -145,7 +169,13 @@ export default function CalculadoraRentabilidad() {
               Restablecer
             </button>
             <button type="button" className={styles.pdfBtn} onClick={descargarPdf} disabled={pdfBusy}>
-              {pdfBusy ? "Generando…" : "Descargar PDF"}
+              {pdfBusy ? (
+                <>
+                  <span className={styles.spinner} aria-hidden /> Generando PDF
+                </>
+              ) : (
+                "Descargar PDF"
+              )}
             </button>
           </div>
         </div>
@@ -287,6 +317,23 @@ export default function CalculadoraRentabilidad() {
       <div className={styles.foot}>
         <b>InterRoom Murcia</b> · interroommurcia@gmail.com · L–V 9:30–13:30 y 17:00–20:30
       </div>
+
+      <section className={styles.pdfFooter}>
+        <div className={styles.pdfFooterLogo}>
+          Inter<span>Room</span> Murcia
+        </div>
+        <div className={styles.pdfFooterText}>Gestión inmobiliaria integral en Murcia y Cartagena</div>
+        {qrData ? (
+          <div className={styles.pdfFooterQrWrap}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrData} alt="QR a interroommurcia.com" className={styles.pdfFooterQr} />
+            <div className={styles.pdfFooterQrCap}>Escanea para visitarnos</div>
+          </div>
+        ) : null}
+        <a href={SITE_URL} className={styles.pdfFooterLink}>
+          interroommurcia.com
+        </a>
+      </section>
       </div>
     </main>
   );
