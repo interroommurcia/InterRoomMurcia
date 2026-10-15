@@ -88,6 +88,12 @@ export default function ContactoPage() {
               <a href="#como-funciona" className="btn-ghost">
                 Como funciona
               </a>
+              <a href="/comparador-luz" className="btn-ghost btn-luz">
+                <svg viewBox="0 0 20 20" fill="none" width="16" height="16" aria-hidden="true">
+                  <path d="M10 1L6 12h4l-1 7 5-11h-4l1-7z" fill="var(--orange)" />
+                </svg>
+                Bajar mi factura de la luz
+              </a>
             </div>
           </div>
           <div className="hero-side">
