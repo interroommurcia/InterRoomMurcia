@@ -15,6 +15,8 @@ type Cliente = {
   operacion: "alquiler" | "venta" | null;
   origen: "manual" | "lead" | "autocompletado";
   datos_completados: boolean;
+  nif: string | null;
+  direccion: string | null;
   token: string;
   notas: string | null;
   created_at: string;
@@ -89,7 +91,7 @@ export default function ClientesManager() {
   const [mostrarNuevoCliente, setMostrarNuevoCliente] = useState(false);
   const [copiado, setCopiado] = useState<string | null>(null);
   const [editando, setEditando] = useState<string | null>(null);
-  const [edicion, setEdicion] = useState<{ nombre: string; apellidos: string; telefonoPrefijo: string; telefonoNumero: string; email: string; tipo_secundario: "" | Cliente["tipo"]; notas: string }>({ nombre: "", apellidos: "", telefonoPrefijo: "+34", telefonoNumero: "", email: "", tipo_secundario: "", notas: "" });
+  const [edicion, setEdicion] = useState<{ nombre: string; apellidos: string; telefonoPrefijo: string; telefonoNumero: string; email: string; nif: string; direccion: string; tipo_secundario: "" | Cliente["tipo"]; notas: string }>({ nombre: "", apellidos: "", telefonoPrefijo: "+34", telefonoNumero: "", email: "", nif: "", direccion: "", tipo_secundario: "", notas: "" });
   const [filtroEstado, setFiltroEstado] = useState<"todos" | "activo" | "inactivo">("todos");
   const [filtroAnio, setFiltroAnio] = useState<string>("");
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
@@ -187,6 +189,8 @@ export default function ClientesManager() {
       telefonoPrefijo: m?.[1] ?? "+34",
       telefonoNumero: m?.[2] ?? tel,
       email: c.email ?? "",
+      nif: c.nif ?? "",
+      direccion: c.direccion ?? "",
       tipo_secundario: c.tipo_secundario ?? "",
       notas: c.notas ?? "",
     });
@@ -203,6 +207,8 @@ export default function ClientesManager() {
         apellidos: edicion.apellidos.trim() || null,
         telefono,
         email: edicion.email.trim() || null,
+        nif: edicion.nif.trim() || null,
+        direccion: edicion.direccion.trim() || null,
         tipo_secundario: edicion.tipo_secundario || null,
         notas: edicion.notas || null,
       }),
@@ -473,7 +479,7 @@ export default function ClientesManager() {
                       {!cliente.datos_completados && cliente.origen !== "manual" && <span className="editor-badge-hidden"> · pendiente de rellenar</span>}
                     </h4>
                     <div className="loc">
-                      {cliente.telefono || "sin teléfono"} · {cliente.email || "sin email"} · {cliente.zona_interes || "sin zona"} · {cliente.operacion || "—"}
+                      {cliente.telefono || "sin teléfono"} · {cliente.email || "sin email"} · {cliente.nif ? `NIF: ${cliente.nif}` : "sin NIF"} · {cliente.zona_interes || "sin zona"} · {cliente.operacion || "—"}
                       <span style={{ marginLeft: 6, opacity: 0.5, fontSize: 12 }}>
                         Alta: {new Date(cliente.created_at).toLocaleDateString("es-ES", { month: "short", year: "numeric" })}
                       </span>
@@ -482,7 +488,7 @@ export default function ClientesManager() {
                   </div>
                   <div className="lead-form-actions" style={{ padding: "0 16px 12px", flexWrap: "wrap" }}>
                     <button type="button" className="btn-ghost" style={{ minHeight: 44 }} onClick={() => abrirEdicion(cliente)}>
-                      {editando === cliente.id ? "Cerrar" : "Editar rol / notas"}
+                      {editando === cliente.id ? "Cerrar" : "Editar"}
                     </button>
                     <button type="button" className="btn-ghost" style={{ minHeight: 44 }} onClick={() => copiarEnlace(cliente.token)}>
                       {copiado === cliente.token ? "Enlace copiado" : "Copiar enlace de autorrelleno"}
@@ -512,6 +518,20 @@ export default function ClientesManager() {
                         <label className="cliente-edit-field">
                           <span>Apellidos</span>
                           <input value={edicion.apellidos} onChange={(e) => setEdicion({ ...edicion, apellidos: e.target.value })} />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="cliente-edit-section">
+                      <div className="cliente-edit-section-title">Datos fiscales</div>
+                      <div className="cliente-edit-grid">
+                        <label className="cliente-edit-field">
+                          <span>DNI / NIF / CIF</span>
+                          <input value={edicion.nif} onChange={(e) => setEdicion({ ...edicion, nif: e.target.value })} placeholder="12345678A" />
+                        </label>
+                        <label className="cliente-edit-field">
+                          <span>Dirección fiscal</span>
+                          <input value={edicion.direccion} onChange={(e) => setEdicion({ ...edicion, direccion: e.target.value })} placeholder="Calle, número, CP, ciudad" />
                         </label>
                       </div>
                     </div>
