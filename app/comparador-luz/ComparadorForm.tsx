@@ -2,15 +2,20 @@
 
 import { useState, useRef } from "react";
 
+// Ahorro estimado al cambiar a la tarifa más competitiva del mercado (~0,107 €/kWh).
+// Calculado a partir de precios reales de tarifas fijas (Papernest, HelloWatt,
+// ForoCochesEléctricos, jun-oct 2026) y datos de la IX Compra Colectiva OCU (2025).
+// min = ahorro conservador (mejor tarifa dentro de la misma gama)
+// max = ahorro si se cambia a la tarifa más barata disponible
 const AHORRO_PCTS: Record<string, { min: number; max: number }> = {
-  Iberdrola: { min: 0.12, max: 0.20 },
-  Endesa: { min: 0.10, max: 0.18 },
-  Naturgy: { min: 0.11, max: 0.19 },
-  Repsol: { min: 0.08, max: 0.15 },
-  TotalEnergies: { min: 0.07, max: 0.14 },
-  Holaluz: { min: 0.04, max: 0.10 },
-  "Octopus Energy": { min: 0.03, max: 0.09 },
-  Otra: { min: 0.08, max: 0.18 },
+  Iberdrola: { min: 0.15, max: 0.28 },     // 0,149-0,175 vs 0,107; OCU: >100€/año
+  Endesa: { min: 0.02, max: 0.08 },         // 0,109 vs 0,107; ya competitiva
+  Naturgy: { min: 0.08, max: 0.18 },        // ~0,135 vs 0,107
+  Repsol: { min: 0.05, max: 0.12 },         // 0,120 vs 0,107
+  TotalEnergies: { min: 0.01, max: 0.05 },  // 0,107-0,110; ya de las más baratas
+  Holaluz: { min: 0.10, max: 0.22 },        // 0,140-0,147 vs 0,107
+  "Octopus Energy": { min: 0.05, max: 0.13 }, // 0,124 vs 0,107
+  Otra: { min: 0.08, max: 0.20 },           // media general OCU: 100-250€/año
 };
 
 export default function ComparadorForm({
