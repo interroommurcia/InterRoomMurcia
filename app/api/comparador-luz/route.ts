@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "../../../lib/supabaseAdmin";
 import { crearLead } from "../../../lib/leads";
+import { esBot } from "../../../lib/antispam";
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -14,6 +15,10 @@ export async function POST(req: NextRequest) {
 
   if (!telefono) {
     return NextResponse.json({ error: "El teléfono es obligatorio" }, { status: 400 });
+  }
+
+  if (esBot({ nombre, telefono })) {
+    return NextResponse.json({ ok: true });
   }
 
   let facturaUrl: string | null = null;

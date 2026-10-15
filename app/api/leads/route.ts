@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { crearLead } from "../../../lib/leads";
 import { logSecurityEvent, getClientIp } from "../../../lib/security";
+import { esBot } from "../../../lib/antispam";
 
 const ipRequests = new Map<string, { count: number; resetAt: number }>();
 const LEAD_LIMIT = 10;
@@ -40,7 +41,12 @@ export async function POST(req: NextRequest) {
   const seccion = typeof body?.seccion === "string" ? body.seccion.trim().slice(0, 40) : "";
 
   if (body?.website) {
-    logSecurityEvent({ type: "honeypot_triggered", ip, path: "/api/leads", details: `Bot: ${nombre}` }).catch(() => {});
+    logSecurityEvent({ type: "honeypot_triggered", ip, path: "/api/leads", details: `Bot honeypot: ${nombre}` }).catch(() => {});
+    return NextResponse.json({ ok: true });
+  }
+
+  if (esBot({ nombre, telefono, email })) {
+    logSecurityEvent({ type: "honeypot_triggered", ip, path: "/api/leads", details: `Bot detectado: ${nombre} / ${telefono}` }).catch(() => {});
     return NextResponse.json({ ok: true });
   }
 
