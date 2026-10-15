@@ -18,6 +18,7 @@ export function PropiedadCard({
   onActualizarHab,
   onEliminarHab,
   onSubir,
+  onSubirVarios,
   onEliminarMedia,
   subiendoKey,
 }: {
@@ -31,6 +32,7 @@ export function PropiedadCard({
   onActualizarHab: (id: string, patch: Partial<Habitacion>) => void;
   onEliminarHab: (id: string) => void;
   onSubir: (file: File, tipo: "foto" | "video", habitacion_id?: string | null) => void;
+  onSubirVarios?: (files: File[], tipo: "foto" | "video", habitacion_id?: string | null) => void;
   onEliminarMedia: (id: string) => void;
   subiendoKey: string | null;
 }) {
@@ -227,7 +229,7 @@ export function PropiedadCard({
           <Bloque titulo="Vídeos generales">
             <MediaGrid media={mediaGeneral.filter((m) => m.tipo === "video")} onDelete={onEliminarMedia} />
           </Bloque>
-          <UploadRow subiendo={subiendoKey === p.id} onFoto={(f) => onSubir(f, "foto", null)} onVideo={(f) => onSubir(f, "video", null)} />
+          <UploadRow subiendo={subiendoKey === p.id} onFoto={(files) => onSubirVarios ? onSubirVarios(files, "foto", null) : files.forEach((f) => onSubir(f, "foto", null))} onVideo={(f) => onSubir(f, "video", null)} />
           {mediaGeneral.length > 0 && (
             <PublicarBloque
               propiedadId={p.id}
@@ -277,7 +279,7 @@ export function PropiedadCard({
                   </Bloque>
                   <UploadRow
                     subiendo={subiendoKey === p.id + h.id}
-                    onFoto={(f) => onSubir(f, "foto", h.id)}
+                    onFoto={(files) => onSubirVarios ? onSubirVarios(files, "foto", h.id) : files.forEach((f) => onSubir(f, "foto", h.id))}
                     onVideo={(f) => onSubir(f, "video", h.id)}
                     labelFoto="+ Foto de esta habitación"
                     labelVideo="+ Vídeo"

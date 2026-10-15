@@ -41,7 +41,7 @@ export function UploadRow({
   labelVideo = "+ Vídeo",
 }: {
   subiendo: boolean;
-  onFoto: (f: File) => void;
+  onFoto: (files: File[]) => void;
   onVideo: (f: File) => void;
   labelFoto?: string;
   labelVideo?: string;
@@ -62,7 +62,7 @@ export function UploadRow({
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       <label style={btn}>
         {subiendo ? "Subiendo…" : labelFoto}
-        <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && onFoto(e.target.files[0])} disabled={subiendo} />
+        <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={(e) => { const f = e.target.files; if (f?.length) onFoto(Array.from(f)); e.target.value = ""; }} disabled={subiendo} />
       </label>
       <label style={btn}>
         {subiendo ? "Subiendo…" : labelVideo}

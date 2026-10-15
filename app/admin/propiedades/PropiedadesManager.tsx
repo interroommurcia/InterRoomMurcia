@@ -92,29 +92,51 @@ export default function PropiedadesManager() {
     cargar();
   }
 
+  async function subirUno(propId: string, file: File, tipo: "foto" | "video", habitacion_id?: string | null) {
+    const initRes = await fetch(`/api/admin/propiedades/${propId}/media/init`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: file.name, tipo, habitacion_id: habitacion_id ?? null }),
+    });
+    const init = await initRes.json();
+    if (!initRes.ok || !init.path) throw new Error(init.error || "No se pudo iniciar la subida");
+    const up = await supabase.storage.from("propiedades").uploadToSignedUrl(init.path, init.token, file, {
+      contentType: file.type || (tipo === "video" ? "video/mp4" : "image/jpeg"),
+    });
+    if (up.error) throw up.error;
+    const reg = await fetch(`/api/admin/propiedades/${propId}/media/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: init.path, tipo, habitacion_id: habitacion_id ?? null }),
+    });
+    if (!reg.ok) throw new Error("No se pudo registrar el archivo");
+  }
+
   async function subirArchivo(propId: string, file: File, tipo: "foto" | "video", habitacion_id?: string | null) {
     setSubiendo(propId + (habitacion_id ?? ""));
     try {
-      const initRes = await fetch(`/api/admin/propiedades/${propId}/media/init`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: file.name, tipo, habitacion_id: habitacion_id ?? null }),
-      });
-      const init = await initRes.json();
-      if (!initRes.ok || !init.path) throw new Error(init.error || "No se pudo iniciar la subida");
-      const up = await supabase.storage.from("propiedades").uploadToSignedUrl(init.path, init.token, file, {
-        contentType: file.type || (tipo === "video" ? "video/mp4" : "image/jpeg"),
-      });
-      if (up.error) throw up.error;
-      const reg = await fetch(`/api/admin/propiedades/${propId}/media/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: init.path, tipo, habitacion_id: habitacion_id ?? null }),
-      });
-      if (!reg.ok) throw new Error("No se pudo registrar el archivo");
+      await subirUno(propId, file, tipo, habitacion_id);
       await cargar();
     } catch (e) {
       alert("Error subiendo archivo: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setSubiendo(null);
+    }
+  }
+
+  async function subirVarios(propId: string, files: File[], tipo: "foto" | "video", habitacion_id?: string | null) {
+    setSubiendo(propId + (habitacion_id ?? ""));
+    let errores = 0;
+    try {
+      for (const file of files) {
+        try {
+          await subirUno(propId, file, tipo, habitacion_id);
+        } catch {
+          errores++;
+        }
+      }
+      await cargar();
+      if (errores > 0) alert(`${errores} de ${files.length} archivos fallaron al subir.`);
     } finally {
       setSubiendo(null);
     }
@@ -213,6 +235,7 @@ export default function PropiedadesManager() {
               onActualizarHab={actualizarHab}
               onEliminarHab={eliminarHab}
               onSubir={(f, t, hid) => subirArchivo(p.id, f, t, hid)}
+              onSubirVarios={(files, t, hid) => subirVarios(p.id, files, t, hid)}
               onEliminarMedia={eliminarMedia}
               subiendoKey={subiendo}
             />
