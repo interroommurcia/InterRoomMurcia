@@ -65,6 +65,13 @@ export default function ProximamenteCard({ piso }: { piso: Piso }) {
             <span>🚿 {piso.numBanos} baño{piso.numBanos !== 1 ? "s" : ""}</span>
           )}
         </div>
+        {piso.precioMes > 0 && (
+          <div className="piso-price" style={{ marginBottom: 4 }}>
+            {esCompraventa
+              ? `${piso.precioMes.toLocaleString("es-ES")}€`
+              : <>{piso.precioMes}€ <span>/mes</span></>}
+          </div>
+        )}
         <div className="loc">{piso.barrio}</div>
 
         {enviado ? (
