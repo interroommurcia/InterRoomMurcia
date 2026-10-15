@@ -18,7 +18,7 @@ async function generateImageGemini(prompt: string): Promise<{ buffer: Buffer | n
   const styledPrompt = `${prompt}. ${STYLE_SUFFIX}`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -44,7 +44,8 @@ async function generateImageGemini(prompt: string): Promise<{ buffer: Buffer | n
 
 async function generateImagePollinations(prompt: string): Promise<{ buffer: Buffer | null; error?: string }> {
   const shortStyle = "ultra-realistic photo, Murcia Spain, 16:9, golden-hour light, no text, no watermarks, no people";
-  const styledPrompt = `${prompt}. ${shortStyle}`;
+  const cleaned = prompt.replace(/\s+/g, " ").trim().slice(0, 380);
+  const styledPrompt = `${cleaned}. ${shortStyle}`;
   const encoded = encodeURIComponent(styledPrompt);
   const url = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=576&nologo=true&seed=${Date.now()}`;
 
@@ -52,8 +53,9 @@ async function generateImagePollinations(prompt: string): Promise<{ buffer: Buff
     if (attempt > 0) await delay(5000);
     try {
       const res = await fetch(url, { redirect: "follow" });
-      if (res.status === 429 || res.status === 402 || res.status === 500) {
-        console.warn(`[pollinations-imagen] intento ${attempt + 1}: status ${res.status}`);
+      if (res.status === 429 || res.status === 402 || res.status === 500 || res.status === 400) {
+        const bodyPreview = res.status === 400 ? await res.text().catch(() => "") : "";
+        console.warn(`[pollinations-imagen] intento ${attempt + 1}: status ${res.status} ${bodyPreview.slice(0, 200)}`);
         continue;
       }
       if (!res.ok) {
@@ -79,11 +81,10 @@ async function generateImage(prompt: string): Promise<{ buffer: Buffer | null; e
   if (process.env.GEMINI_API_KEY) {
     const gemini = await generateImageGemini(prompt);
     if (gemini.buffer) return gemini;
-    if (!gemini.buffer) {
-      console.log("[generate-image] Gemini falló, fallback a Pollinations");
-      return generateImagePollinations(prompt);
-    }
-    return gemini;
+    console.log(`[generate-image] Gemini falló (${gemini.error}), fallback a Pollinations`);
+    const poll = await generateImagePollinations(prompt);
+    if (poll.buffer) return poll;
+    return { buffer: null, error: `Gemini: ${gemini.error} | Pollinations: ${poll.error}` };
   }
   return generateImagePollinations(prompt);
 }

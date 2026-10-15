@@ -10,6 +10,29 @@ export const metadata: Metadata = {
     "Guías sobre alquiler de habitaciones, zonas universitarias y vida de estudiante en Murcia y Cartagena.",
 };
 
+type Aparicion = {
+  medio: string;
+  badge: string;
+  tipo: "Prensa" | "TV";
+  fecha: string;
+  titulo: string;
+  subtitulo: string;
+  url: string;
+};
+
+const APARICIONES: Aparicion[] = [
+  {
+    medio: "La Verdad",
+    badge: "La\nVerdad",
+    tipo: "Prensa",
+    fecha: "Septiembre 2024",
+    titulo: "Murcia, un 'oasis' para los estudiantes que buscan piso",
+    subtitulo:
+      "El incremento de alojamientos y los precios contenidos hacen que la capital escape a la asfixia de otras ciudades.",
+    url: "https://www.laverdad.es/murcia/murcia-oasis-estudiantes-buscan-piso-20240908071650-nt.html",
+  },
+];
+
 export default async function BlogPage() {
   const articulos = await getArticulosPublicados();
 
@@ -20,6 +43,38 @@ export default async function BlogPage() {
           <h2>Blog de InterRoom Murcia</h2>
           <p>Guías sobre alquiler, zonas y vida de estudiante en Murcia y Cartagena.</p>
         </div>
+
+        {APARICIONES.length > 0 && (
+          <div className="prensa-strip">
+            <div className="prensa-head">
+              <h3>Nos han visto en</h3>
+              <span className="prensa-rule" />
+            </div>
+            <div className="prensa-grid">
+              {APARICIONES.map((a) => (
+                <a
+                  key={a.url}
+                  href={a.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="prensa-card"
+                >
+                  <div className="prensa-card-badge" style={{ whiteSpace: "pre-line" }}>
+                    {a.badge}
+                  </div>
+                  <div className="prensa-card-body">
+                    <div className="prensa-card-meta">
+                      <span>{a.medio} · {a.fecha}</span>
+                      <span className="prensa-card-tag">{a.tipo}</span>
+                    </div>
+                    <h4>{a.titulo}</h4>
+                    <p>{a.subtitulo}</p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {articulos.length === 0 ? (
           <div className="admin-empty">Próximamente — los primeros artículos están en camino.</div>
