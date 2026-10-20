@@ -52,11 +52,12 @@ export async function GET(req: NextRequest) {
   }
 
   const adminFilter = excluirAdmin
-    ? `AND distinct_id NOT IN (SELECT DISTINCT distinct_id FROM events WHERE ${DOMAIN_FILTER} AND properties.$current_url LIKE '%/admin%')`
+    ? `AND properties.$current_url NOT LIKE '%/admin%'`
     : "";
 
   try {
-    const [rStats, rTop, rDaily, rBounce, rSources, rDevices, rEntry, rUtm, rCountries, rRealtime, rClicks, rNewUsers, rReferrers, rPeakDaily, rNewVsReturn, rSessionDuration] =
+    // Lote 1: queries ligeras
+    const [rStats, rTop, rDaily, rBounce, rSources, rDevices, rEntry, rUtm] =
       await Promise.all([
         hogql(`
         SELECT count() AS pageviews, uniqExact(distinct_id) AS visitors, uniqExact(properties.$session_id) AS sessions
@@ -108,13 +109,17 @@ export async function GET(req: NextRequest) {
         FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY utm_source, utm_medium ORDER BY visits DESC LIMIT 12
       `),
+      ]);
+
+    // Lote 2: queries pesadas (subqueries, JOINs, autocapture)
+    const [rCountries, rRealtime, rClicks, rNewUsers, rReferrers, rPeakDaily, rNewVsReturn, rSessionDuration] =
+      await Promise.all([
         hogql(`
         SELECT if(properties.$geoip_country_name IS NULL OR properties.$geoip_country_name = '', 'Unknown', properties.$geoip_country_name) AS country,
           count() AS visits, uniqExact(distinct_id) AS visitors
         FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY country ORDER BY visits DESC LIMIT 10
       `),
-        // Realtime siempre últimos 5 min
         hogql(`
         SELECT replaceRegexpOne(properties.$current_url, 'https?://[^/]+', '') AS path, uniqExact(distinct_id) AS active_users
         FROM events WHERE timestamp >= now() - INTERVAL 5 MINUTE AND ${DOMAIN_FILTER} ${adminFilter}
@@ -132,6 +137,7 @@ export async function GET(req: NextRequest) {
         FROM (
           SELECT distinct_id, min(timestamp) AS first_seen
           FROM events WHERE event = '$pageview' AND ${DOMAIN_FILTER} ${adminFilter}
+            AND timestamp >= now() - INTERVAL 1 YEAR
           GROUP BY distinct_id
           HAVING ${desde && hasta && dateRe.test(desde) && dateRe.test(hasta) ? `first_seen >= '${desde}' AND first_seen <= '${hasta} 23:59:59'` : `first_seen >= now() - INTERVAL 30 DAY`}
         )
@@ -152,7 +158,6 @@ export async function GET(req: NextRequest) {
         )
         GROUP BY day ORDER BY day ASC
       `),
-        // Nuevos vs recurrentes por día
         hogql(`
         SELECT toDate(e.timestamp) AS day,
           uniqExactIf(e.distinct_id, f.first_seen >= ${desde && dateRe.test(desde) ? `'${desde}'` : `now() - INTERVAL 30 DAY`}) AS new_users,
@@ -161,12 +166,12 @@ export async function GET(req: NextRequest) {
         INNER JOIN (
           SELECT distinct_id AS did, min(timestamp) AS first_seen
           FROM events WHERE event = '$pageview' AND ${DOMAIN_FILTER} ${adminFilter}
+            AND timestamp >= now() - INTERVAL 1 YEAR
           GROUP BY did
         ) AS f ON e.distinct_id = f.did
         WHERE e.event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY day ORDER BY day ASC
       `),
-        // Duración media de sesión y páginas/sesión
         hogql(`
         SELECT avg(duration) AS avg_duration, avg(pages) AS avg_pages
         FROM (
