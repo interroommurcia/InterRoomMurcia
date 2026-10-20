@@ -1021,6 +1021,15 @@ export default function ContabilidadManager() {
             <h3>Alquileres en gestión</h3>
             <div className="analytics-stat-value">{fmt(balance.alquileres.comisionBruta)}</div>
             <p>Cobrado {fmt(balance.alquileres.cobrado)} · <b style={{ color: balance.alquileres.pendiente > 0 ? "#c2410c" : undefined }}>Pendiente {fmt(balance.alquileres.pendiente)}</b></p>
+            {clientesConAlquiler.length > 0 && (() => {
+              const estMensual = clientesConAlquiler.reduce((sum, c) => {
+                const com = c.comision_fija_alquiler != null && c.comision_fija_alquiler > 0
+                  ? c.comision_fija_alquiler
+                  : c.mensualidad * ((c.comision_pct_alquiler ?? 15) / 100);
+                return sum + com;
+              }, 0);
+              return <p style={{ fontSize: 11, color: "#3b82f6", marginTop: 2 }}>Estimación: <b>{fmt(Math.round(estMensual))}/mes</b> · {fmt(Math.round(estMensual * 12))}/año ({clientesConAlquiler.length} propiedades)</p>;
+            })()}
             <p style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{porcentaje(balance.alquileres.comisionBruta, balance.comisionBrutaTotal).toFixed(1)}% del beneficio total</p>
           </div>
           {balance.alquilerComisiones && balance.alquilerComisiones.comisionBruta > 0 && (
