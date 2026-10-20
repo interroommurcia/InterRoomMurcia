@@ -38,12 +38,14 @@ const IVA = 1.21;
 const COM_A = 0.1;
 const COM_B = 0.15;
 
-const defaults = { N: 4, Rv: 900, Rh: 320, Gf: 150, Cw: 35, Cl: 80, Oc: 3, Mt: 11, Mh: 10 };
+const placeholders = { N: "4", Rv: "900", Rh: "320", Gf: "150", Cw: "35", Cl: "80", Oc: "3", Mt: "11", Mh: "10" };
+const empty: Vals = { N: "", Rv: "", Rh: "", Gf: "", Cw: "", Cl: "", Oc: "", Mt: "", Mh: "" };
+type Vals = Record<"N" | "Rv" | "Rh" | "Gf" | "Cw" | "Cl" | "Oc" | "Mt" | "Mh", string>;
 
 const fmt = (n: number) => (isFinite(n) ? `${Math.round(n).toLocaleString("es-ES")} €` : "—");
 
 export default function CalculadoraRentabilidad() {
-  const [v, setV] = useState(defaults);
+  const [v, setV] = useState(empty);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [qrData, setQrData] = useState<string>("");
 
@@ -89,31 +91,32 @@ export default function CalculadoraRentabilidad() {
     }
   };
 
-  const set = (k: keyof typeof defaults) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const raw = parseFloat(e.target.value);
-    const n = isFinite(raw) ? raw : 0;
+  const num = (s: string) => { const n = parseFloat(s); return isFinite(n) ? n : 0; };
+
+  const set = (k: keyof Vals) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const raw = e.target.value.replace(/[^\d.]/g, "").replace(/^0+(?=\d)/, "");
     setV((prev) => {
-      const next = { ...prev, [k]: n };
+      const next = { ...prev, [k]: raw };
       if (k === "N") {
-        const N = Math.max(1, n);
-        next.Oc = Math.min(prev.Oc, N);
+        const N = Math.max(1, num(raw));
+        if (num(prev.Oc) > N) next.Oc = String(N);
       }
       return next;
     });
   };
 
-  const reset = () => setV(defaults);
+  const reset = () => setV(empty);
 
   const calc = useMemo(() => {
-    const N = Math.max(1, v.N);
-    const Rv = v.Rv;
-    const Rh = v.Rh;
-    const Gf = v.Gf;
-    const Cw = v.Cw;
-    const Cl = v.Cl;
-    const Ocn = Math.min(N, Math.max(1, v.Oc));
-    const Mt = Math.min(12, Math.max(1, v.Mt));
-    const Mh = Math.min(12, Math.max(1, v.Mh));
+    const N = Math.max(1, num(v.N));
+    const Rv = num(v.Rv);
+    const Rh = num(v.Rh);
+    const Gf = num(v.Gf);
+    const Cw = num(v.Cw);
+    const Cl = num(v.Cl);
+    const Ocn = Math.min(N, Math.max(1, num(v.Oc) || N));
+    const Mt = Math.min(12, Math.max(1, num(v.Mt)));
+    const Mh = Math.min(12, Math.max(1, num(v.Mh)));
 
     const A_bruto = Rv;
     const A_com = Rv * COM_A * IVA;
@@ -144,7 +147,7 @@ export default function CalculadoraRentabilidad() {
     };
   }, [v]);
 
-  const Nopts = Array.from({ length: Math.max(1, v.N) }, (_, i) => i + 1);
+  const Nopts = Array.from({ length: Math.max(1, num(v.N)) }, (_, i) => i + 1);
 
   return (
     <main className={styles.main}>
@@ -181,25 +184,25 @@ export default function CalculadoraRentabilidad() {
         </div>
         <div className={styles.grid}>
           <Field label="Nº habitaciones">
-            <input type="number" value={v.N} min={1} max={10} step={1} onChange={set("N")} />
+            <input type="text" inputMode="numeric" value={v.N} placeholder={placeholders.N} onChange={set("N")} />
           </Field>
           <Field label="Renta tradicional" unit="€/mes">
-            <input type="number" value={v.Rv} min={0} step={10} onChange={set("Rv")} />
+            <input type="text" inputMode="numeric" value={v.Rv} placeholder={placeholders.Rv} onChange={set("Rv")} />
           </Field>
           <Field label="Renta por habitación" unit="€/mes">
-            <input type="number" value={v.Rh} min={0} step={10} onChange={set("Rh")} />
+            <input type="text" inputMode="numeric" value={v.Rh} placeholder={placeholders.Rh} onChange={set("Rh")} />
           </Field>
           <Field label="Suministros (solo por habitaciones)" unit="€/mes">
-            <input type="number" value={v.Gf} min={0} step={10} onChange={set("Gf")} />
+            <input type="text" inputMode="numeric" value={v.Gf} placeholder={placeholders.Gf} onChange={set("Gf")} />
           </Field>
           <Field label="Wifi" unit="€/mes">
-            <input type="number" value={v.Cw} min={0} step={5} onChange={set("Cw")} />
+            <input type="text" inputMode="numeric" value={v.Cw} placeholder={placeholders.Cw} onChange={set("Cw")} />
           </Field>
           <Field label="Limpieza zonas comunes" unit="€/mes">
-            <input type="number" value={v.Cl} min={0} step={10} onChange={set("Cl")} />
+            <input type="text" inputMode="numeric" value={v.Cl} placeholder={placeholders.Cl} onChange={set("Cl")} />
           </Field>
           <Field label="Habitaciones ocupadas" unit={`de ${calc.N}`}>
-            <select value={v.Oc} onChange={set("Oc")}>
+            <select value={v.Oc || String(calc.Ocn)} onChange={set("Oc")}>
               {Nopts.map((i) => (
                 <option key={i} value={i}>
                   {i}
@@ -208,10 +211,10 @@ export default function CalculadoraRentabilidad() {
             </select>
           </Field>
           <Field label="Meses ocupación tradicional" unit="meses/año">
-            <input type="number" value={v.Mt} min={1} max={12} step={1} onChange={set("Mt")} />
+            <input type="text" inputMode="numeric" value={v.Mt} placeholder={placeholders.Mt} onChange={set("Mt")} />
           </Field>
           <Field label="Meses ocupación estudiantes" unit="meses/año">
-            <input type="number" value={v.Mh} min={1} max={12} step={1} onChange={set("Mh")} />
+            <input type="text" inputMode="numeric" value={v.Mh} placeholder={placeholders.Mh} onChange={set("Mh")} />
           </Field>
         </div>
       </section>
