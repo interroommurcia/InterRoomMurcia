@@ -1259,7 +1259,7 @@ export default function ContabilidadManager() {
                   </div>
                 </div>
                 {(() => {
-                  const W = 720, H = 200, PAD_L = 50, PAD_B = 28, PAD_T = 12, PAD_R = 12;
+                  const W = 720, H = 220, PAD_L = 50, PAD_B = 28, PAD_T = 24, PAD_R = 12;
                   const chartW = W - PAD_L - PAD_R, chartH = H - PAD_T - PAD_B;
                   const max = Math.max(1, ...metricas.meses.map((m) => Math.max(Math.abs(m.neto), m.gastos + m.gastosFijos)));
                   const barW = chartW / 12, barPad = 6;
@@ -1274,10 +1274,14 @@ export default function ContabilidadManager() {
                         const w = (barW - barPad) / 2;
                         const hN = (Math.max(0, m.neto) / max) * chartH;
                         const hG = ((m.gastos + m.gastosFijos) / max) * chartH;
+                        const neto = Math.round(Math.max(0, m.neto));
+                        const gasto = Math.round(m.gastos + m.gastosFijos);
                         return (
                           <g key={m.mes}>
                             <rect x={x} y={PAD_T + chartH - hN} width={w} height={hN} fill="#10b981" rx={2} />
+                            {neto > 0 && <text x={x + w / 2} y={PAD_T + chartH - hN - 4} fontSize={8} textAnchor="middle" fill="#10b981" fontWeight={600}>{neto.toLocaleString("es-ES")}</text>}
                             <rect x={x + w} y={PAD_T + chartH - hG} width={w} height={hG} fill="#ef4444" rx={2} />
+                            {gasto > 0 && <text x={x + w + w / 2} y={PAD_T + chartH - hG - 4} fontSize={8} textAnchor="middle" fill="#ef4444" fontWeight={600}>{gasto.toLocaleString("es-ES")}</text>}
                             <text x={x + (barW - barPad) / 2} y={H - PAD_B + 14} fontSize={10} textAnchor="middle" fill="#666">{NOMBRES_MES_CORTO[i]}</text>
                           </g>
                         );
