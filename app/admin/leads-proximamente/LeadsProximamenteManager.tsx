@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { LeadProximamente } from "../../../lib/leadsProximamente";
 
 function groupByPiso(leads: LeadProximamente[]) {
@@ -40,6 +41,24 @@ function descargarExcel(leads: LeadProximamente[]) {
 
 export default function LeadsProximamenteManager({ leads }: { leads: LeadProximamente[] }) {
   const groups = groupByPiso(leads);
+  const [migrando, setMigrando] = useState(false);
+  const [resultadoMig, setResultadoMig] = useState<null | { migrados: number; yaMigrados: number; errores: { id: number; error: string }[] }>(null);
+
+  async function migrarTodos() {
+    if (!confirm("¿Mover todos los leads de Próximamente al pipeline normal (leads_propietarios)?\n\nSe conservarán aquí marcados como migrados (no se pierden). La operación es idempotente: si pulsas dos veces, no se duplica.\n\nIMPORTANTE: descarga antes la copia de respaldo (JSON) si aún no lo has hecho.")) return;
+    setMigrando(true);
+    setResultadoMig(null);
+    try {
+      const res = await fetch("/api/admin/leads-proximamente/migrar", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { alert("Error: " + (data.error || res.status)); return; }
+      setResultadoMig(data);
+    } catch (e) {
+      alert("Error: " + (e instanceof Error ? e.message : "desconocido"));
+    } finally {
+      setMigrando(false);
+    }
+  }
 
   return (
     <>
@@ -48,25 +67,67 @@ export default function LeadsProximamenteManager({ leads }: { leads: LeadProxima
           <h2>Leads Próximamente</h2>
           <p>{leads.length} interesados en {groups.length} propiedades</p>
         </div>
-        {leads.length > 0 && (
-          <button
-            type="button"
-            onClick={() => descargarExcel(leads)}
-            style={{
-              padding: "8px 18px",
-              borderRadius: 8,
-              background: "var(--orange)",
-              color: "#fff",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 14,
-              fontWeight: 600,
-            }}
-          >
-            Descargar Excel
-          </button>
-        )}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {leads.length > 0 && (
+            <>
+              <a
+                href="/api/admin/leads-proximamente/export"
+                style={{
+                  padding: "8px 18px", borderRadius: 8,
+                  background: "#f3f4f6", color: "#111827",
+                  border: "1px solid #d1d5db", cursor: "pointer",
+                  fontSize: 14, fontWeight: 600, textDecoration: "none",
+                }}
+              >
+                Copia de respaldo (JSON)
+              </a>
+              <button
+                type="button"
+                onClick={() => descargarExcel(leads)}
+                style={{
+                  padding: "8px 18px", borderRadius: 8,
+                  background: "#f3f4f6", color: "#111827",
+                  border: "1px solid #d1d5db", cursor: "pointer",
+                  fontSize: 14, fontWeight: 600,
+                }}
+              >
+                Descargar Excel
+              </button>
+              <button
+                type="button"
+                onClick={migrarTodos}
+                disabled={migrando}
+                style={{
+                  padding: "8px 18px", borderRadius: 8,
+                  background: "var(--orange)", color: "#fff",
+                  border: "none", cursor: migrando ? "wait" : "pointer",
+                  fontSize: 14, fontWeight: 600, opacity: migrando ? 0.6 : 1,
+                }}
+              >
+                {migrando ? "Moviendo…" : "Mover al pipeline normal"}
+              </button>
+            </>
+          )}
+        </div>
       </div>
+
+      {resultadoMig && (
+        <div style={{ margin: "0 0 20px", padding: 12, borderRadius: 8, background: resultadoMig.errores.length ? "#fef3c7" : "#d1fae5", color: resultadoMig.errores.length ? "#92400e" : "#065f46", fontSize: 14 }}>
+          <strong>Migración completada.</strong><br />
+          Nuevos movidos en esta ejecución: <b>{resultadoMig.migrados}</b> · Ya migrados anteriormente: <b>{resultadoMig.yaMigrados}</b>
+          {resultadoMig.errores.length > 0 && (
+            <>
+              <br />
+              <b>Errores ({resultadoMig.errores.length}):</b>
+              <ul style={{ margin: "4px 0 0 20px" }}>
+                {resultadoMig.errores.map((e) => <li key={e.id}>#{e.id}: {e.error}</li>)}
+              </ul>
+            </>
+          )}
+          <br />
+          Los leads movidos aparecen ya en <a href="/admin/leads" style={{ color: "inherit", textDecoration: "underline" }}>/admin/leads</a> con origen <code>proximamente</code>.
+        </div>
+      )}
 
       {groups.length === 0 && (
         <p className="admin-empty">No hay leads de propiedades próximamente.</p>

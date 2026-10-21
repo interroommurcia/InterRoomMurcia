@@ -16,6 +16,8 @@ export type Lead = {
   created_at: string;
 };
 
+export async function crearTablaLeadsPropietarios() { return ensureTable(); }
+
 async function ensureTable() {
   await sql`
     CREATE TABLE IF NOT EXISTS leads_propietarios (

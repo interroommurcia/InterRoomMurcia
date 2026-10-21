@@ -9,6 +9,8 @@ export type LeadProximamente = {
   nombre: string;
   telefono: string;
   created_at: string;
+  migrated_at?: string | null;
+  migrated_lead_id?: number | null;
 };
 
 async function ensureTable() {
@@ -23,6 +25,9 @@ async function ensureTable() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
+  // Columnas para rastrear la migración al pipeline normal (leads_propietarios).
+  await sql`ALTER TABLE leads_proximamente ADD COLUMN IF NOT EXISTS migrated_at TIMESTAMPTZ;`;
+  await sql`ALTER TABLE leads_proximamente ADD COLUMN IF NOT EXISTS migrated_lead_id INTEGER;`;
 }
 
 export async function crearLeadProximamente(data: {
@@ -71,4 +76,74 @@ async function limpiarLeadsExpirados() {
   } catch {
     // tabla aún no creada — nada que limpiar
   }
+}
+
+// Copia cruda de todos los registros, SIN ejecutar la limpieza automática.
+// Pensada para el backup previo a cualquier migración.
+export async function exportarLeadsProximamenteSinLimpiar(): Promise<LeadProximamente[]> {
+  await ensureTable();
+  const { rows } = await sql<LeadProximamente>`
+    SELECT id, piso_id, piso_titulo, piso_categoria, nombre, telefono, created_at, migrated_at, migrated_lead_id
+    FROM leads_proximamente
+    ORDER BY created_at DESC;
+  `;
+  return rows;
+}
+
+// Mueve todos los leads de próximamente aún no migrados al pipeline normal
+// (leads_propietarios), preservando el created_at original y mapeando los
+// datos del piso al mensaje/dirección/tipo/sección del lead. Es idempotente:
+// marca cada origen con migrated_at + migrated_lead_id para no duplicar si se
+// vuelve a ejecutar.
+export async function migrarLeadsProximamenteAPipeline(): Promise<{
+  migrados: number;
+  yaMigrados: number;
+  errores: { id: number; error: string }[];
+}> {
+  await ensureTable();
+  // Asegura que leads_propietarios existe con sus columnas opcionales.
+  const { crearTablaLeadsPropietarios } = await import("./leads");
+  await crearTablaLeadsPropietarios();
+
+  const { rows: pendientes } = await sql<LeadProximamente>`
+    SELECT id, piso_id, piso_titulo, piso_categoria, nombre, telefono, created_at
+    FROM leads_proximamente
+    WHERE migrated_at IS NULL
+    ORDER BY created_at ASC;
+  `;
+
+  const { rows: yaMig } = await sql<{ c: number }>`
+    SELECT count(*)::int AS c FROM leads_proximamente WHERE migrated_at IS NOT NULL;
+  `;
+
+  const errores: { id: number; error: string }[] = [];
+  let migrados = 0;
+
+  for (const p of pendientes) {
+    try {
+      const tipo = p.piso_categoria === "compraventa" ? "Compraventa" : "Alquiler";
+      const seccion = p.piso_categoria === "compraventa" ? "venta" : "estudiantes";
+      const direccion = p.piso_titulo;
+      const mensaje = `Interés en PRÓXIMAMENTE (${tipo}) — ${p.piso_titulo} [piso_id ${p.piso_id}]`;
+      const origen = "proximamente";
+
+      const { rows } = await sql<{ id: number }>`
+        INSERT INTO leads_propietarios (nombre, telefono, direccion, email, tipo, metros, precio_deseado, mensaje, origen, seccion, created_at)
+        VALUES (${p.nombre}, ${p.telefono}, ${direccion}, ${null}, ${tipo}, ${null}, ${null}, ${mensaje}, ${origen}, ${seccion}, ${p.created_at})
+        RETURNING id;
+      `;
+      const nuevoId = rows[0]?.id ?? null;
+
+      await sql`
+        UPDATE leads_proximamente
+        SET migrated_at = now(), migrated_lead_id = ${nuevoId}
+        WHERE id = ${p.id};
+      `;
+      migrados++;
+    } catch (e) {
+      errores.push({ id: p.id, error: e instanceof Error ? e.message : "Error" });
+    }
+  }
+
+  return { migrados, yaMigrados: yaMig[0]?.c ?? 0, errores };
 }
