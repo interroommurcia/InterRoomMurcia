@@ -28,6 +28,19 @@ type Ingreso = {
   factura_storage_path: string | null;
 };
 
+type Factura = {
+  id: string;
+  numero: string;
+  origen: string;
+  origen_id: string | null;
+};
+
+type Pendiente = {
+  cliente: { id: string; nombre: string; nif: string | null; direccion: string | null; cp_ciudad: string | null; telefono: string | null; es_empresa: boolean };
+  pagos: { origen: string; origen_id: string; concepto: string; base: number; fecha: string; ya_facturado: boolean }[];
+  numeroSugerido: string;
+};
+
 type ClienteGasto = {
   id: string;
   cliente_id: string;
@@ -75,9 +88,12 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [ingresos, setIngresos] = useState<Ingreso[]>([]);
   const [gastos, setGastos] = useState<ClienteGasto[]>([]);
+  const [facturas, setFacturas] = useState<Factura[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [tab, setTab] = useState<Tab>("pagos");
+
+  const [genModal, setGenModal] = useState<{ ingresoId: string; numero: string; esEmpresa: boolean; generando: boolean; error: string } | null>(null);
 
   const [mensualidadInput, setMensualidadInput] = useState("");
   const [mostrarAjusteManual, setMostrarAjusteManual] = useState(false);
@@ -117,13 +133,18 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
     setGastos(Array.isArray(data) ? data : []);
   }, [clienteId]);
 
+  const cargarFacturas = useCallback(async () => {
+    const data = await fetch(`/api/admin/facturas?clienteId=${clienteId}`).then((r) => r.json());
+    setFacturas(Array.isArray(data) ? data : []);
+  }, [clienteId]);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([cargarCliente(), cargarIngresos(), cargarGastos()]);
+      await Promise.all([cargarCliente(), cargarIngresos(), cargarGastos(), cargarFacturas()]);
       setLoading(false);
     })();
-  }, [cargarCliente, cargarIngresos, cargarGastos]);
+  }, [cargarCliente, cargarIngresos, cargarGastos, cargarFacturas]);
 
   async function actualizarMensualidad() {
     await fetch(`/api/admin/clientes/${clienteId}`, {
@@ -225,6 +246,54 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
     if (!confirm("¿Eliminar la factura adjunta de este mes?")) return;
     await fetch(`/api/admin/ingresos/${ingresoId}/factura`, { method: "DELETE" });
     await cargarIngresos();
+  }
+
+  async function abrirGenerarFactura(ingresoId: string) {
+    const res = await fetch(`/api/admin/facturas/pendientes?clienteId=${clienteId}`);
+    const data: Pendiente | { error: string } = await res.json();
+    if (!res.ok || !("cliente" in data)) {
+      alert("No se pudo cargar el número sugerido: " + ("error" in data ? data.error : "error"));
+      return;
+    }
+    setGenModal({ ingresoId, numero: data.numeroSugerido, esEmpresa: data.cliente.es_empresa, generando: false, error: "" });
+  }
+
+  async function confirmarGenerarFactura() {
+    if (!genModal || !cliente) return;
+    const ingreso = ingresos.find((i) => i.id === genModal.ingresoId);
+    if (!ingreso) return;
+    if (!genModal.numero.trim()) { setGenModal({ ...genModal, error: "Falta el número de factura." }); return; }
+    if (!cliente.nombre) { setGenModal({ ...genModal, error: "Falta el nombre del cliente." }); return; }
+    setGenModal({ ...genModal, generando: true, error: "" });
+    try {
+      const mesLabel = (() => { const d = ingreso.mes.slice(0, 10).split("-"); return `${d[1]}/${d[0]}`; })();
+      const concepto = `Comisión alquiler ${mesLabel}`;
+      const base = Math.round((ingreso.comision_calculada / 1.21) * 100) / 100;
+      const res = await fetch("/api/admin/facturas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          numero: genModal.numero.trim(),
+          cliente_id: clienteId,
+          origen: "ingreso",
+          origen_id: genModal.ingresoId,
+          fecha: ingreso.mes.slice(0, 10),
+          concepto,
+          cliente_nombre: `${cliente.nombre} ${cliente.apellidos ?? ""}`.trim(),
+          es_empresa: genModal.esEmpresa,
+          iva_pct: 21,
+          irpf_pct: genModal.esEmpresa ? 15 : 0,
+          lineas: [{ descripcion: `${concepto} — ${cliente.nombre} ${cliente.apellidos ?? ""}`.trim(), base }],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setGenModal({ ...genModal, generando: false, error: data.error || "Error generando factura" }); return; }
+      window.open(`/api/admin/facturas/${data.id}`, "_blank");
+      setGenModal(null);
+      await cargarFacturas();
+    } catch (e) {
+      setGenModal({ ...genModal, generando: false, error: e instanceof Error ? e.message : "Error" });
+    }
   }
 
   async function crearGasto(e: React.FormEvent) {
@@ -341,7 +410,9 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
             Cada mes se genera solo mientras la mensualidad sea mayor que 0. Ponla a 0 para pausar (por ejemplo, si el inquilino se va).
           </p>
 
-          {ingresos.map((ing) => (
+          {ingresos.map((ing) => {
+            const facturaGen = facturas.find((f) => f.origen === "ingreso" && f.origen_id === ing.id);
+            return (
             <div key={ing.id} className="chat-widget-msg assistant" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                 <span>
@@ -349,7 +420,8 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
                   {" — "}bruto {fmt(ing.ingreso_bruto)}, comisión {fmt(ing.comision_calculada)}
                   {!ing.cobrado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11 }}>Pendiente</span>}
                   {ing.cobrado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11 }}>Cobrado</span>}
-                  {ing.factura_storage_path && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#e0e7ff", color: "#3730a3", borderRadius: 4, fontSize: 11 }}>Factura ✓</span>}
+                  {ing.factura_storage_path && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#e0e7ff", color: "#3730a3", borderRadius: 4, fontSize: 11 }}>PDF adjunto</span>}
+                  {facturaGen && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#dcfce7", color: "#166534", borderRadius: 4, fontSize: 11 }}>Factura {facturaGen.numero}</span>}
                 </span>
                 <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {!ing.cobrado ? (
@@ -377,29 +449,40 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
               </div>
               {ing.cobrado && (
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
+                  {facturaGen ? (
+                    <a href={`/api/admin/facturas/${facturaGen.id}`} target="_blank" rel="noreferrer" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }}>
+                      Ver factura {facturaGen.numero}
+                    </a>
+                  ) : (
+                    <button type="button" className="btn-primary" style={{ fontSize: 12, padding: "3px 10px" }} onClick={() => abrirGenerarFactura(ing.id)}>
+                      Generar factura
+                    </button>
+                  )}
+                  <span style={{ opacity: 0.4, fontSize: 11 }}>·</span>
                   {ing.factura_storage_path ? (
                     <>
                       <a href={`/api/admin/ingresos/${ing.id}/factura`} target="_blank" rel="noreferrer" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }}>
-                        Ver factura
+                        Ver PDF adjunto
                       </a>
                       <label className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px", cursor: "pointer" }}>
                         {subiendoFactura === ing.id ? "Subiendo…" : "Reemplazar"}
                         <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) subirFacturaIngreso(ing.id, f); e.target.value = ""; }} />
                       </label>
                       <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px", color: "#dc2626" }} onClick={() => borrarFacturaIngreso(ing.id)}>
-                        Eliminar factura
+                        Eliminar PDF
                       </button>
                     </>
                   ) : (
-                    <label className="btn-primary" style={{ fontSize: 12, padding: "3px 10px", cursor: "pointer" }}>
-                      {subiendoFactura === ing.id ? "Subiendo…" : "Subir factura"}
+                    <label className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px", cursor: "pointer" }}>
+                      {subiendoFactura === ing.id ? "Subiendo…" : "Subir PDF externo"}
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) subirFacturaIngreso(ing.id, f); e.target.value = ""; }} />
                     </label>
                   )}
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
           {ingresos.length === 0 && <p className="admin-empty">Sin meses registrados todavía.</p>}
 
           <div className="lead-form-actions" style={{ marginTop: 12 }}>
@@ -558,6 +641,32 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
             <div><b>{fmt(gastoRecurrenteMes)}</b><span>Gasto recurrente/mes</span></div>
             <div className={rentabilidadPiso >= 0 ? "pnl-pos" : "pnl-neg"}><b>{fmt(rentabilidadPiso)}</b><span>Rentabilidad piso {año}</span></div>
             <div><b>{fmt(rentabilidadPiso / meses)}</b><span>Rentabilidad/mes</span></div>
+          </div>
+        </div>
+      )}
+
+      {genModal && (
+        <div onClick={() => !genModal.generando && setGenModal(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", padding: 20, borderRadius: 12, maxWidth: 420, width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+            <h3 style={{ marginTop: 0, marginBottom: 6 }}>Generar factura</h3>
+            <p className="loc" style={{ marginTop: 0, marginBottom: 16, fontSize: 13 }}>
+              Confirma el número antes de generar. Si ya has emitido facturas manualmente, ajústalo para que la secuencia no se solape.
+            </p>
+            <label style={{ display: "block", marginBottom: 12 }}>
+              <span style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "#57534e", marginBottom: 4 }}>Nº de factura</span>
+              <input autoFocus value={genModal.numero} onChange={(e) => setGenModal({ ...genModal, numero: e.target.value })} style={{ width: "100%", padding: "8px 10px", border: "1px solid #d6cfc6", borderRadius: 8, fontSize: 14 }} />
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, fontSize: 13 }}>
+              <input type="checkbox" checked={genModal.esEmpresa} onChange={(e) => setGenModal({ ...genModal, esEmpresa: e.target.checked })} />
+              Modelo empresa (IRPF 15%)
+            </label>
+            {genModal.error && <p style={{ color: "#dc2626", marginTop: 0, marginBottom: 12, fontSize: 13 }}>{genModal.error}</p>}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button type="button" className="btn-ghost" disabled={genModal.generando} onClick={() => setGenModal(null)}>Cancelar</button>
+              <button type="button" className="btn-primary" disabled={genModal.generando} onClick={confirmarGenerarFactura}>
+                {genModal.generando ? "Generando…" : "Generar y abrir PDF"}
+              </button>
+            </div>
           </div>
         </div>
       )}

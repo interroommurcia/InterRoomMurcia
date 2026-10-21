@@ -50,7 +50,7 @@ Guía de uso de herramientas:
 - Cuando anotes una tarea que el usuario diga que es "para" o "asignada a" alguien del equipo, incluye los nombres en el array trabajadores de anotar_agenda (puede haber varios).
 - Si preguntan qué habitaciones o propiedades se quedan libres en enero, usa habitaciones_libres_enero. Devuelve las propiedades y habitaciones marcadas con "libre en enero" (rotación completa).
 - Si piden fotos, vídeos o media de una propiedad interna (no del catálogo público), usa buscar_media_propiedad para localizar los archivos. Si quieren que envíes una foto o documento de la propiedad, usa enviar_media_propiedad con el id del medio encontrado.
-- Si te piden generar/hacer una factura de un cliente, usa primero listar_pagos_facturables para ver sus pagos pendientes. Si hay varios, muéstralos y pregunta cuál. Si falta el NIF u otros datos fiscales del cliente, avísalo. Luego, con el pago elegido, usa generar_factura (tras confirmar). El número lo pones tú si el usuario te lo da; si no, usa el sugerido.
+- Si te piden generar/hacer una factura de un cliente, usa primero listar_pagos_facturables para ver sus pagos pendientes. Si hay varios, muéstralos y pregunta cuál. Si falta el NIF u otros datos fiscales del cliente, avísalo. ANTES de llamar a generar_factura, SIEMPRE muestra el número de factura sugerido y pregunta explícitamente al usuario si lo usa tal cual o quiere otro número (puede haber facturas emitidas manualmente que rompen la secuencia). No llames a generar_factura hasta que el usuario te confirme el número a usar; pásalo explícitamente en el argumento "numero".
 - Si ninguna herramienta resuelve la pregunta, dilo con claridad en vez de inventar una respuesta.
 
 REGLA CRÍTICA — confirmación antes de modificar:
@@ -186,17 +186,17 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "generar_factura",
     description:
-      "Genera una factura para un pago pendiente concreto (obtenido con listar_pagos_facturables), guarda el PDF y lo envía a este chat de Telegram. HERRAMIENTA DE ESCRITURA: resume y pide confirmación antes de ejecutar.",
+      "Genera una factura para un pago pendiente concreto (obtenido con listar_pagos_facturables), guarda el PDF y lo envía a este chat de Telegram. HERRAMIENTA DE ESCRITURA: antes de ejecutar, muestra al usuario el número sugerido y confirma que es el que quiere usar (puede haber facturas emitidas manualmente); después pásalo explícitamente en `numero`.",
     input_schema: {
       type: "object",
       properties: {
         cliente_id: { type: "string", description: "id del cliente (de listar_pagos_facturables)" },
         origen: { type: "string", enum: ["ingreso", "compraventa", "alquiler_comision", "credito"], description: "origen del pago" },
         origen_id: { type: "string", description: "origen_id del pago elegido (de listar_pagos_facturables)" },
-        numero: { type: "string", description: "Número de factura. Si se omite, se usa el sugerido." },
+        numero: { type: "string", description: "Número de factura CONFIRMADO por el usuario. Obligatorio; nunca lo inventes ni uses el sugerido sin pedir confirmación explícita." },
         modelo: { type: "string", enum: ["cliente", "empresa"], description: "cliente = sin IRPF; empresa = IRPF 15%. Si se omite, se usa el que tenga la ficha del cliente." },
       },
-      required: ["cliente_id", "origen", "origen_id"],
+      required: ["cliente_id", "origen", "origen_id", "numero"],
     },
   },
   {
@@ -510,7 +510,11 @@ Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.co
     if (!cliente.nif) return "El cliente no tiene NIF/CIF en su ficha. Añádelo primero desde Contabilidad o la página de Facturas.";
     const modelo = input.modelo ? String(input.modelo) : cliente.es_empresa ? "empresa" : "cliente";
     const esEmpresa = modelo === "empresa";
-    const numero = input.numero ? String(input.numero).trim() : await sugerirNumero();
+    const numero = String(input.numero ?? "").trim();
+    if (!numero) {
+      const sugerido = await sugerirNumero();
+      return `Falta el número de factura. El sugerido es ${sugerido}. Confírmaselo al usuario (puede haber facturas emitidas manualmente que rompan la secuencia) y vuelve a llamarme pasando el "numero" que te indique.`;
+    }
     const factura = await crearFactura({
       numero,
       cliente_id: clienteId,
