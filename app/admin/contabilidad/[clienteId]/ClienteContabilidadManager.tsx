@@ -77,6 +77,23 @@ function labelCategoria(v: string | undefined) {
   return found ? found.label : "Otros";
 }
 
+function Info({ text }: { text: string }) {
+  return (
+    <span
+      title={text}
+      aria-label={text}
+      style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        width: 14, height: 14, marginLeft: 4, borderRadius: "50%",
+        background: "#e7e2db", color: "#57534e", fontSize: 10, fontWeight: 700,
+        cursor: "help", verticalAlign: "middle", lineHeight: 1,
+      }}
+    >
+      ?
+    </span>
+  );
+}
+
 const EUR = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
 const fmt = (n: number) => EUR.format(n || 0);
 const añoActual = (mes: string) => new Date(mes).getUTCFullYear();
@@ -630,17 +647,17 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
       {tab === "resumen" && (
         <div className="articulos-list-section">
           <div className="pnl-card">
-            <div><b>{fmt(brutoAño)}</b><span>Bruto {año} (IVA incl.)</span></div>
-            <div><b>{fmt(baseAño)}</b><span>Base (sin IVA)</span></div>
-            <div><b>{fmt(ivaAño)}</b><span>IVA 21%</span></div>
-            <div className={baseAño >= 0 ? "pnl-pos" : "pnl-neg"}><b>{fmt(baseAño)}</b><span>Neto InterRoom {año}</span></div>
-            <div><b>{fmt(baseAño / meses)}</b><span>Neto InterRoom/mes</span></div>
+            <div><b>{fmt(brutoAño)}</b><span>Bruto {año} (IVA incl.) <Info text={`Suma de todas las comisiones facturadas a este cliente en ${año}. Como la comisión que cobras ya incluye el 21% de IVA, este número es con IVA incluido.`} /></span></div>
+            <div><b>{fmt(baseAño)}</b><span>Base (sin IVA) <Info text="El bruto quitándole el IVA (bruto ÷ 1,21). Es la base imponible real: lo que de verdad entra a tu cuenta como ingreso antes de impuestos sobre beneficios." /></span></div>
+            <div><b>{fmt(ivaAño)}</b><span>IVA 21% <Info text="El IVA repercutido (bruto − base). No es tuyo: lo liquidas con Hacienda cada trimestre en el modelo 303." /></span></div>
+            <div className={baseAño >= 0 ? "pnl-pos" : "pnl-neg"}><b>{fmt(baseAño)}</b><span>Neto InterRoom {año} <Info text={`Lo que se queda InterRoom de este cliente en ${año} antes de impuestos sobre beneficios (IRPF/sociedades). Equivale a la base imponible, porque los gastos del piso los paga el propietario.`} /></span></div>
+            <div><b>{fmt(baseAño / meses)}</b><span>Neto InterRoom/mes <Info text={`Neto del año dividido entre los meses transcurridos de ${año} (${meses}). Útil para ver el ritmo mensual.`} /></span></div>
           </div>
           <div className="pnl-card" style={{ marginTop: 8 }}>
-            <div><b>{fmt(gastoAcumulado)}</b><span>Gastos casero {año}</span></div>
-            <div><b>{fmt(gastoRecurrenteMes)}</b><span>Gasto recurrente/mes</span></div>
-            <div className={rentabilidadPiso >= 0 ? "pnl-pos" : "pnl-neg"}><b>{fmt(rentabilidadPiso)}</b><span>Rentabilidad piso {año}</span></div>
-            <div><b>{fmt(rentabilidadPiso / meses)}</b><span>Rentabilidad/mes</span></div>
+            <div><b>{fmt(gastoAcumulado)}</b><span>Gastos casero {año} <Info text={`Gastos del piso en ${año} que afectan a la rentabilidad del propietario: recurrentes (comunidad, IBI, suministros, renta…) × meses transcurridos + puntuales pagados este año. No son gastos de InterRoom.`} /></span></div>
+            <div><b>{fmt(gastoRecurrenteMes)}</b><span>Gasto recurrente/mes <Info text="Suma de todas las partidas marcadas como recurrentes y aún activas. Es el coste fijo mensual del piso." /></span></div>
+            <div className={rentabilidadPiso >= 0 ? "pnl-pos" : "pnl-neg"}><b>{fmt(rentabilidadPiso)}</b><span>Rentabilidad piso {año} <Info text={`Base (sin IVA) − gastos acumulados del casero en ${año}. Es lo que le queda al propietario del piso tras pagar tu comisión y los gastos corrientes. Positivo = el piso le renta.`} /></span></div>
+            <div><b>{fmt(rentabilidadPiso / meses)}</b><span>Rentabilidad/mes <Info text={`Rentabilidad del año dividida entre los meses transcurridos (${meses}). Ritmo mensual neto del piso para el propietario.`} /></span></div>
           </div>
         </div>
       )}
