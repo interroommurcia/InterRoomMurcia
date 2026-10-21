@@ -492,7 +492,7 @@ Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.co
         continue;
       }
       pagos.forEach((p) =>
-        partes.push(`  - origen=${p.origen} · origen_id=${p.origen_id} · ${p.concepto} · base ${p.base.toFixed(2)}€${p.ya_facturado ? " · YA FACTURADO" : ""}`)
+        partes.push(`  - origen=${p.origen} · origen_id=${p.origen_id} · ${p.concepto} · base ${p.base.toFixed(2)}€ · ${p.cobrado ? "COBRADO" : "pendiente de cobro"}${p.ya_facturado ? " · YA FACTURADO" : ""}`)
       );
     }
     return partes.join("\n");

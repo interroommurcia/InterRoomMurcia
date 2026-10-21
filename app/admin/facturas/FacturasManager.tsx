@@ -9,6 +9,7 @@ type Pago = {
   fecha: string;
   concepto: string;
   base: number;
+  cobrado: boolean;
   ya_facturado: boolean;
 };
 type FichaCliente = {
@@ -29,6 +30,35 @@ type Factura = {
   total: number;
   es_empresa: boolean;
 };
+
+type Pendiente = {
+  origen: "ingreso" | "compraventa" | "alquiler_comision" | "credito";
+  origen_id: string;
+  fecha: string;
+  concepto: string;
+  base: number;
+  cobrado: boolean;
+  ya_facturado: boolean;
+  cliente_id: string;
+  cliente_nombre: string;
+  cliente_nif: string | null;
+  cliente_es_empresa: boolean;
+};
+
+// Replicada en cliente para predecir los números de la secuencia sin pedir
+// al servidor por cada uno. Debe coincidir con lib/factura/numeracion.ts.
+function sugerirSiguienteNumero(ultimo: string): string {
+  const anio = new Date().getFullYear();
+  const conAnio = ultimo.match(/^(\d{4})\s*[/\-]\s*(\d+)$/);
+  if (conAnio) {
+    const anioPrev = Number(conAnio[1]);
+    const n = Number(conAnio[2]);
+    return anioPrev === anio ? `${anio}/${n + 1}` : `${anio}/1`;
+  }
+  const soloNum = ultimo.match(/^(\d+)$/);
+  if (soloNum) return String(Number(soloNum[1]) + 1);
+  return ultimo;
+}
 
 const euro = (n: number) => new Intl.NumberFormat("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + " €";
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -61,6 +91,13 @@ export default function FacturasManager() {
   const [cCiudad, setCCiudad] = useState("");
   const [cTel, setCTel] = useState("");
   const [lineas, setLineas] = useState<{ descripcion: string; base: number }[]>([{ descripcion: "", base: 0 }]);
+
+  // Vista bulk de pendientes
+  const [verPendientes, setVerPendientes] = useState(false);
+  const [cargandoPendientes, setCargandoPendientes] = useState(false);
+  const [pendientes, setPendientes] = useState<Pendiente[]>([]);
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [bulkModal, setBulkModal] = useState<{ numero: string; generando: boolean; error: string; resultado: null | { generadas: { numero: string; cliente_nombre: string; factura_id: string }[]; errores: { origen: string; origen_id: string; error: string }[] } } | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/clientes")
@@ -176,21 +213,202 @@ export default function FacturasManager() {
     cargarFacturas();
   }
 
+  async function abrirPendientes() {
+    setVerPendientes(true);
+    setCargandoPendientes(true);
+    try {
+      const res = await fetch("/api/admin/facturas/pendientes-todos");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPendientes(data.pagos || []);
+      setBulkModal((prev) => prev ?? null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setCargandoPendientes(false);
+    }
+  }
+
+  function togglePendiente(key: string) {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+
+  const pendientesSinFacturar = useMemo(() => pendientes.filter((p) => !p.ya_facturado), [pendientes]);
+
+  function toggleTodos() {
+    const todos = pendientesSinFacturar.map((p) => `${p.origen}:${p.origen_id}`);
+    if (todos.every((k) => seleccionados.has(k)) && todos.length > 0) {
+      setSeleccionados(new Set());
+    } else {
+      setSeleccionados(new Set(todos));
+    }
+  }
+
+  async function abrirBulkModal() {
+    if (seleccionados.size === 0) return;
+    const res = await fetch("/api/admin/facturas/pendientes-todos");
+    const data = await res.json();
+    setBulkModal({ numero: data.numeroSugerido || "", generando: false, error: "", resultado: null });
+  }
+
+  async function ejecutarBulk() {
+    if (!bulkModal) return;
+    if (!bulkModal.numero.trim()) { setBulkModal({ ...bulkModal, error: "Falta el número inicial." }); return; }
+    const pagosSel = pendientesSinFacturar
+      .filter((p) => seleccionados.has(`${p.origen}:${p.origen_id}`))
+      .map((p) => ({ origen: p.origen, origen_id: p.origen_id, cliente_id: p.cliente_id }));
+    setBulkModal({ ...bulkModal, generando: true, error: "" });
+    try {
+      const res = await fetch("/api/admin/facturas/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pagos: pagosSel, numero_inicial: bulkModal.numero.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setBulkModal({ ...bulkModal, generando: false, error: data.error || "Error" }); return; }
+      setBulkModal({ ...bulkModal, generando: false, error: "", resultado: { generadas: data.generadas || [], errores: data.errores || [] } });
+      setSeleccionados(new Set());
+      cargarFacturas();
+      // Refresca la lista de pendientes (los recién facturados se marcarán como ya_facturado)
+      const r2 = await fetch("/api/admin/facturas/pendientes-todos");
+      const d2 = await r2.json();
+      setPendientes(d2.pagos || []);
+    } catch (e) {
+      setBulkModal({ ...bulkModal, generando: false, error: e instanceof Error ? e.message : "Error" });
+    }
+  }
+
+  const previsualizacionNumeros = useMemo(() => {
+    if (!bulkModal) return [] as string[];
+    const n = seleccionados.size;
+    const out: string[] = [];
+    let cur = bulkModal.numero.trim();
+    for (let i = 0; i < Math.min(n, 5); i++) { out.push(cur); cur = sugerirSiguienteNumero(cur); }
+    if (n > 5) out.push(`… hasta ${sugerirSiguienteNumero(out[out.length - 1])} tras ${n - 5} más`);
+    return out;
+  }, [bulkModal, seleccionados.size]);
+
   const faltanDatos = !cNif || !cDir;
 
   return (
     <div>
       <div style={card}>
-        <label style={label}>
-          Cliente
-          <select style={input} value={clienteId} onChange={(e) => seleccionarCliente(e.target.value)}>
-            <option value="">Selecciona un cliente…</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre} {c.apellidos ?? ""}</option>
-            ))}
-          </select>
-        </label>
+        <div style={{ display: "flex", gap: 10, alignItems: "end", justifyContent: "space-between", flexWrap: "wrap" }}>
+          <label style={{ ...label, flex: 1, minWidth: 220 }}>
+            Cliente
+            <select style={input} value={clienteId} onChange={(e) => seleccionarCliente(e.target.value)}>
+              <option value="">Selecciona un cliente…</option>
+              {clientes.map((c) => (
+                <option key={c.id} value={c.id}>{c.nombre} {c.apellidos ?? ""}</option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="btn-ghost" onClick={() => verPendientes ? setVerPendientes(false) : abrirPendientes()}>
+            {verPendientes ? "Ocultar pendientes" : "Ver pendientes de todos"}
+          </button>
+        </div>
       </div>
+
+      {verPendientes && (
+        <div style={card}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 10, flexWrap: "wrap" }}>
+            <strong>Pagos pendientes de facturar ({pendientesSinFacturar.length})</strong>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" className="btn-ghost" onClick={toggleTodos} disabled={pendientesSinFacturar.length === 0}>
+                {pendientesSinFacturar.length > 0 && pendientesSinFacturar.every((p) => seleccionados.has(`${p.origen}:${p.origen_id}`)) ? "Deseleccionar todos" : "Seleccionar todos"}
+              </button>
+              <button type="button" className="btn-primary" onClick={abrirBulkModal} disabled={seleccionados.size === 0}>
+                Generar {seleccionados.size || ""} factura{seleccionados.size === 1 ? "" : "s"}
+              </button>
+            </div>
+          </div>
+          {cargandoPendientes && <p>Cargando…</p>}
+          {!cargandoPendientes && pendientesSinFacturar.length === 0 && <p style={{ color: "#57534e" }}>Sin pagos pendientes. Todos los cobros están facturados.</p>}
+          {pendientesSinFacturar.map((p) => {
+            const key = `${p.origen}:${p.origen_id}`;
+            const faltaNif = !p.cliente_nif;
+            return (
+              <label key={key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #f0ece6", cursor: faltaNif ? "not-allowed" : "pointer", opacity: faltaNif ? 0.55 : 1 }}>
+                <input type="checkbox" checked={seleccionados.has(key)} disabled={faltaNif} onChange={() => togglePendiente(key)} />
+                <span style={{ flex: 1 }}>
+                  <b>{p.cliente_nombre}</b>
+                  <span style={{ opacity: 0.6, marginLeft: 8, fontSize: 12 }}>{p.cliente_es_empresa ? "empresa" : "cliente"}</span>
+                  <span style={{ marginLeft: 8, padding: "2px 8px", background: p.cobrado ? "#d1fae5" : "#fef3c7", color: p.cobrado ? "#065f46" : "#92400e", borderRadius: 4, fontSize: 11 }}>
+                    {p.cobrado ? "Cobrado" : "Pendiente de cobro"}
+                  </span>
+                  {faltaNif && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11 }}>Falta NIF/CIF</span>}
+                  <br />
+                  <span style={{ fontSize: 12, color: "#57534e" }}>{p.concepto} · {p.fecha}</span>
+                </span>
+                <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{euro(p.base)} <span style={{ fontSize: 11, color: "#57534e", fontWeight: 400 }}>base</span></span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+
+      {bulkModal && (
+        <div onClick={() => !bulkModal.generando && setBulkModal(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", padding: 20, borderRadius: 12, maxWidth: 480, width: "92%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", maxHeight: "90vh", overflowY: "auto" }}>
+            {!bulkModal.resultado ? (
+              <>
+                <h3 style={{ marginTop: 0, marginBottom: 6 }}>Generar {seleccionados.size} factura{seleccionados.size === 1 ? "" : "s"}</h3>
+                <p style={{ marginTop: 0, marginBottom: 14, fontSize: 13, color: "#57534e" }}>
+                  Confirma el número inicial. Se usará para la primera factura e irá incrementando (los que ya has emitido manualmente deberían quedar antes de este número).
+                </p>
+                <label style={{ ...label, display: "block", marginBottom: 12 }}>
+                  Nº inicial
+                  <input style={input} autoFocus value={bulkModal.numero} onChange={(e) => setBulkModal({ ...bulkModal, numero: e.target.value })} />
+                </label>
+                {previsualizacionNumeros.length > 0 && (
+                  <div style={{ background: "#fff4ec", borderRadius: 8, padding: 10, marginBottom: 14, fontSize: 12 }}>
+                    <strong style={{ display: "block", marginBottom: 4 }}>Secuencia que se generará:</strong>
+                    {previsualizacionNumeros.join(" · ")}
+                  </div>
+                )}
+                {bulkModal.error && <p style={{ color: "#dc2626", marginTop: 0, marginBottom: 12, fontSize: 13 }}>{bulkModal.error}</p>}
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button type="button" className="btn-ghost" disabled={bulkModal.generando} onClick={() => setBulkModal(null)}>Cancelar</button>
+                  <button type="button" className="btn-primary" disabled={bulkModal.generando} onClick={ejecutarBulk}>
+                    {bulkModal.generando ? "Generando…" : `Generar ${seleccionados.size}`}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 style={{ marginTop: 0, marginBottom: 10 }}>Resultado</h3>
+                {bulkModal.resultado.generadas.length > 0 && (
+                  <>
+                    <strong style={{ display: "block", marginBottom: 6 }}>Generadas ({bulkModal.resultado.generadas.length})</strong>
+                    {bulkModal.resultado.generadas.map((g) => (
+                      <div key={g.factura_id} style={{ padding: "6px 0", borderBottom: "1px solid #f0ece6", display: "flex", gap: 10, alignItems: "center" }}>
+                        <span style={{ fontWeight: 700, width: 90 }}>{g.numero}</span>
+                        <span style={{ flex: 1, fontSize: 13 }}>{g.cliente_nombre}</span>
+                        <a className="btn-ghost" href={`/api/admin/facturas/${g.factura_id}`} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>PDF</a>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {bulkModal.resultado.errores.length > 0 && (
+                  <>
+                    <strong style={{ display: "block", marginTop: 14, marginBottom: 6, color: "#c2410c" }}>Errores ({bulkModal.resultado.errores.length})</strong>
+                    {bulkModal.resultado.errores.map((e, i) => (
+                      <div key={i} style={{ padding: "4px 0", fontSize: 12, color: "#57534e" }}>{e.error} <span style={{ opacity: 0.5 }}>({e.origen}:{e.origen_id.slice(0, 8)})</span></div>
+                    ))}
+                  </>
+                )}
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
+                  <button type="button" className="btn-primary" onClick={() => setBulkModal(null)}>Cerrar</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {cargando && <p>Cargando…</p>}
 
@@ -202,7 +420,12 @@ export default function FacturasManager() {
             {pagos.map((p) => (
               <label key={p.origen_id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #f0ece6", cursor: "pointer" }}>
                 <input type="radio" name="pago" checked={pagoSel === p.origen_id} onChange={() => elegirPago(p)} />
-                <span style={{ flex: 1 }}>{p.concepto}</span>
+                <span style={{ flex: 1 }}>
+                  {p.concepto}
+                  <span style={{ marginLeft: 8, padding: "2px 8px", background: p.cobrado ? "#d1fae5" : "#fef3c7", color: p.cobrado ? "#065f46" : "#92400e", borderRadius: 4, fontSize: 11 }}>
+                    {p.cobrado ? "Cobrado" : "Pendiente de cobro"}
+                  </span>
+                </span>
                 <span style={{ fontWeight: 700 }}>{euro(p.base)} <span style={{ fontSize: 11, color: "#57534e" }}>base</span></span>
                 {p.ya_facturado && <span style={{ fontSize: 11, color: "#c2410c", fontWeight: 700 }}>ya facturado</span>}
               </label>

@@ -8,6 +8,7 @@ export type PagoFacturable = {
   fecha: string;
   concepto: string;
   base: number;
+  cobrado: boolean;
   ya_facturado: boolean;
 };
 
