@@ -51,6 +51,7 @@ export type IngresoMensual = {
   cobrado: boolean;
   fecha_cobro: string | null;
   notas: string | null;
+  factura_storage_path: string | null;
   created_at: string;
 };
 
@@ -799,6 +800,54 @@ export async function eliminarCreditoDocumento(id: string) {
   if (!doc) return;
   await admin.storage.from(DOCUMENTOS_BUCKET).remove([doc.storage_path]);
   const { error } = await admin.from("credito_documentos").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ============================================================
+// FACTURAS ADJUNTAS A MESES COBRADOS
+// ============================================================
+
+export async function subirIngresoFactura(ingresoId: string, nombre: string, buffer: Buffer, contentType: string): Promise<{ nombre: string; storage_path: string }> {
+  const admin = getSupabaseAdmin();
+  const { data: ing, error: getError } = await admin.from("cliente_ingresos").select("factura_storage_path, cliente_id").eq("id", ingresoId).maybeSingle();
+  if (getError) throw getError;
+  if (!ing) throw new Error("Ingreso no encontrado");
+
+  await admin.storage.createBucket(DOCUMENTOS_BUCKET, { public: false }).catch(() => {});
+  const path = `ingresos/${ing.cliente_id}/${ingresoId}/${Date.now()}-${sanitizeFilename(nombre)}`;
+  const { error: uploadError } = await admin.storage.from(DOCUMENTOS_BUCKET).upload(path, buffer, { contentType });
+  if (uploadError) throw uploadError;
+
+  if (ing.factura_storage_path) {
+    await admin.storage.from(DOCUMENTOS_BUCKET).remove([ing.factura_storage_path]).catch(() => {});
+  }
+
+  const { error } = await admin.from("cliente_ingresos").update({ factura_storage_path: path }).eq("id", ingresoId);
+  if (error) throw error;
+  return { nombre, storage_path: path };
+}
+
+export async function descargarIngresoFactura(ingresoId: string): Promise<{ nombre: string; buffer: Buffer; contentType: string } | null> {
+  const admin = getSupabaseAdmin();
+  const { data: ing, error } = await admin.from("cliente_ingresos").select("factura_storage_path").eq("id", ingresoId).maybeSingle();
+  if (error) throw error;
+  if (!ing?.factura_storage_path) return null;
+  const { data: file, error: downloadError } = await admin.storage.from(DOCUMENTOS_BUCKET).download(ing.factura_storage_path);
+  if (downloadError) throw downloadError;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const nombre = ing.factura_storage_path.split("/").pop() ?? "factura.pdf";
+  const ext = nombre.split(".").pop()?.toLowerCase();
+  const contentType = ext === "pdf" ? "application/pdf" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "application/octet-stream";
+  return { nombre, buffer, contentType };
+}
+
+export async function eliminarIngresoFactura(ingresoId: string) {
+  const admin = getSupabaseAdmin();
+  const { data: ing, error: getError } = await admin.from("cliente_ingresos").select("factura_storage_path").eq("id", ingresoId).maybeSingle();
+  if (getError) throw getError;
+  if (!ing?.factura_storage_path) return;
+  await admin.storage.from(DOCUMENTOS_BUCKET).remove([ing.factura_storage_path]).catch(() => {});
+  const { error } = await admin.from("cliente_ingresos").update({ factura_storage_path: null }).eq("id", ingresoId);
   if (error) throw error;
 }
 

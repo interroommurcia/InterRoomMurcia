@@ -25,6 +25,7 @@ type Ingreso = {
   comision_pct: number;
   comision_calculada: number;
   cobrado: boolean;
+  factura_storage_path: string | null;
 };
 
 type ClienteGasto = {
@@ -85,6 +86,7 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
   const [editandoAlquiler, setEditandoAlquiler] = useState(false);
   const [editAlquilerForm, setEditAlquilerForm] = useState({ mensualidad: "", comision_pct: "", comision_fija: "", fecha_inicio: "", fecha_fin: "" });
 
+  const [subiendoFactura, setSubiendoFactura] = useState<string | null>(null);
   const [mostrarNuevoGasto, setMostrarNuevoGasto] = useState(false);
   const [nuevoGasto, setNuevoGasto] = useState({
     concepto: "",
@@ -199,6 +201,29 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
 
   async function eliminarIngreso(ingresoId: string) {
     await fetch(`/api/admin/ingresos/${ingresoId}`, { method: "DELETE" });
+    await cargarIngresos();
+  }
+
+  async function subirFacturaIngreso(ingresoId: string, file: File) {
+    setSubiendoFactura(ingresoId);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/admin/ingresos/${ingresoId}/factura`, { method: "POST", body: fd });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "No se pudo subir la factura");
+      } else {
+        await cargarIngresos();
+      }
+    } finally {
+      setSubiendoFactura(null);
+    }
+  }
+
+  async function borrarFacturaIngreso(ingresoId: string) {
+    if (!confirm("¿Eliminar la factura adjunta de este mes?")) return;
+    await fetch(`/api/admin/ingresos/${ingresoId}/factura`, { method: "DELETE" });
     await cargarIngresos();
   }
 
@@ -317,36 +342,62 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
           </p>
 
           {ingresos.map((ing) => (
-            <div key={ing.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-              <span>
-                <b>Mensualidad {(() => { const d = ing.mes.slice(0, 10).split("-"); return `${d[2]}/${d[1]}/${d[0]}`; })()}</b>
-                {" — "}bruto {fmt(ing.ingreso_bruto)}, comisión {fmt(ing.comision_calculada)}
-                {!ing.cobrado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11 }}>Pendiente</span>}
-                {ing.cobrado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11 }}>Cobrado</span>}
-              </span>
-              <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                {!ing.cobrado ? (
-                  <button type="button" className="btn-primary" style={{ fontSize: 12, padding: "4px 10px", whiteSpace: "nowrap" }} onClick={() => {
-                    const mesLabel = (() => { const d = ing.mes.slice(0, 10).split("-"); return `${d[2]}/${d[1]}/${d[0]}`; })();
-                    if (confirm(`¿Confirmar el pago de la mensualidad del ${mesLabel} por ${fmt(ing.comision_calculada)}?`)) {
-                      toggleIngresoCobrado(ing.id, true);
-                    }
-                  }}>
-                    Confirmar pago
+            <div key={ing.id} className="chat-widget-msg assistant" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                <span>
+                  <b>Mensualidad {(() => { const d = ing.mes.slice(0, 10).split("-"); return `${d[2]}/${d[1]}/${d[0]}`; })()}</b>
+                  {" — "}bruto {fmt(ing.ingreso_bruto)}, comisión {fmt(ing.comision_calculada)}
+                  {!ing.cobrado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11 }}>Pendiente</span>}
+                  {ing.cobrado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11 }}>Cobrado</span>}
+                  {ing.factura_storage_path && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#e0e7ff", color: "#3730a3", borderRadius: 4, fontSize: 11 }}>Factura ✓</span>}
+                </span>
+                <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {!ing.cobrado ? (
+                    <button type="button" className="btn-primary" style={{ fontSize: 12, padding: "4px 10px", whiteSpace: "nowrap" }} onClick={() => {
+                      const mesLabel = (() => { const d = ing.mes.slice(0, 10).split("-"); return `${d[2]}/${d[1]}/${d[0]}`; })();
+                      if (confirm(`¿Confirmar el pago de la mensualidad del ${mesLabel} por ${fmt(ing.comision_calculada)}?`)) {
+                        toggleIngresoCobrado(ing.id, true);
+                      }
+                    }}>
+                      Confirmar pago
+                    </button>
+                  ) : (
+                    <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "4px 10px", whiteSpace: "nowrap" }} onClick={() => {
+                      if (confirm("¿Desmarcar este pago como cobrado?")) {
+                        toggleIngresoCobrado(ing.id, false);
+                      }
+                    }}>
+                      Desmarcar cobro
+                    </button>
+                  )}
+                  <button type="button" className="btn-ghost" onClick={() => eliminarIngreso(ing.id)}>
+                    Borrar
                   </button>
-                ) : (
-                  <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "4px 10px", whiteSpace: "nowrap" }} onClick={() => {
-                    if (confirm("¿Desmarcar este pago como cobrado?")) {
-                      toggleIngresoCobrado(ing.id, false);
-                    }
-                  }}>
-                    Desmarcar cobro
-                  </button>
-                )}
-                <button type="button" className="btn-ghost" onClick={() => eliminarIngreso(ing.id)}>
-                  Borrar
-                </button>
-              </span>
+                </span>
+              </div>
+              {ing.cobrado && (
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
+                  {ing.factura_storage_path ? (
+                    <>
+                      <a href={`/api/admin/ingresos/${ing.id}/factura`} target="_blank" rel="noreferrer" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }}>
+                        Ver factura
+                      </a>
+                      <label className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px", cursor: "pointer" }}>
+                        {subiendoFactura === ing.id ? "Subiendo…" : "Reemplazar"}
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) subirFacturaIngreso(ing.id, f); e.target.value = ""; }} />
+                      </label>
+                      <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px", color: "#dc2626" }} onClick={() => borrarFacturaIngreso(ing.id)}>
+                        Eliminar factura
+                      </button>
+                    </>
+                  ) : (
+                    <label className="btn-primary" style={{ fontSize: 12, padding: "3px 10px", cursor: "pointer" }}>
+                      {subiendoFactura === ing.id ? "Subiendo…" : "Subir factura"}
+                      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) subirFacturaIngreso(ing.id, f); e.target.value = ""; }} />
+                    </label>
+                  )}
+                </div>
+              )}
             </div>
           ))}
           {ingresos.length === 0 && <p className="admin-empty">Sin meses registrados todavía.</p>}
