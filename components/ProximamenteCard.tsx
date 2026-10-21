@@ -8,6 +8,7 @@ export default function ProximamenteCard({ piso }: { piso: Piso }) {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
 
@@ -17,8 +18,9 @@ export default function ProximamenteCard({ piso }: { piso: Piso }) {
     e.preventDefault();
     if (!telefono.trim()) return;
     setEnviando(true);
+    setErrorMsg("");
     try {
-      await fetch("/api/leads-proximamente", {
+      const res = await fetch("/api/leads-proximamente", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -29,9 +31,15 @@ export default function ProximamenteCard({ piso }: { piso: Piso }) {
           telefono: telefono.trim(),
         }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErrorMsg(data?.error || `Error ${res.status}. Prueba de nuevo o escríbenos por WhatsApp.`);
+        return;
+      }
       setEnviado(true);
-    } catch {
-      // silent
+    } catch (err) {
+      setErrorMsg("Sin conexión. Prueba de nuevo o escríbenos por WhatsApp.");
+      console.error("[proximamente-card]", err);
     } finally {
       setEnviando(false);
     }
@@ -94,6 +102,7 @@ export default function ProximamenteCard({ piso }: { piso: Piso }) {
             <button type="submit" disabled={enviando}>
               {enviando ? "Enviando..." : "Enviar"}
             </button>
+            {errorMsg && <p className="proximamente-error" style={{ color: "#dc2626", fontSize: 12, marginTop: 6 }}>{errorMsg}</p>}
           </form>
         ) : (
           <button

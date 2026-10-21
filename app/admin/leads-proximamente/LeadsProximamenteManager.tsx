@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { LeadProximamente } from "../../../lib/leadsProximamente";
 
 function groupByPiso(leads: LeadProximamente[]) {
@@ -40,9 +41,36 @@ function descargarExcel(leads: LeadProximamente[]) {
 }
 
 export default function LeadsProximamenteManager({ leads }: { leads: LeadProximamente[] }) {
+  const router = useRouter();
   const groups = groupByPiso(leads);
   const [migrando, setMigrando] = useState(false);
   const [resultadoMig, setResultadoMig] = useState<null | { migrados: number; yaMigrados: number; errores: { id: number; error: string }[] }>(null);
+  const [procesando, setProcesando] = useState<number | null>(null);
+
+  async function toggleContactado(id: number, actual: boolean) {
+    setProcesando(id);
+    try {
+      await fetch(`/api/admin/leads-proximamente/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactado: !actual }),
+      });
+      router.refresh();
+    } finally {
+      setProcesando(null);
+    }
+  }
+
+  async function borrarLead(id: number) {
+    if (!confirm("¿Borrar este lead? Esta acción no se puede deshacer.")) return;
+    setProcesando(id);
+    try {
+      await fetch(`/api/admin/leads-proximamente/${id}`, { method: "DELETE" });
+      router.refresh();
+    } finally {
+      setProcesando(null);
+    }
+  }
 
   async function migrarTodos() {
     if (!confirm("¿Mover todos los leads de Próximamente al pipeline normal (leads_propietarios)?\n\nSe conservarán aquí marcados como migrados (no se pierden). La operación es idempotente: si pulsas dos veces, no se duplica.\n\nIMPORTANTE: descarga antes la copia de respaldo (JSON) si aún no lo has hecho.")) return;
@@ -153,14 +181,42 @@ export default function LeadsProximamenteManager({ leads }: { leads: LeadProxima
                     <th>Fecha</th>
                     <th>Nombre</th>
                     <th>Teléfono</th>
+                    <th>Estado</th>
+                    <th style={{ textAlign: "right" }}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {group.leads.map((l) => (
-                    <tr key={l.id}>
+                    <tr key={l.id} style={l.contactado ? { opacity: 0.55 } : undefined}>
                       <td>{new Date(l.created_at).toLocaleString("es-ES")}</td>
                       <td>{l.nombre || "—"}</td>
                       <td><a href={`tel:${l.telefono}`}>{l.telefono}</a></td>
+                      <td>
+                        {l.contactado ? (
+                          <span style={{ padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11 }}>Contactado</span>
+                        ) : (
+                          <span style={{ padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11 }}>Pendiente</span>
+                        )}
+                        {l.migrated_at && <span style={{ marginLeft: 6, padding: "2px 8px", background: "#e0e7ff", color: "#3730a3", borderRadius: 4, fontSize: 11 }}>En pipeline</span>}
+                      </td>
+                      <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                        <button
+                          type="button"
+                          disabled={procesando === l.id}
+                          onClick={() => toggleContactado(l.id, !!l.contactado)}
+                          style={{ padding: "4px 10px", border: "1px solid #d1d5db", background: "#fff", borderRadius: 6, cursor: "pointer", fontSize: 12, marginRight: 6 }}
+                        >
+                          {l.contactado ? "Marcar pendiente" : "Marcar contactado"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={procesando === l.id}
+                          onClick={() => borrarLead(l.id)}
+                          style={{ padding: "4px 10px", border: "1px solid #fecaca", background: "#fff", color: "#dc2626", borderRadius: 6, cursor: "pointer", fontSize: 12 }}
+                        >
+                          Borrar
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -171,7 +227,7 @@ export default function LeadsProximamenteManager({ leads }: { leads: LeadProxima
       })}
 
       <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 24 }}>
-        Los leads se eliminan automáticamente 15 días después de que la propiedad deje de estar en Próximamente.
+        Los leads ya no se borran automáticamente. Usa "Marcar contactado" cuando hables con el interesado o "Borrar" si quieres eliminarlo manualmente.
       </p>
     </>
   );

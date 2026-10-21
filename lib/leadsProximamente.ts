@@ -11,6 +11,8 @@ export type LeadProximamente = {
   created_at: string;
   migrated_at?: string | null;
   migrated_lead_id?: number | null;
+  contactado?: boolean;
+  contactado_at?: string | null;
 };
 
 async function ensureTable() {
@@ -28,6 +30,9 @@ async function ensureTable() {
   // Columnas para rastrear la migración al pipeline normal (leads_propietarios).
   await sql`ALTER TABLE leads_proximamente ADD COLUMN IF NOT EXISTS migrated_at TIMESTAMPTZ;`;
   await sql`ALTER TABLE leads_proximamente ADD COLUMN IF NOT EXISTS migrated_lead_id INTEGER;`;
+  // Gestión manual: marcar un lead como ya contactado por el equipo comercial.
+  await sql`ALTER TABLE leads_proximamente ADD COLUMN IF NOT EXISTS contactado BOOLEAN NOT NULL DEFAULT false;`;
+  await sql`ALTER TABLE leads_proximamente ADD COLUMN IF NOT EXISTS contactado_at TIMESTAMPTZ;`;
 }
 
 export async function crearLeadProximamente(data: {
@@ -38,10 +43,13 @@ export async function crearLeadProximamente(data: {
   telefono: string;
 }) {
   await ensureTable();
-  await sql`
+  const { rows } = await sql<{ id: number }>`
     INSERT INTO leads_proximamente (piso_id, piso_titulo, piso_categoria, nombre, telefono)
-    VALUES (${data.piso_id}, ${data.piso_titulo}, ${data.piso_categoria}, ${data.nombre}, ${data.telefono});
+    VALUES (${data.piso_id}, ${data.piso_titulo}, ${data.piso_categoria}, ${data.nombre}, ${data.telefono})
+    RETURNING id;
   `;
+  const nuevoId = rows[0]?.id;
+  console.log(`[leads-proximamente] guardado id=${nuevoId} piso=${data.piso_titulo} tel=${data.telefono}`);
 
   const chatIds = (process.env.TELEGRAM_CHAT_ID ?? "").split(",").map((id) => id.trim()).filter(Boolean);
   if (chatIds.length) {
@@ -54,36 +62,42 @@ export async function crearLeadProximamente(data: {
     ].join("\n");
     await Promise.all(chatIds.map((id) => telegramSendMessage(id, texto).catch(() => {})));
   }
+  return nuevoId;
 }
 
+// Devuelve todos los leads de próximamente SIN auto-borrar nada.
+// Los contactados se mantienen (quedan marcados visualmente).
 export async function listarLeadsProximamente(): Promise<LeadProximamente[]> {
   await ensureTable();
-  await limpiarLeadsExpirados();
   const { rows } = await sql<LeadProximamente>`
-    SELECT id, piso_id, piso_titulo, piso_categoria, nombre, telefono, created_at
+    SELECT id, piso_id, piso_titulo, piso_categoria, nombre, telefono, created_at,
+           migrated_at, migrated_lead_id, contactado, contactado_at
     FROM leads_proximamente
-    ORDER BY piso_titulo, created_at DESC;
+    ORDER BY contactado ASC, piso_titulo, created_at DESC;
   `;
   return rows;
 }
 
-async function limpiarLeadsExpirados() {
-  try {
-    await sql`
-      DELETE FROM leads_proximamente
-      WHERE created_at < now() - interval '15 days';
-    `;
-  } catch {
-    // tabla aún no creada — nada que limpiar
-  }
+export async function marcarLeadProximamenteContactado(id: number, contactado: boolean) {
+  await ensureTable();
+  await sql`
+    UPDATE leads_proximamente
+    SET contactado = ${contactado}, contactado_at = ${contactado ? new Date().toISOString() : null}
+    WHERE id = ${id};
+  `;
 }
 
-// Copia cruda de todos los registros, SIN ejecutar la limpieza automática.
-// Pensada para el backup previo a cualquier migración.
+export async function eliminarLeadProximamente(id: number) {
+  await ensureTable();
+  await sql`DELETE FROM leads_proximamente WHERE id = ${id};`;
+}
+
+// Copia cruda de todos los registros. Pensada para backup.
 export async function exportarLeadsProximamenteSinLimpiar(): Promise<LeadProximamente[]> {
   await ensureTable();
   const { rows } = await sql<LeadProximamente>`
-    SELECT id, piso_id, piso_titulo, piso_categoria, nombre, telefono, created_at, migrated_at, migrated_lead_id
+    SELECT id, piso_id, piso_titulo, piso_categoria, nombre, telefono, created_at,
+           migrated_at, migrated_lead_id, contactado, contactado_at
     FROM leads_proximamente
     ORDER BY created_at DESC;
   `;
