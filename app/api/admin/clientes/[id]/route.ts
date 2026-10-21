@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { actualizarCliente, eliminarCliente } from "../../../../../lib/contabilidad";
+import { actualizarCliente, eliminarCliente, getCliente } from "../../../../../lib/contabilidad";
 
 export const dynamic = "force-dynamic";
+
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const cliente = await getCliente(params.id);
+    if (!cliente) return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 });
+    return NextResponse.json(cliente);
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Error desconocido" }, { status: 500 });
+  }
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json().catch(() => null);

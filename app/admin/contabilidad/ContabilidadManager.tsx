@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 
 type Cliente = {
   id: string;
@@ -68,21 +69,6 @@ type Gasto = {
   es_negativo: boolean;
   pagado: boolean;
   categoria?: string;
-};
-
-type ClienteGasto = {
-  id: string;
-  cliente_id: string;
-  concepto: string;
-  importe: number;
-  categoria: string;
-  es_recurrente: boolean;
-  fecha_inicio: string | null;
-  fecha_fin: string | null;
-  pagado: boolean;
-  fecha_pago: string | null;
-  pagado_por: string | null;
-  notas: string | null;
 };
 
 const CATEGORIAS_GASTO: { value: string; label: string }[] = [
@@ -313,26 +299,8 @@ export default function ContabilidadManager() {
 
   const [activarAlquiler, setActivarAlquiler] = useState(ACTIVAR_ALQUILER);
   const [mostrarActivarAlquiler, setMostrarActivarAlquiler] = useState(false);
-  const [editandoAlquiler, setEditandoAlquiler] = useState<string | null>(null);
-  const [editAlquilerForm, setEditAlquilerForm] = useState({ mensualidad: "", comision_pct: "", comision_fija: "", fecha_inicio: "", fecha_fin: "" });
 
   const [ingresos, setIngresos] = useState<Record<string, Ingreso[]>>({});
-  const [clienteAbierto, setClienteAbierto] = useState<string | null>(null);
-  const [nuevoIngreso, setNuevoIngreso] = useState({ mes: "", ingresoBruto: "", comisionManual: "" });
-  const [mostrarAjusteManual, setMostrarAjusteManual] = useState(false);
-  const [mensualidadInput, setMensualidadInput] = useState("");
-  const [clienteGastos, setClienteGastos] = useState<Record<string, ClienteGasto[]>>({});
-  const [mostrarNuevoGastoCliente, setMostrarNuevoGastoCliente] = useState(false);
-  const [nuevoGastoCliente, setNuevoGastoCliente] = useState({
-    concepto: "",
-    importe: "",
-    categoria: "propietario",
-    esRecurrente: true,
-    fechaInicio: new Date().toISOString().slice(0, 10),
-    fechaPago: "",
-    pagado: false,
-    pagadoPor: "",
-  });
 
   const [gastos, setGastos] = useState<Record<string, Gasto[]>>({});
   const [operacionAbierta, setOperacionAbierta] = useState<string | null>(null);
@@ -366,6 +334,14 @@ export default function ContabilidadManager() {
     setLiquidaciones(Array.isArray(lq) ? lq : []);
     setAlquilerComisiones(Array.isArray(ac) ? ac : []);
     setLoading(false);
+
+    const clientesList: Cliente[] = Array.isArray(c) ? c : [];
+    const conAlquiler = clientesList.filter((cl) => cl.tipo === "propietario" && (cl.mensualidad > 0 || cl.tieneIngresos));
+    const pares = await Promise.all(conAlquiler.map(async (cl) => {
+      const data = await fetch(`/api/admin/clientes/${cl.id}/ingresos`).then((r) => r.json()).catch(() => []);
+      return [cl.id, Array.isArray(data) ? data : []] as const;
+    }));
+    setIngresos(Object.fromEntries(pares));
   }
 
   async function crearGastoFijo(e: React.FormEvent) {
@@ -648,131 +624,6 @@ export default function ContabilidadManager() {
     cargarTodo();
   }
 
-  async function toggleCliente(cliente: Cliente) {
-    const next = clienteAbierto === cliente.id ? null : cliente.id;
-    setClienteAbierto(next);
-    setMostrarAjusteManual(false);
-    setMostrarNuevoGastoCliente(false);
-    if (next) {
-      setMensualidadInput(String(cliente.mensualidad ?? 0));
-      const [ings, gs] = await Promise.all([
-        fetch(`/api/admin/clientes/${cliente.id}/ingresos`).then((r) => r.json()),
-        fetch(`/api/admin/clientes/${cliente.id}/gastos`).then((r) => r.json()),
-      ]);
-      setIngresos((prev) => ({ ...prev, [cliente.id]: Array.isArray(ings) ? ings : [] }));
-      setClienteGastos((prev) => ({ ...prev, [cliente.id]: Array.isArray(gs) ? gs : [] }));
-    }
-  }
-
-  async function refrescarClienteGastos(clienteId: string) {
-    const data = await fetch(`/api/admin/clientes/${clienteId}/gastos`).then((r) => r.json());
-    setClienteGastos((prev) => ({ ...prev, [clienteId]: Array.isArray(data) ? data : [] }));
-  }
-
-  async function crearGastoCliente(clienteId: string, e: React.FormEvent) {
-    e.preventDefault();
-    const g = nuevoGastoCliente;
-    if (!g.concepto.trim() || !Number(g.importe)) return;
-    await fetch(`/api/admin/clientes/${clienteId}/gastos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        concepto: g.concepto.trim(),
-        importe: Number(g.importe),
-        categoria: g.categoria,
-        esRecurrente: g.esRecurrente,
-        fechaInicio: g.esRecurrente ? g.fechaInicio : null,
-        fechaPago: !g.esRecurrente && g.pagado ? g.fechaPago || new Date().toISOString().slice(0, 10) : null,
-        pagado: !g.esRecurrente ? g.pagado : true,
-        pagadoPor: g.pagadoPor.trim() || null,
-      }),
-    });
-    setNuevoGastoCliente({ concepto: "", importe: "", categoria: "propietario", esRecurrente: true, fechaInicio: new Date().toISOString().slice(0, 10), fechaPago: "", pagado: false, pagadoPor: "" });
-    setMostrarNuevoGastoCliente(false);
-    await refrescarClienteGastos(clienteId);
-    cargarTodo();
-  }
-
-  async function toggleGastoClientePagado(clienteId: string, gastoId: string, pagado: boolean) {
-    if (pagado && !confirm("¿Estás seguro de que quieres liquidar este pago?")) return;
-    await fetch(`/api/admin/cliente-gastos/${gastoId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pagado }),
-    });
-    await refrescarClienteGastos(clienteId);
-    cargarTodo();
-  }
-
-  async function terminarGastoClienteRecurrente(clienteId: string, gastoId: string) {
-    const fecha = prompt("Fecha de fin del gasto recurrente (YYYY-MM-DD)", new Date().toISOString().slice(0, 10));
-    if (!fecha) return;
-    await fetch(`/api/admin/cliente-gastos/${gastoId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fechaFin: fecha }),
-    });
-    await refrescarClienteGastos(clienteId);
-    cargarTodo();
-  }
-
-  async function eliminarGastoCliente(clienteId: string, gastoId: string) {
-    if (!confirm("¿Borrar este gasto?")) return;
-    await fetch(`/api/admin/cliente-gastos/${gastoId}`, { method: "DELETE" });
-    await refrescarClienteGastos(clienteId);
-    cargarTodo();
-  }
-
-  async function borrarAlquiler(clienteId: string) {
-    if (!confirm("Esto pondrá la mensualidad a 0 y borrará todos los meses de ingresos registrados. El cliente se mantiene en Clientes. ¿Continuar?")) return;
-    await fetch(`/api/admin/clientes/${clienteId}/ingresos`, { method: "DELETE" });
-    await fetch(`/api/admin/clientes/${clienteId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mensualidad: 0 }),
-    });
-    cargarTodo();
-  }
-
-  async function actualizarMensualidad(clienteId: string) {
-    await fetch(`/api/admin/clientes/${clienteId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mensualidad: Number(mensualidadInput) || 0 }),
-    });
-    const data = await fetch(`/api/admin/clientes/${clienteId}/ingresos`).then((r) => r.json());
-    setIngresos((prev) => ({ ...prev, [clienteId]: Array.isArray(data) ? data : [] }));
-    cargarTodo();
-  }
-
-  function abrirEditarAlquiler(cliente: Cliente) {
-    setEditandoAlquiler(cliente.id);
-    setEditAlquilerForm({
-      mensualidad: String(cliente.mensualidad ?? 0),
-      comision_pct: String(cliente.comision_pct_alquiler ?? 15),
-      comision_fija: cliente.comision_fija_alquiler != null ? String(cliente.comision_fija_alquiler) : "",
-      fecha_inicio: cliente.alquiler_fecha_inicio ?? "",
-      fecha_fin: cliente.alquiler_fecha_fin ?? "",
-    });
-  }
-
-  async function guardarEditarAlquiler(clienteId: string) {
-    if (!confirm("¿Estás seguro de que quieres guardar los cambios en este alquiler?")) return;
-    await fetch(`/api/admin/clientes/${clienteId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mensualidad: Number(editAlquilerForm.mensualidad) || 0,
-        comision_pct_alquiler: Number(editAlquilerForm.comision_pct) || 15,
-        comision_fija_alquiler: editAlquilerForm.comision_fija ? Number(editAlquilerForm.comision_fija) : null,
-        alquiler_fecha_inicio: editAlquilerForm.fecha_inicio || null,
-        alquiler_fecha_fin: editAlquilerForm.fecha_fin || null,
-      }),
-    });
-    setEditandoAlquiler(null);
-    await fetch("/api/admin/contabilidad/generar-mensualidades", { method: "POST" });
-    cargarTodo();
-  }
 
   async function crearAlquilerComisionFn(e: React.FormEvent) {
     e.preventDefault();
@@ -836,40 +687,6 @@ export default function ContabilidadManager() {
     cargarTodo();
   }
 
-  async function toggleIngresoCobrado(clienteId: string, ingresoId: string, cobrado: boolean) {
-    await fetch(`/api/admin/ingresos/${ingresoId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cobrado }),
-    });
-    const data = await fetch(`/api/admin/clientes/${clienteId}/ingresos`).then((r) => r.json());
-    setIngresos((prev) => ({ ...prev, [clienteId]: Array.isArray(data) ? data : [] }));
-  }
-
-  async function añadirIngreso(clienteId: string, e: React.FormEvent) {
-    e.preventDefault();
-    if (!nuevoIngreso.mes || !nuevoIngreso.ingresoBruto) return;
-    await fetch(`/api/admin/clientes/${clienteId}/ingresos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mes: `${nuevoIngreso.mes}-01`,
-        ingresoBruto: Number(nuevoIngreso.ingresoBruto),
-        comisionManual: nuevoIngreso.comisionManual ? Number(nuevoIngreso.comisionManual) : null,
-      }),
-    });
-    setNuevoIngreso({ mes: "", ingresoBruto: "", comisionManual: "" });
-    const data = await fetch(`/api/admin/clientes/${clienteId}/ingresos`).then((r) => r.json());
-    setIngresos((prev) => ({ ...prev, [clienteId]: Array.isArray(data) ? data : [] }));
-    cargarTodo();
-  }
-
-  async function eliminarIngreso(clienteId: string, ingresoId: string) {
-    await fetch(`/api/admin/ingresos/${ingresoId}`, { method: "DELETE" });
-    const data = await fetch(`/api/admin/clientes/${clienteId}/ingresos`).then((r) => r.json());
-    setIngresos((prev) => ({ ...prev, [clienteId]: Array.isArray(data) ? data : [] }));
-    cargarTodo();
-  }
 
   async function crearOperacion(e: React.FormEvent) {
     e.preventDefault();
@@ -1571,277 +1388,35 @@ export default function ContabilidadManager() {
           {clientesConAlquiler.length === 0 ? (
             <p className="admin-empty">Todavía no hay alquileres activos. Actívalos desde aquí para un propietario ya creado en Clientes.</p>
           ) : (
-            clientesConAlquiler.map((cliente) => (
-              <div key={cliente.id} className="pisos-list-item">
-                <div className="pisos-list-body" onClick={() => toggleCliente(cliente)} style={{ cursor: "pointer" }}>
-                  <h4>{cliente.nombre} {cliente.apellidos}</h4>
-                  <div className="loc">
-                    {cliente.telefono || "sin teléfono"} · {cliente.zona_interes || "sin zona"} · mensualidad {fmt(cliente.mensualidad)}
-                    {cliente.alquiler_fecha_inicio && ` · desde ${cliente.alquiler_fecha_inicio}`}
-                    {cliente.alquiler_fecha_fin && ` hasta ${cliente.alquiler_fecha_fin}`}
-                  </div>
-                </div>
-                <div className="lead-form-actions" style={{ padding: "0 16px 12px", gap: 8 }}>
-                  <button type="button" className="btn-ghost" onClick={() => abrirEditarAlquiler(cliente)}>
-                    Editar alquiler
-                  </button>
-                  <button type="button" className="btn-ghost" style={{ color: "#dc2626" }} onClick={() => borrarAlquiler(cliente.id)}>
-                    Borrar alquiler
-                  </button>
-                </div>
-
-                {editandoAlquiler === cliente.id && (
-                  <div className="chat-transcript" style={{ marginBottom: 12 }}>
-                    <div className="lead-form-row">
-                      <label>Mensualidad (€)<input type="number" min={0} value={editAlquilerForm.mensualidad} onChange={(e) => setEditAlquilerForm({ ...editAlquilerForm, mensualidad: e.target.value })} /></label>
-                      <label>Comisión %<input type="number" min={0} max={100} value={editAlquilerForm.comision_pct} onChange={(e) => setEditAlquilerForm({ ...editAlquilerForm, comision_pct: e.target.value })} /></label>
-                      <label>Comisión fija (€, opcional)<input type="number" min={0} value={editAlquilerForm.comision_fija} onChange={(e) => setEditAlquilerForm({ ...editAlquilerForm, comision_fija: e.target.value })} placeholder="Vacío = usar %" /></label>
-                    </div>
-                    <div className="lead-form-row">
-                      <label>Fecha inicio<input type="date" value={editAlquilerForm.fecha_inicio} onChange={(e) => setEditAlquilerForm({ ...editAlquilerForm, fecha_inicio: e.target.value })} /></label>
-                      <label>Fecha fin<input type="date" value={editAlquilerForm.fecha_fin} onChange={(e) => setEditAlquilerForm({ ...editAlquilerForm, fecha_fin: e.target.value })} /></label>
-                    </div>
-                    <div className="lead-form-actions">
-                      <button type="button" className="btn-primary" onClick={() => guardarEditarAlquiler(cliente.id)}>Aceptar</button>
-                      <button type="button" className="btn-ghost" onClick={() => setEditandoAlquiler(null)}>Cancelar</button>
-                    </div>
-                  </div>
-                )}
-
-                {clienteAbierto === cliente.id && (
-                  <div className="chat-transcript">
-                    <div className="lead-form-row">
-                      <label>
-                        Mensualidad activa (€)
-                        <input type="number" min={0} value={mensualidadInput} onChange={(e) => setMensualidadInput(e.target.value)} placeholder="0 = pausado" />
-                      </label>
-                      <button type="button" className="btn-primary" onClick={() => actualizarMensualidad(cliente.id)}>
-                        Actualizar mensualidad
-                      </button>
-                    </div>
-                    <p className="admin-empty" style={{ margin: "4px 0 12px" }}>
-                      Cada mes se genera solo mientras la mensualidad sea mayor que 0. Ponla a 0 para pausar (por ejemplo, si el inquilino se va).
-                    </p>
-
-                    {(() => {
-                      const lista = ingresos[cliente.id] ?? [];
-                      const año = new Date().getUTCFullYear();
-                      const totalAño = lista.filter((i) => añoActual(i.mes) === año).reduce((s, i) => s + i.comision_calculada, 0);
-                      const pendientes = lista.filter((i) => !i.cobrado).length;
-                      return (
-                        <p className="loc" style={{ marginBottom: 12 }}>
-                          Comisión {año}: {fmt(totalAño)} · Meses sin cobrar: {pendientes}
-                        </p>
-                      );
-                    })()}
-
-                    {(ingresos[cliente.id] ?? []).map((ing) => (
-                      <div key={ing.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                        <span>
-                          <b>Mensualidad {(() => { const d = ing.mes.slice(0, 10).split("-"); return `${d[2]}/${d[1]}/${d[0]}`; })()}</b>
-                          {" — "}bruto {fmt(ing.ingreso_bruto)}, comisión {fmt(ing.comision_calculada)}
-                          {!ing.cobrado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11 }}>Pendiente</span>}
-                          {ing.cobrado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11 }}>Cobrado</span>}
-                        </span>
-                        <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          {!ing.cobrado ? (
-                            <button type="button" className="btn-primary" style={{ fontSize: 12, padding: "4px 10px", whiteSpace: "nowrap" }} onClick={() => {
-                              const mesLabel = (() => { const d = ing.mes.slice(0, 10).split("-"); return `${d[2]}/${d[1]}/${d[0]}`; })();
-                              if (confirm(`¿Confirmar el pago de la mensualidad del ${mesLabel} por ${fmt(ing.comision_calculada)}?`)) {
-                                toggleIngresoCobrado(cliente.id, ing.id, true);
-                              }
-                            }}>
-                              Confirmar pago
-                            </button>
-                          ) : (
-                            <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "4px 10px", whiteSpace: "nowrap" }} onClick={() => {
-                              if (confirm("¿Desmarcar este pago como cobrado?")) {
-                                toggleIngresoCobrado(cliente.id, ing.id, false);
-                              }
-                            }}>
-                              Desmarcar cobro
-                            </button>
-                          )}
-                          <button type="button" className="btn-ghost" onClick={() => eliminarIngreso(cliente.id, ing.id)}>
-                            Borrar
-                          </button>
-                        </span>
+            clientesConAlquiler.map((cliente) => {
+              const lista = ingresos[cliente.id] ?? [];
+              const año = new Date().getUTCFullYear();
+              const totalAño = lista.filter((i) => añoActual(i.mes) === año).reduce((s, i) => s + i.comision_calculada, 0);
+              const pendientes = lista.filter((i) => !i.cobrado).length;
+              return (
+                <div key={cliente.id} className="pisos-list-item">
+                  <div className="pisos-list-body" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h4 style={{ marginBottom: 4 }}>{cliente.nombre} {cliente.apellidos}</h4>
+                      <div className="loc">
+                        {cliente.telefono || "sin teléfono"} · {cliente.zona_interes || "sin zona"} · mensualidad {fmt(cliente.mensualidad)}
+                        {cliente.alquiler_fecha_inicio && ` · desde ${cliente.alquiler_fecha_inicio}`}
+                        {cliente.alquiler_fecha_fin && ` hasta ${cliente.alquiler_fecha_fin}`}
                       </div>
-                    ))}
-                    {(ingresos[cliente.id] ?? []).length === 0 && <p className="admin-empty">Sin meses registrados todavía.</p>}
-
-                    <div className="lead-form-actions" style={{ marginTop: 12 }}>
-                      <button type="button" className="btn-ghost" onClick={() => setMostrarAjusteManual((v) => !v)}>
-                        {mostrarAjusteManual ? "Ocultar ajuste manual" : "Ajustar un mes manualmente"}
-                      </button>
+                      {lista.length > 0 && (
+                        <div className="loc" style={{ marginTop: 4, fontSize: 12 }}>
+                          Comisión {año}: <b>{fmt(totalAño)}</b>
+                          {pendientes > 0 && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11 }}>{pendientes} pendiente{pendientes === 1 ? "" : "s"}</span>}
+                        </div>
+                      )}
                     </div>
-                    {mostrarAjusteManual && (
-                      <form className="lead-form-row" onSubmit={(e) => añadirIngreso(cliente.id, e)}>
-                        <label>
-                          Mes
-                          <input type="month" required value={nuevoIngreso.mes} onChange={(e) => setNuevoIngreso({ ...nuevoIngreso, mes: e.target.value })} />
-                        </label>
-                        <label>
-                          Ingreso bruto (€)
-                          <input type="number" min={0} required value={nuevoIngreso.ingresoBruto} onChange={(e) => setNuevoIngreso({ ...nuevoIngreso, ingresoBruto: e.target.value })} />
-                        </label>
-                        <label>
-                          Comisión € (opcional, sobrescribe %)
-                          <input type="number" min={0} step="0.01" value={nuevoIngreso.comisionManual} onChange={(e) => setNuevoIngreso({ ...nuevoIngreso, comisionManual: e.target.value })} placeholder="auto según %" />
-                        </label>
-                        <button type="submit" className="btn-primary">Guardar mes</button>
-                      </form>
-                    )}
-
-                    {(() => {
-                      const gs = clienteGastos[cliente.id] ?? [];
-                      const ings = ingresos[cliente.id] ?? [];
-                      const año = new Date().getUTCFullYear();
-                      const brutoAño = ings.filter((i) => añoActual(i.mes) === año).reduce((s, i) => s + i.comision_calculada, 0);
-                      const gastoRecurrenteMes = gs.filter((g) => g.es_recurrente && (!g.fecha_fin || g.fecha_fin >= new Date().toISOString().slice(0, 10))).reduce((s, g) => s + g.importe, 0);
-                      const mesesTranscurridos = new Date().getUTCMonth() + 1;
-                      const gastoAcumulado = gastoRecurrenteMes * mesesTranscurridos + gs.filter((g) => !g.es_recurrente && g.pagado && g.fecha_pago && g.fecha_pago.startsWith(String(año))).reduce((s, g) => s + g.importe, 0);
-                      const baseAño = Math.round((brutoAño / 1.21) * 100) / 100;
-                      const ivaAño = Math.round((brutoAño - baseAño) * 100) / 100;
-                      const rentabilidadPiso = baseAño - gastoAcumulado;
-                      const meses = Math.max(mesesTranscurridos, 1);
-                      const recurrentes = gs.filter((g) => g.es_recurrente);
-                      const puntuales = gs.filter((g) => !g.es_recurrente);
-                      return (
-                        <>
-                          <div className="pnl-card">
-                            <div><b>{fmt(brutoAño)}</b><span>Bruto {año} (IVA incl.)</span></div>
-                            <div><b>{fmt(baseAño)}</b><span>Base (sin IVA)</span></div>
-                            <div><b>{fmt(ivaAño)}</b><span>IVA 21%</span></div>
-                            <div className={baseAño >= 0 ? "pnl-pos" : "pnl-neg"}><b>{fmt(baseAño)}</b><span>Neto InterRoom {año}</span></div>
-                            <div><b>{fmt(baseAño / meses)}</b><span>Neto InterRoom/mes</span></div>
-                          </div>
-                          <div className="pnl-card" style={{ marginTop: 8 }}>
-                            <div><b>{fmt(gastoAcumulado)}</b><span>Gastos casero {año}</span></div>
-                            <div><b>{fmt(gastoRecurrenteMes)}</b><span>Gasto recurrente/mes</span></div>
-                            <div className={rentabilidadPiso >= 0 ? "pnl-pos" : "pnl-neg"}><b>{fmt(rentabilidadPiso)}</b><span>Rentabilidad piso {año}</span></div>
-                            <div><b>{fmt(rentabilidadPiso / meses)}</b><span>Rentabilidad/mes</span></div>
-                          </div>
-
-                          <div className="section-head" style={{ marginTop: 12 }}>
-                            <h4 style={{ margin: 0 }}>Partidas presupuestarias</h4>
-                            <button type="button" className="btn-ghost" onClick={() => setMostrarNuevoGastoCliente((v) => !v)}>
-                              {mostrarNuevoGastoCliente ? "Cancelar" : "+ Añadir partida"}
-                            </button>
-                          </div>
-
-                          {mostrarNuevoGastoCliente && (
-                            <form className="piso-form" onSubmit={(e) => crearGastoCliente(cliente.id, e)}>
-                              <div className="lead-form-row">
-                                <label>
-                                  Concepto
-                                  <input required value={nuevoGastoCliente.concepto} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, concepto: e.target.value })} placeholder="Renta al propietario" />
-                                </label>
-                                <label>
-                                  Importe (€) <span style={{ opacity: 0.5, fontSize: 11 }}>negativo = pago a cobrar</span>
-                                  <input type="number" step="0.01" required value={nuevoGastoCliente.importe} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, importe: e.target.value })} />
-                                </label>
-                                <label>
-                                  Categoría
-                                  <select value={nuevoGastoCliente.categoria} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, categoria: e.target.value })}>
-                                    {CATEGORIAS_GASTO.map((c) => (
-                                      <option key={c.value} value={c.value}>{c.label}</option>
-                                    ))}
-                                  </select>
-                                </label>
-                              </div>
-                              <div className="lead-form-row">
-                                <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  <input type="checkbox" checked={nuevoGastoCliente.esRecurrente} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, esRecurrente: e.target.checked })} />
-                                  Recurrente (todos los meses)
-                                </label>
-                                {nuevoGastoCliente.esRecurrente ? (
-                                  <label>
-                                    Desde
-                                    <input type="date" value={nuevoGastoCliente.fechaInicio} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, fechaInicio: e.target.value })} />
-                                  </label>
-                                ) : (
-                                  <>
-                                    <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                      <input type="checkbox" checked={nuevoGastoCliente.pagado} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, pagado: e.target.checked })} />
-                                      Ya pagado
-                                    </label>
-                                    <label>
-                                      Fecha pago
-                                      <input type="date" value={nuevoGastoCliente.fechaPago} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, fechaPago: e.target.value })} />
-                                    </label>
-                                  </>
-                                )}
-                                <label>
-                                  Pagado por
-                                  <input value={nuevoGastoCliente.pagadoPor} onChange={(e) => setNuevoGastoCliente({ ...nuevoGastoCliente, pagadoPor: e.target.value })} placeholder="Nombre de quien adelantó" />
-                                </label>
-                              </div>
-                              <div className="lead-form-actions">
-                                <button type="submit" className="btn-primary">Guardar partida</button>
-                              </div>
-                            </form>
-                          )}
-
-                          {recurrentes.length > 0 && (
-                            <>
-                              <p className="loc" style={{ marginTop: 10, marginBottom: 4 }}><b>Recurrentes mensuales</b></p>
-                              {recurrentes.map((g) => (
-                                <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                                  <span>
-                                    <b style={{ color: g.importe < 0 ? "#059669" : undefined }}>{fmt(g.importe)}/mes</b> · {g.concepto} · <span style={{ opacity: 0.6 }}>{labelCategoria(g.categoria)}</span>
-                                    {g.pagado_por && <span style={{ opacity: 0.6, marginLeft: 8 }}>pagado por {g.pagado_por}</span>}
-                                    {g.fecha_inicio && <span style={{ opacity: 0.5, marginLeft: 8 }}>desde {g.fecha_inicio}</span>}
-                                    {g.fecha_fin && <span style={{ opacity: 0.5, marginLeft: 8 }}>hasta {g.fecha_fin}</span>}
-                                  </span>
-                                  <span style={{ display: "flex", gap: 8 }}>
-                                    {!g.fecha_fin && (
-                                      <button type="button" className="btn-ghost" onClick={() => terminarGastoClienteRecurrente(cliente.id, g.id)}>Finalizar</button>
-                                    )}
-                                    <button type="button" className="btn-ghost" onClick={() => eliminarGastoCliente(cliente.id, g.id)}>Borrar</button>
-                                  </span>
-                                </div>
-                              ))}
-                            </>
-                          )}
-
-                          {puntuales.length > 0 && (
-                            <>
-                              <p className="loc" style={{ marginTop: 10, marginBottom: 4 }}><b>Puntuales</b></p>
-                              {puntuales.map((g) => (
-                                <div key={g.id} className="chat-widget-msg assistant" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                                  <span>
-                                    <b style={{ color: g.importe < 0 ? "#059669" : undefined }}>{fmt(g.importe)}</b> · {g.concepto} · <span style={{ opacity: 0.6 }}>{labelCategoria(g.categoria)}</span>
-                                    {g.pagado_por && <span style={{ opacity: 0.6, marginLeft: 8 }}>pagado por {g.pagado_por}</span>}
-                                    {g.fecha_pago && <span style={{ opacity: 0.5, marginLeft: 8 }}>{g.fecha_pago}</span>}
-                                    {!g.pagado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 4, fontSize: 11 }}>Pendiente</span>}
-                                    {g.pagado && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11 }}>Cobrado</span>}
-                                  </span>
-                                  <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                    {!g.pagado ? (
-                                      <button type="button" className="btn-primary" style={{ fontSize: 12, padding: "4px 10px", whiteSpace: "nowrap" }} onClick={() => toggleGastoClientePagado(cliente.id, g.id, true)}>
-                                        Liquidar
-                                      </button>
-                                    ) : (
-                                      <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => toggleGastoClientePagado(cliente.id, g.id, false)}>
-                                        Desmarcar
-                                      </button>
-                                    )}
-                                    <button type="button" className="btn-ghost" onClick={() => eliminarGastoCliente(cliente.id, g.id)}>Borrar</button>
-                                  </span>
-                                </div>
-                              ))}
-                            </>
-                          )}
-
-                          {gs.length === 0 && <p className="admin-empty" style={{ marginTop: 8 }}>Sin partidas presupuestarias. Añade la renta al propietario, comunidad, IBI, etc.</p>}
-                        </>
-                      );
-                    })()}
+                    <Link href={`/admin/contabilidad/${cliente.id}`} className="btn-primary" style={{ whiteSpace: "nowrap", textDecoration: "none" }}>
+                      Abrir →
+                    </Link>
                   </div>
-                )}
-              </div>
-            ))
+                </div>
+              );
+            })
           )}
           </>)}
 
