@@ -20,6 +20,9 @@ import { sugerirNumero } from "./factura/numeracion";
 import { crearFactura, descargarFacturaPdf } from "./factura/facturas";
 import { calcularPendientes, formatearPendientes } from "./secretaria";
 import { telegramSendDocument, telegramSendPhoto } from "./telegram";
+import { SITE_URL } from "./site";
+
+const CALCULADORA_URL = `${SITE_URL}/rentabilidad`;
 import { listarPropiedades, descargarMedia } from "./propiedades";
 import { listarConversaciones, getKnowledgeBase, buildSystemPrompt } from "./chat";
 import { catalogSnapshot } from "./pisos";
@@ -51,6 +54,7 @@ Guía de uso de herramientas:
 - Si preguntan qué habitaciones o propiedades se quedan libres en enero, usa habitaciones_libres_enero. Devuelve las propiedades y habitaciones marcadas con "libre en enero" (rotación completa).
 - Si piden fotos, vídeos o media de una propiedad interna (no del catálogo público), usa buscar_media_propiedad para localizar los archivos. Si quieren que envíes una foto o documento de la propiedad, usa enviar_media_propiedad con el id del medio encontrado.
 - Si te piden generar/hacer una factura de un cliente, usa primero listar_pagos_facturables para ver sus pagos pendientes. Si hay varios, muéstralos y pregunta cuál. Si falta el NIF u otros datos fiscales del cliente, avísalo. ANTES de llamar a generar_factura, SIEMPRE muestra el número de factura sugerido y pregunta explícitamente al usuario si lo usa tal cual o quiere otro número (puede haber facturas emitidas manualmente que rompen la secuencia). No llames a generar_factura hasta que el usuario te confirme el número a usar; pásalo explícitamente en el argumento "numero".
+- Si alguien del equipo pide "el enlace de la calculadora de rentabilidad" (o similar: "la calculadora", "el link para propietarios", "la herramienta de simular rentabilidad"), responde directamente con la URL ${CALCULADORA_URL}. Es una página privada (no indexada ni enlazada desde el menú público) para enviar a propietarios potenciales. No necesitas herramienta: dale el enlace y, si lo pide, una frase corta explicando qué hace ("simula qué le rentaría su piso con nuestra gestión").
 - Si ninguna herramienta resuelve la pregunta, dilo con claridad en vez de inventar una respuesta.
 
 REGLA CRÍTICA — confirmación antes de modificar:
