@@ -2898,6 +2898,9 @@ button {
   opacity: 1;
   border-color: #6b7280;
   color: #374151;
+  /* El tooltip es un pseudo-elemento del propio chip; sube el chip
+     entero por encima de las tarjetas vecinas para que no se recorte. */
+  z-index: 1000;
 }
 .analytics-stat-help::after,
 .analytics-help-tip::after {
@@ -2919,7 +2922,7 @@ button {
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.2s;
-  z-index: 50;
+  z-index: 1000;
   line-height: 1.4;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
@@ -2927,6 +2930,9 @@ button {
 .analytics-help-tip:hover::after {
   opacity: 1;
 }
+/* Las tarjetas del panel analytics no deben recortar los tooltips
+   que salen por su borde. */
+.analytics-card { overflow: visible; }
 
 .analytics-grid {
   display: grid;
