@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { trackEvent } from "../../lib/posthog-client";
 
 export default function ExitIntent() {
   const [show, setShow] = useState(false);
@@ -11,6 +12,7 @@ export default function ExitIntent() {
       if (dismissed) return;
       if (e.clientY <= 5 && !show) {
         setShow(true);
+        trackEvent("venta_exit_intent_shown", {});
       }
     },
     [dismissed, show]
@@ -29,6 +31,7 @@ export default function ExitIntent() {
   function close() {
     setShow(false);
     setDismissed(true);
+    trackEvent("venta_exit_intent_closed", {});
   }
 
   if (!show) return null;
@@ -85,9 +88,11 @@ function ExitForm({ onSuccess }: { onSuccess: () => void }) {
       });
       if (!res.ok) throw new Error("fail");
       setStatus("sent");
+      trackEvent("venta_exit_intent_submit", {});
       setTimeout(onSuccess, 2000);
     } catch {
       setStatus("error");
+      trackEvent("venta_exit_intent_error", {});
     }
   }
 

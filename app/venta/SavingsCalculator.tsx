@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { trackEvent } from "../../lib/posthog-client";
 
 const TRAD_RATE = 0.03;
 const IR_RATE = 0.015;
@@ -10,6 +11,28 @@ const STEP = 5000;
 
 export default function SavingsCalculator() {
   const [price, setPrice] = useState(180000);
+  const fired = useRef(false);
+  const debounceRef = useRef<number | null>(null);
+
+  // Fire "venta_calc_use" cuando el usuario mueve el slider y lo deja
+  // quieto 800ms. Solo una vez por sesión para no inundar PostHog.
+  useEffect(() => {
+    if (price === 180000 || fired.current) return;
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      if (fired.current) return;
+      fired.current = true;
+      const tradCost = Math.round(price * TRAD_RATE * 1.21);
+      const irCost = Math.round(price * IR_RATE * 1.21);
+      trackEvent("venta_calc_use", {
+        precio: price,
+        ahorro: tradCost - irCost,
+      });
+    }, 800);
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+  }, [price]);
 
   const IVA_RATE = 0.21;
   const tradCost = Math.round(price * TRAD_RATE);

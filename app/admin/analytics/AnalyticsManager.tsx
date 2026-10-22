@@ -21,6 +21,18 @@ type PostHogData = {
   newVsReturn: { day: string; newUsers: number; returning: number }[];
   avgSessionDuration: number;
   avgPagesPerSession: number;
+  venta?: {
+    pageviews: number;
+    visitors: number;
+    step1: number;
+    submits: number;
+    waClicks: number;
+    calcUses: number;
+    scroll: { depth: number; hits: number; users: number }[];
+    exitIntent: { shown: number; closed: number; submitted: number; uniqueShown: number };
+    convBySource: { source: string; conversions: number; users: number }[];
+    calc: { avgPrecio: number; medianPrecio: number; avgAhorro: number; uses: number };
+  };
 };
 
 type LeadsData = {
@@ -495,6 +507,196 @@ export default function AnalyticsManager() {
           </div>
         </div>
       )}
+
+      {/* ── Conversión Vende tu Casa ── */}
+      {data.venta && (
+        <>
+          <SectionHead id="venta" title="Conversión · Vende tu Casa" tip="Funnel, exit intent, scroll depth y canales de conversión de la página /venta" />
+          {openSections.venta && <VentaConversionBlock v={data.venta} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Bloque: Conversión de /venta
+// ─────────────────────────────────────────────────────────────────
+
+type VentaStats = NonNullable<PostHogData["venta"]>;
+
+function VentaConversionBlock({ v }: { v: VentaStats }) {
+  const convRate = v.visitors > 0 ? Math.round((v.submits / v.visitors) * 100 * 10) / 10 : 0;
+  const step1Rate = v.visitors > 0 ? Math.round((v.step1 / v.visitors) * 100) : 0;
+  const scrollMap = new Map(v.scroll.map((s) => [s.depth, s.users]));
+  const users25 = scrollMap.get(25) ?? 0;
+  const users50 = scrollMap.get(50) ?? 0;
+  const users75 = scrollMap.get(75) ?? 0;
+  const users100 = scrollMap.get(100) ?? 0;
+
+  const exitShown = v.exitIntent.shown || 0;
+  const exitConvRate = exitShown > 0 ? Math.round((v.exitIntent.submitted / exitShown) * 100) : 0;
+  const exitCloseRate = exitShown > 0 ? Math.round((v.exitIntent.closed / exitShown) * 100) : 0;
+
+  const maxSource = Math.max(1, ...v.convBySource.map((s) => s.conversions));
+
+  return (
+    <>
+      {/* Resumen numérico */}
+      <div className="analytics-stat-row" style={{ marginBottom: 16 }}>
+        <div className="analytics-stat">
+          <div className="analytics-stat-value">{v.visitors}</div>
+          <div className="analytics-stat-label">Visitantes a /venta</div>
+        </div>
+        <div className="analytics-stat">
+          <div className="analytics-stat-value">{v.submits}</div>
+          <div className="analytics-stat-label">Forms enviados</div>
+        </div>
+        <div className="analytics-stat">
+          <div className="analytics-stat-value" style={{ color: convRate >= 3 ? "#059669" : convRate >= 1 ? "#d97706" : "#dc2626" }}>
+            {convRate}%
+          </div>
+          <div className="analytics-stat-label">Tasa de conversión</div>
+        </div>
+        <div className="analytics-stat">
+          <div className="analytics-stat-value">{v.waClicks}</div>
+          <div className="analytics-stat-label">Clicks a WhatsApp</div>
+        </div>
+      </div>
+
+      <div className="analytics-grid">
+        {/* Funnel de conversión */}
+        <div className="analytics-card">
+          <h3>Funnel de conversión <HelpTip tip="Qué porcentaje de visitantes avanza en cada paso hasta enviar el formulario" /></h3>
+          <FunnelStep label="Entra a /venta" count={v.visitors} base={v.visitors} />
+          <FunnelStep label="Lee ≥50% de la página" count={users50} base={v.visitors} />
+          <FunnelStep label="Usa la calculadora" count={v.calcUses} base={v.visitors} />
+          <FunnelStep label="Completa el paso 1" count={v.step1} base={v.visitors} />
+          <FunnelStep label="Envía el formulario" count={v.submits} base={v.visitors} highlight />
+        </div>
+
+        {/* Exit intent */}
+        <div className="analytics-card">
+          <h3>Exit intent popup <HelpTip tip="Popup que aparece cuando el usuario mueve el ratón fuera de la ventana (indica que se va)" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 10px" }}>Rescate de usuarios a punto de irse</p>
+          <div className="analytics-row"><span>🚪 Veces que se ha mostrado</span><span>{exitShown}</span></div>
+          <div className="analytics-row"><span>👤 Usuarios únicos</span><span>{v.exitIntent.uniqueShown}</span></div>
+          <div className="analytics-row"><span>❌ Cerraron sin más</span><span>{v.exitIntent.closed} ({exitCloseRate}%)</span></div>
+          <div className="analytics-row"><span>✅ Dejaron teléfono</span><span style={{ color: "#059669", fontWeight: 600 }}>{v.exitIntent.submitted} ({exitConvRate}%)</span></div>
+          {exitShown > 0 && (
+            <p style={{ fontSize: 11, color: "#6b7280", margin: "10px 0 0", fontStyle: "italic" }}>
+              {exitConvRate >= 5
+                ? "✨ Está funcionando muy bien."
+                : exitConvRate >= 2
+                  ? "Correcto, podría mejorar con otro copy."
+                  : "Casi todos lo cierran sin leer. Prueba otro titular."}
+            </p>
+          )}
+        </div>
+
+        {/* Scroll depth */}
+        <div className="analytics-card">
+          <h3>¿Hasta dónde leen? <HelpTip tip="Porcentaje de visitantes que llega a cada punto vertical de la página /venta" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 10px" }}>Más alto = contenido engancha; más bajo = se van antes</p>
+          <ScrollBar label="25% (hero + stats)" users={users25} total={v.visitors} />
+          <ScrollBar label="50% (calculadora + testim.)" users={users50} total={v.visitors} />
+          <ScrollBar label="75% (comparativa + pasos)" users={users75} total={v.visitors} />
+          <ScrollBar label="100% (FAQ + form final)" users={users100} total={v.visitors} />
+          {v.visitors > 0 && users50 / v.visitors < 0.4 && (
+            <p style={{ fontSize: 11, color: "#b45309", margin: "10px 0 0", fontStyle: "italic" }}>
+              ⚠️ Menos del 40% llega a la calculadora. Revisa el hero.
+            </p>
+          )}
+        </div>
+
+        {/* Fuente de conversiones */}
+        <div className="analytics-card">
+          <h3>Fuente de los que convierten <HelpTip tip="Desde qué canal llegaron los usuarios que SÍ enviaron el formulario de /venta" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 10px" }}>Donde invertir más</p>
+          {v.convBySource.length === 0 ? (
+            <p className="admin-empty">Sin conversiones todavía en el periodo.</p>
+          ) : (
+            v.convBySource.map((s) => <Bar key={s.source} label={s.source} value={s.conversions} max={maxSource} />)
+          )}
+        </div>
+
+        {/* Calculadora: con qué precios juegan */}
+        <div className="analytics-card">
+          <h3>Calculadora de ahorro <HelpTip tip="Qué precios usan los visitantes en la calculadora. Útil para saber el perfil de inmueble" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 10px" }}>Perfil del inmueble que intentan vender</p>
+          <div className="analytics-row"><span>Veces usada</span><span>{v.calc.uses}</span></div>
+          <div className="analytics-row"><span>Precio medio</span><span>{v.calc.avgPrecio.toLocaleString("es-ES")} €</span></div>
+          <div className="analytics-row"><span>Precio mediana</span><span>{v.calc.medianPrecio.toLocaleString("es-ES")} €</span></div>
+          <div className="analytics-row"><span>Ahorro medio simulado</span><span style={{ color: "#059669", fontWeight: 600 }}>{v.calc.avgAhorro.toLocaleString("es-ES")} €</span></div>
+        </div>
+
+        {/* Step rate */}
+        <div className="analytics-card">
+          <h3>Abandono del formulario <HelpTip tip="Dónde se queda la gente que empieza a rellenar el formulario pero no termina" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 10px" }}>Entre paso 1 y envío final</p>
+          <div className="analytics-row"><span>Completan paso 1</span><span>{v.step1} ({step1Rate}%)</span></div>
+          <div className="analytics-row"><span>Envían el formulario</span><span>{v.submits}</span></div>
+          <div className="analytics-row">
+            <span>Abandonan en paso 2</span>
+            <span style={{ color: v.step1 - v.submits > v.submits ? "#dc2626" : "#f59e0b", fontWeight: 600 }}>
+              {Math.max(0, v.step1 - v.submits)}
+            </span>
+          </div>
+          {v.step1 > 0 && v.step1 - v.submits > v.submits && (
+            <p style={{ fontSize: 11, color: "#b91c1c", margin: "10px 0 0", fontStyle: "italic" }}>
+              ⚠️ Pierdes más gente en paso 2 de la que convierte. Revisa qué pides ahí.
+            </p>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function FunnelStep({ label, count, base, highlight }: { label: string; count: number; base: number; highlight?: boolean }) {
+  const pct = base > 0 ? Math.round((count / base) * 100) : 0;
+  return (
+    <div style={{ margin: "6px 0" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
+        <span style={{ fontWeight: highlight ? 600 : 400, color: highlight ? "#059669" : "inherit" }}>{label}</span>
+        <span style={{ fontVariantNumeric: "tabular-nums", opacity: 0.85 }}>
+          {count} · {pct}%
+        </span>
+      </div>
+      <div style={{ height: 6, background: "#f3f4f6", borderRadius: 999, overflow: "hidden" }}>
+        <div
+          style={{
+            width: `${pct}%`,
+            height: "100%",
+            background: highlight ? "linear-gradient(90deg, #10b981, #059669)" : "var(--orange)",
+            borderRadius: 999,
+            transition: "width 0.4s ease",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ScrollBar({ label, users, total }: { label: string; users: number; total: number }) {
+  const pct = total > 0 ? Math.round((users / total) * 100) : 0;
+  return (
+    <div style={{ margin: "6px 0" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
+        <span>{label}</span>
+        <span style={{ fontVariantNumeric: "tabular-nums", opacity: 0.85 }}>{pct}% ({users})</span>
+      </div>
+      <div style={{ height: 6, background: "#f3f4f6", borderRadius: 999, overflow: "hidden" }}>
+        <div
+          style={{
+            width: `${pct}%`,
+            height: "100%",
+            background: pct >= 50 ? "#059669" : pct >= 25 ? "#d97706" : "#dc2626",
+            borderRadius: 999,
+            transition: "width 0.4s ease",
+          }}
+        />
+      </div>
     </div>
   );
 }

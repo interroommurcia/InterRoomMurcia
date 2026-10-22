@@ -19,6 +19,15 @@ function PostHogPageview() {
       $referrer: document.referrer || "$direct",
       $referring_domain: document.referrer ? new URL(document.referrer).hostname : "",
     });
+
+    // Pausa el session replay en el panel admin — no interesa grabar
+    // nuestras propias navegaciones ni datos sensibles del backoffice.
+    if (!posthog.__loaded) return;
+    if (pathname.startsWith("/admin")) {
+      try { posthog.stopSessionRecording(); } catch {}
+    } else {
+      try { posthog.startSessionRecording(); } catch {}
+    }
   }, [pathname, searchParams]);
 
   return null;
@@ -35,6 +44,11 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         maskAllInputs: true,
         maskInputOptions: { password: true, email: true },
       },
+      // Si la primera carga es en /admin arrancamos sin grabar; el
+      // efecto de PostHogPageview volverá a encender la grabación al
+      // salir del backoffice.
+      disable_session_recording:
+        typeof window !== "undefined" && window.location.pathname.startsWith("/admin"),
       persistence: "localStorage",
     });
   }, []);

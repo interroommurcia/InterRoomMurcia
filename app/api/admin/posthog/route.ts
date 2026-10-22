@@ -184,6 +184,63 @@ export async function GET(req: NextRequest) {
       `),
       ]);
 
+    // Lote 3: métricas específicas de /venta (funnel + exit intent + scroll + conv-by-source)
+    const [rVentaCounts, rVentaScroll, rVentaExit, rVentaConvSource, rVentaCalc] =
+      await Promise.all([
+        // Pageviews a /venta y conteos de los eventos custom que disparamos
+        // en el flujo (step1, submit, whatsapp clicks).
+        hogql(`
+        SELECT
+          countIf(event = '$pageview' AND properties.$current_url LIKE '%/venta%') AS pv,
+          uniqExactIf(distinct_id, event = '$pageview' AND properties.$current_url LIKE '%/venta%') AS visitors,
+          countIf(event = 'venta_form_step1_done') AS step1,
+          countIf(event = 'venta_form_submit') AS submits,
+          countIf(event = 'venta_whatsapp_click') AS wa_clicks,
+          countIf(event = 'venta_calc_use') AS calc_uses
+        FROM events
+        WHERE ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
+      `),
+        // Distribución de scroll depth en /venta (cuántos llegan a cada umbral)
+        hogql(`
+        SELECT toInt32(properties.depth) AS depth,
+          count() AS hits,
+          uniqExact(distinct_id) AS users
+        FROM events
+        WHERE event = 'scroll_depth' AND properties.page = 'venta'
+          AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
+        GROUP BY depth ORDER BY depth ASC
+      `),
+        // Exit intent efectividad
+        hogql(`
+        SELECT
+          countIf(event = 'venta_exit_intent_shown') AS shown,
+          countIf(event = 'venta_exit_intent_closed') AS closed,
+          countIf(event = 'venta_exit_intent_submit') AS submitted,
+          uniqExactIf(distinct_id, event = 'venta_exit_intent_shown') AS unique_shown
+        FROM events
+        WHERE ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
+      `),
+        // Fuente de los que convierten (envían el form de /venta)
+        hogql(`
+        SELECT if(properties.referring_domain IS NULL OR properties.referring_domain = '', '(directo)', properties.referring_domain) AS source,
+          count() AS conversions,
+          uniqExact(distinct_id) AS users
+        FROM events
+        WHERE event = 'venta_form_submit' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
+        GROUP BY source ORDER BY conversions DESC LIMIT 10
+      `),
+        // Precios con los que juega la gente en la calculadora de ahorro
+        hogql(`
+        SELECT
+          avg(toFloat64(properties.precio)) AS avg_precio,
+          median(toFloat64(properties.precio)) AS median_precio,
+          avg(toFloat64(properties.ahorro)) AS avg_ahorro,
+          count() AS uses
+        FROM events
+        WHERE event = 'venta_calc_use' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
+      `),
+      ]);
+
     const s = rStats.results?.[0] ?? [0, 0, 0];
     const sb = rBounce.results?.[0] ?? [0, 1];
     const sd = rSessionDuration.results?.[0] ?? [0, 0];
@@ -210,6 +267,41 @@ export async function GET(req: NextRequest) {
       newVsReturn: (rNewVsReturn.results ?? []).map((r: unknown[]) => ({ day: String(r[0]), newUsers: Number(r[1]), returning: Number(r[2]) })),
       avgSessionDuration: Math.round(Number(sd[0])),
       avgPagesPerSession: Math.round(Number(sd[1]) * 10) / 10,
+      venta: (() => {
+        const v = rVentaCounts.results?.[0] ?? [0, 0, 0, 0, 0, 0];
+        const e = rVentaExit.results?.[0] ?? [0, 0, 0, 0];
+        const c = rVentaCalc.results?.[0] ?? [0, 0, 0, 0];
+        return {
+          pageviews: Number(v[0]),
+          visitors: Number(v[1]),
+          step1: Number(v[2]),
+          submits: Number(v[3]),
+          waClicks: Number(v[4]),
+          calcUses: Number(v[5]),
+          scroll: (rVentaScroll.results ?? []).map((r: unknown[]) => ({
+            depth: Number(r[0]),
+            hits: Number(r[1]),
+            users: Number(r[2]),
+          })),
+          exitIntent: {
+            shown: Number(e[0]),
+            closed: Number(e[1]),
+            submitted: Number(e[2]),
+            uniqueShown: Number(e[3]),
+          },
+          convBySource: (rVentaConvSource.results ?? []).map((r: unknown[]) => ({
+            source: String(r[0]),
+            conversions: Number(r[1]),
+            users: Number(r[2]),
+          })),
+          calc: {
+            avgPrecio: Math.round(Number(c[0]) || 0),
+            medianPrecio: Math.round(Number(c[1]) || 0),
+            avgAhorro: Math.round(Number(c[2]) || 0),
+            uses: Number(c[3]),
+          },
+        };
+      })(),
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Error desconocido";

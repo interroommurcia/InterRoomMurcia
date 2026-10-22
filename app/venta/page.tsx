@@ -5,6 +5,7 @@ import SavingsCalculator from "./SavingsCalculator";
 import StickyCTA from "./StickyCTA";
 import ExitIntent from "./ExitIntent";
 import VentaHeader from "./VentaHeader";
+import ScrollDepthTracker from "../../components/ScrollDepthTracker";
 import { WHATSAPP_NUMBER } from "../../lib/whatsapp";
 
 export const metadata: Metadata = {
@@ -493,6 +494,7 @@ export default function VentaPage() {
       {/* ─── Sticky CTA + Exit Intent ─── */}
       <StickyCTA />
       <ExitIntent />
+      <ScrollDepthTracker page="venta" />
     </>
   );
 }
