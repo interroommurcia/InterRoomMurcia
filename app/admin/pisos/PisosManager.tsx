@@ -380,7 +380,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
                   <h4>{piso.titulo}</h4>
                   <div className="loc">
                     {piso.barrio} · {piso.zona.toUpperCase()} · {piso.precioMes}€{piso.categoria === "alquiler" ? "/mes" : ""}
-                    {piso.estado && piso.estado !== "disponible" ? ` · ${({reservada:"Reservada",alquilada:"Alquilada",vendida:"Vendida",no_disponible:"No disponible"} as Record<string,string>)[piso.estado] || ""}` : !piso.disponible ? " · No disponible" : ""}
+                    {piso.estado && piso.estado !== "disponible" ? ` · ${({reservada:"Reservada",alquilada:"Alquilada",vendida:"Vendida",no_disponible:"No disponible",proximamente:"Próximamente"} as Record<string,string>)[piso.estado] || ""}` : !piso.disponible ? " · No disponible" : ""}
                     {" · "}
                     <span style={{ fontWeight: 500, color: piso.categoria === "compraventa" ? "#7c3aed" : "#059669" }}>
                       {piso.categoria === "compraventa" ? "Compraventa" : piso.tipoAlquiler === "habitacion" ? "Habitación" : "Piso completo"}
@@ -519,6 +519,7 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
             defaultValue={piso?.estado || (piso?.reservada ? "reservada" : (piso?.disponible ?? true) ? "disponible" : "no_disponible")}
           >
             <option value="disponible">Disponible</option>
+            <option value="proximamente">Próximamente</option>
             <option value="reservada">Reservada</option>
             <option value="alquilada">Alquilada</option>
             <option value="vendida">Vendida</option>
