@@ -1,4 +1,4 @@
-import { renderToStaticMarkup } from "react-dom/server";
+import "server-only";
 import { createElement } from "react";
 import ContratoHTML from "../components/ContratoHTML";
 import { getContrato, subirPdfContrato, type Contrato } from "./contratos";
@@ -75,7 +75,11 @@ function detectarChromeLocal(): string | undefined {
 // Render ContratoHTML a documento HTML completo
 // -----------------------------------------------------------------
 
-export function renderContratoHtml(contrato: Contrato): string {
+export async function renderContratoHtml(contrato: Contrato): Promise<string> {
+  // Lazy-import de react-dom/server: Next.js 14 bloquea el import directo a
+  // nivel de módulo porque podría acabar en el bundle cliente. Importándolo
+  // aquí dentro, Next lo deja solo en el server.
+  const { renderToStaticMarkup } = await import("react-dom/server");
   const body = renderToStaticMarkup(
     createElement(ContratoHTML, {
       datos: contrato.datos,
@@ -104,7 +108,7 @@ export function renderContratoHtml(contrato: Contrato): string {
 // -----------------------------------------------------------------
 
 export async function generarPdfBuffer(contrato: Contrato): Promise<Buffer> {
-  const html = renderContratoHtml(contrato);
+  const html = await renderContratoHtml(contrato);
 
   const launcher = await getBrowserLauncher();
   const browser = await launcher.launch();
