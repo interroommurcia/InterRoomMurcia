@@ -1,8 +1,16 @@
 import { Resend } from "resend";
 import type { Contrato } from "./contratos";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = process.env.EMAIL_FROM || "InterRoom Murcia <onboarding@resend.dev>";
+// Lazy init: durante el `next build`, Next recorre los módulos para
+// colectar metadata de las rutas; si el cliente Resend se instancia al
+// cargar el módulo y la API key no está en ese entorno, el build
+// explota ("Failed to collect page data"). Lo creamos a demanda.
+function getResend(): Resend {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error("RESEND_API_KEY no configurada");
+  return new Resend(key);
+}
+const FROM = () => process.env.EMAIL_FROM || "InterRoom Murcia <onboarding@resend.dev>";
 
 /**
  * Envía por email una copia del contrato firmado al propietario.
@@ -87,8 +95,9 @@ export async function enviarContratoFirmadoPropietario(
 </html>`;
 
   try {
+    const resend = getResend();
     const { error } = await resend.emails.send({
-      from: FROM,
+      from: FROM(),
       to: destinatario,
       subject: "Tu contrato de exclusiva firmado — InterRoom Murcia",
       html,
