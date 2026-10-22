@@ -1,0 +1,118 @@
+import type { Contrato } from "./contratos";
+import { getContrato } from "./contratos";
+import { generarYSubirPdfSiProcede } from "./contratos-pdf";
+import { enviarContratoFirmadoPropietario } from "./contratos-email";
+import { telegramSendDocument, telegramSendMessage } from "./telegram";
+
+/**
+ * Orquesta lo que debe pasar DESPUÉS de una firma:
+ *  - Si todavía faltan firmas → notifica a admin por Telegram quién
+ *    ha firmado y qué falta.
+ *  - Si ambas partes han firmado → genera el PDF, lo sube, lo envía
+ *    por email al propietario y por Telegram al admin.
+ *
+ * Nunca lanza: los errores de PDF/email/Telegram no deben romper el
+ * flujo de firma. Devuelve un resumen de lo que ha ido bien o mal.
+ */
+export async function tramitarPostFirma(contratoId: string): Promise<{
+  pdfGenerado: boolean;
+  emailOk: boolean;
+  telegramOk: boolean;
+  errores: string[];
+}> {
+  const errores: string[] = [];
+  let pdfGenerado = false;
+  let emailOk = false;
+  let telegramOk = false;
+
+  const contrato = await getContrato(contratoId);
+  if (!contrato) return { pdfGenerado, emailOk, telegramOk, errores: ["contrato no encontrado"] };
+
+  // Si todavía falta alguna firma: aviso al admin con el estado.
+  if (contrato.estado !== "firmado") {
+    telegramOk = await notificarAdminFirmaParcial(contrato).catch((e) => {
+      errores.push(`telegram parcial: ${e?.message ?? e}`);
+      return false;
+    });
+    return { pdfGenerado, emailOk, telegramOk, errores };
+  }
+
+  // Ambas firmadas: PDF.
+  let pdf: Buffer | null = null;
+  try {
+    const bytes = await generarYSubirPdfSiProcede(contratoId);
+    if (bytes) {
+      pdf = bytes;
+      pdfGenerado = true;
+    }
+  } catch (e: unknown) {
+    errores.push(`pdf: ${e instanceof Error ? e.message : "error"}`);
+  }
+
+  // Email al propietario con el PDF.
+  if (pdf) {
+    const r = await enviarContratoFirmadoPropietario(contrato, pdf);
+    emailOk = r.ok;
+    if (!r.ok && r.error) errores.push(`email: ${r.error}`);
+  }
+
+  // Telegram al admin con el PDF + resumen.
+  if (pdf) {
+    telegramOk = await enviarPdfATelegramAdmin(contrato, pdf).catch((e) => {
+      errores.push(`telegram pdf: ${e?.message ?? e}`);
+      return false;
+    });
+  }
+
+  return { pdfGenerado, emailOk, telegramOk, errores };
+}
+
+async function notificarAdminFirmaParcial(contrato: Contrato): Promise<boolean> {
+  const chatIds = (process.env.TELEGRAM_CHAT_ID ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!chatIds.length) return false;
+
+  const quien = contrato.estado === "firmado_propietario" ? "✍️ El propietario" : "✍️ La agencia";
+  const falta = contrato.estado === "firmado_propietario" ? "La Agencia" : "El Propietario";
+  const nombre = contrato.datos.propietario?.nombre || "sin nombre";
+  const inmueble = contrato.datos.inmueble?.direccion || "sin dirección";
+  const msg = `${quien} ha firmado el contrato de exclusiva.
+
+Cliente: ${nombre}
+Inmueble: ${inmueble}
+
+Falta por firmar: ${falta}.`;
+
+  await Promise.all(chatIds.map((id) => telegramSendMessage(id, msg).catch(() => undefined)));
+  return true;
+}
+
+async function enviarPdfATelegramAdmin(contrato: Contrato, pdf: Buffer): Promise<boolean> {
+  const chatIds = (process.env.TELEGRAM_CHAT_ID ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!chatIds.length) return false;
+
+  const nombre = contrato.datos.propietario?.nombre || "sin nombre";
+  const inmueble = contrato.datos.inmueble?.direccion || "sin dirección";
+  const precio = contrato.datos.precio_venta
+    ? `${contrato.datos.precio_venta.toLocaleString("es-ES")} €`
+    : "sin precio";
+  const caption = `✅ Contrato de exclusiva FIRMADO por ambas partes.
+
+Cliente: ${nombre}
+Inmueble: ${inmueble}
+Precio: ${precio}
+Comisión: ${contrato.datos.comision_pct}%`;
+
+  const filename = `contrato-exclusiva-${contrato.id.slice(0, 8)}.pdf`;
+  await Promise.all(
+    chatIds.map((id) =>
+      telegramSendDocument(id, pdf, filename, caption).catch(() => undefined),
+    ),
+  );
+  return true;
+}

@@ -28,6 +28,12 @@ import { listarConversaciones, getKnowledgeBase, buildSystemPrompt } from "./cha
 import { catalogSnapshot } from "./pisos";
 import { crearTarea, listarTareasEntreFechas, type TipoTarea } from "./mesaTrabajo";
 import { buscarTrabajadorPorNombre, listarTrabajadores } from "./trabajadores";
+import {
+  crearContrato,
+  generarLinkFirma,
+  AGENCIA_DEFAULT,
+  type DatosContratoExclusiva,
+} from "./contratos";
 
 const MAX_HISTORIAL = 20;
 const MAX_TURNOS_HERRAMIENTA = 5;
@@ -55,6 +61,7 @@ Guía de uso de herramientas:
 - Si piden fotos, vídeos o media de una propiedad interna (no del catálogo público), usa buscar_media_propiedad para localizar los archivos. Si quieren que envíes una foto o documento de la propiedad, usa enviar_media_propiedad con el id del medio encontrado.
 - Si te piden generar/hacer una factura de un cliente, usa primero listar_pagos_facturables para ver sus pagos pendientes. Si hay varios, muéstralos y pregunta cuál. Si falta el NIF u otros datos fiscales del cliente, avísalo. ANTES de llamar a generar_factura, SIEMPRE muestra el número de factura sugerido y pregunta explícitamente al usuario si lo usa tal cual o quiere otro número (puede haber facturas emitidas manualmente que rompen la secuencia). No llames a generar_factura hasta que el usuario te confirme el número a usar; pásalo explícitamente en el argumento "numero".
 - Si alguien del equipo pide "el enlace de la calculadora de rentabilidad" (o similar: "la calculadora", "el link para propietarios", "la herramienta de simular rentabilidad"), responde directamente con la URL ${CALCULADORA_URL}. Es una página privada (no indexada ni enlazada desde el menú público) para enviar a propietarios potenciales. No necesitas herramienta: dale el enlace y, si lo pide, una frase corta explicando qué hace ("simula qué le rentaría su piso con nuestra gestión").
+- Si piden preparar/generar/hacer un contrato de encargo de venta en exclusiva (o "el contrato para X", "el papel de exclusiva de Fulanito"), usa crear_contrato_exclusiva. Para los datos del propietario puedes buscar en el CRM con buscar_contacto si el usuario te da un nombre. Para los datos del inmueble (dirección obligatoria; opcional: referencia catastral, superficie, cargas, estado arrendaticio) y el precio de venta DEBES pedirlos en el chat si no te los dan desde el principio. Valores por defecto que puedes asumir sin preguntar salvo que el usuario los cambie: duración 4 meses, comisión 1,5 %, penalización por incumplimiento 75 %. Es herramienta de escritura: antes de llamarla resume en una frase lo que vas a crear (nombre del propietario, inmueble, precio, duración/comisión/penalización) y pide confirmación "¿Lo creo?". Al ejecutarla, Gladis devuelve el enlace privado de firma listo para enviar al propietario por WhatsApp (incluye un mensaje redactado).
 - Si ninguna herramienta resuelve la pregunta, dilo con claridad en vez de inventar una respuesta.
 
 REGLA CRÍTICA — confirmación antes de modificar:
@@ -255,6 +262,32 @@ const TOOLS: Anthropic.Tool[] = [
       type: "object",
       properties: { media_id: { type: "string", description: "id del medio devuelto por buscar_media_propiedad" } },
       required: ["media_id"],
+    },
+  },
+  {
+    name: "crear_contrato_exclusiva",
+    description:
+      "Crea un contrato de encargo de venta en exclusiva como borrador y genera el enlace privado de firma para enviárselo al propietario. HERRAMIENTA DE ESCRITURA: pide confirmación antes de llamarla. Si tienes el cliente_id del CRM (de buscar_contacto), pásalo para rellenar automáticamente nombre/DNI/dirección/email/teléfono del propietario. Si no, pásalos manualmente. Los datos del inmueble (dirección como mínimo) y el precio de venta son obligatorios. Duración, comisión y penalización usan 4 meses / 1,5 % / 75 % si no se indican otros.",
+    input_schema: {
+      type: "object",
+      properties: {
+        cliente_id: { type: "string", description: "Si viene del CRM, su id (de buscar_contacto). Autorrellena propietario." },
+        propietario_nombre: { type: "string", description: "Nombre completo del propietario. Obligatorio si no se pasa cliente_id." },
+        propietario_dni: { type: "string", description: "DNI/NIF del propietario." },
+        propietario_direccion: { type: "string", description: "Domicilio del propietario." },
+        propietario_telefono: { type: "string", description: "Teléfono del propietario (para WhatsApp)." },
+        propietario_email: { type: "string", description: "Email del propietario (para recibir el PDF firmado)." },
+        inmueble_direccion: { type: "string", description: "Dirección del inmueble a vender (obligatorio)." },
+        inmueble_referencia_catastral: { type: "string", description: "Referencia catastral del inmueble (opcional)." },
+        inmueble_superficie: { type: "string", description: "Superficie (p. ej. '90 m² construidos') (opcional)." },
+        inmueble_cargas: { type: "string", description: "Cargas (p. ej. 'libre de cargas' o 'hipoteca con X') (opcional)." },
+        inmueble_estado_arrendaticio: { type: "string", description: "Estado arrendaticio (p. ej. 'libre de arrendatarios') (opcional)." },
+        precio_venta: { type: "number", description: "Precio de salida en euros (obligatorio)." },
+        duracion_meses: { type: "number", description: "Duración exclusiva en meses (por defecto 4)." },
+        comision_pct: { type: "number", description: "Comisión en % (por defecto 1.5)." },
+        penalizacion_pct: { type: "number", description: "Penalización incumplimiento en % (por defecto 75)." },
+      },
+      required: ["inmueble_direccion", "precio_venta"],
     },
   },
 ];
@@ -608,6 +641,73 @@ Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.co
       await telegramSendDocument(chatId, archivo.buffer, archivo.nombre, archivo.nombre);
     }
     return `Enviado: ${archivo.nombre}`;
+  }
+  if (nombre === "crear_contrato_exclusiva") {
+    const inmuebleDir = String(input.inmueble_direccion ?? "").trim();
+    const precio = Number(input.precio_venta ?? 0);
+    if (!inmuebleDir) return "Falta la dirección del inmueble.";
+    if (!precio || precio <= 0) return "Falta el precio de venta.";
+
+    // Resolver propietario: por cliente_id (CRM) o por campos sueltos.
+    let propietario = {
+      nombre: String(input.propietario_nombre ?? "").trim(),
+      dni: String(input.propietario_dni ?? "").trim(),
+      direccion: String(input.propietario_direccion ?? "").trim(),
+      telefono: String(input.propietario_telefono ?? "").trim(),
+      email: String(input.propietario_email ?? "").trim(),
+    };
+    let clienteIdResuelto: string | null = null;
+    const clienteId = String(input.cliente_id ?? "").trim();
+    if (clienteId) {
+      const clientes = await listarClientes();
+      const c = clientes.find((x) => x.id === clienteId);
+      if (!c) return `Cliente con id ${clienteId} no encontrado en el CRM.`;
+      clienteIdResuelto = c.id;
+      propietario = {
+        nombre: propietario.nombre || `${c.nombre} ${c.apellidos ?? ""}`.trim(),
+        dni: propietario.dni || c.nif || "",
+        direccion:
+          propietario.direccion || [c.direccion, c.cp_ciudad].filter(Boolean).join(", "),
+        telefono: propietario.telefono || c.telefono || "",
+        email: propietario.email || c.email || "",
+      };
+    }
+    if (!propietario.nombre) return "Falta el nombre del propietario.";
+
+    const datos: DatosContratoExclusiva = {
+      propietario,
+      inmueble: {
+        direccion: inmuebleDir,
+        referencia_catastral: String(input.inmueble_referencia_catastral ?? "").trim() || undefined,
+        superficie: String(input.inmueble_superficie ?? "").trim() || undefined,
+        cargas: String(input.inmueble_cargas ?? "").trim() || undefined,
+        estado_arrendaticio: String(input.inmueble_estado_arrendaticio ?? "").trim() || undefined,
+      },
+      precio_venta: precio,
+      duracion_meses: Number(input.duracion_meses ?? 4) || 4,
+      comision_pct: Number(input.comision_pct ?? 1.5) || 1.5,
+      penalizacion_pct: Number(input.penalizacion_pct ?? 75) || 75,
+      agencia: AGENCIA_DEFAULT,
+    };
+
+    const contrato = await crearContrato({ cliente_id: clienteIdResuelto, datos });
+    const conLink = await generarLinkFirma(contrato.id);
+    const link = `${SITE_URL}/firmar/${conLink.signing_token}`;
+    const mensajeWA = `Hola ${propietario.nombre.split(" ")[0]}, te envío el contrato de encargo de venta en exclusiva para que lo revises y firmes online. Es muy rápido, se firma desde el móvil con el dedo:\n\n${link}\n\nCualquier duda me dices. Un saludo.`;
+    const panelAdmin = `${SITE_URL}/admin/documentos/contratos/${contrato.id}`;
+    return `Contrato creado como borrador y enlace de firma generado.
+Propietario: ${propietario.nombre}${propietario.dni ? ` (${propietario.dni})` : ""}
+Inmueble: ${inmuebleDir}
+Precio: ${precio.toLocaleString("es-ES")} €
+Duración: ${datos.duracion_meses} meses · Comisión: ${datos.comision_pct}% · Penalización: ${datos.penalizacion_pct}%
+
+ENLACE PARA EL PROPIETARIO (envíaselo por WhatsApp):
+${link}
+
+MENSAJE SUGERIDO:
+${mensajeWA}
+
+Panel admin: ${panelAdmin}`;
   }
   return "Herramienta desconocida.";
 }
