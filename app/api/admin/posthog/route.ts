@@ -210,13 +210,17 @@ export async function GET(req: NextRequest) {
           AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
         GROUP BY depth ORDER BY depth ASC
       `),
-        // Exit intent efectividad
+        // Exit intent efectividad (shown/closed/submit/dwell/abandoned + next page)
         hogql(`
         SELECT
           countIf(event = 'venta_exit_intent_shown') AS shown,
           countIf(event = 'venta_exit_intent_closed') AS closed,
           countIf(event = 'venta_exit_intent_submit') AS submitted,
-          uniqExactIf(distinct_id, event = 'venta_exit_intent_shown') AS unique_shown
+          uniqExactIf(distinct_id, event = 'venta_exit_intent_shown') AS unique_shown,
+          countIf(event = 'venta_exit_intent_dwell_10s') AS dwell_10s,
+          countIf(event = 'venta_exit_intent_abandoned') AS abandoned,
+          countIf(event = 'venta_exit_intent_abandoned' AND properties.dwell_more_than_10s = true) AS abandoned_after_10s,
+          avgIf(toFloat64(properties.dwell_ms), event = 'venta_exit_intent_closed' AND properties.dwell_ms IS NOT NULL) AS avg_close_ms
         FROM events
         WHERE ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
       `),
@@ -240,6 +244,15 @@ export async function GET(req: NextRequest) {
         WHERE event = 'venta_calc_use' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
       `),
       ]);
+
+    // A dónde van después de ver el exit intent (si no convirtieron)
+    const rVentaNextPage = await hogql(`
+      SELECT properties.next_page AS next_page, count() AS visits
+      FROM events
+      WHERE event = 'venta_exit_intent_next_page'
+        AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
+      GROUP BY next_page ORDER BY visits DESC LIMIT 10
+    `);
 
     const s = rStats.results?.[0] ?? [0, 0, 0];
     const sb = rBounce.results?.[0] ?? [0, 1];
@@ -288,6 +301,14 @@ export async function GET(req: NextRequest) {
             closed: Number(e[1]),
             submitted: Number(e[2]),
             uniqueShown: Number(e[3]),
+            dwell10s: Number(e[4] ?? 0),
+            abandoned: Number(e[5] ?? 0),
+            abandonedAfter10s: Number(e[6] ?? 0),
+            avgCloseMs: Math.round(Number(e[7] ?? 0)),
+            nextPages: (rVentaNextPage.results ?? []).map((r: unknown[]) => ({
+              page: String(r[0] || "/"),
+              visits: Number(r[1]),
+            })),
           },
           convBySource: (rVentaConvSource.results ?? []).map((r: unknown[]) => ({
             source: String(r[0]),

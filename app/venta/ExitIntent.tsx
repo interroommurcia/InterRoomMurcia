@@ -1,17 +1,33 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { trackEvent } from "../../lib/posthog-client";
+
+// Clave en sessionStorage para que PostHogProvider sepa si el exit
+// intent se ha mostrado en esta sesión y pueda disparar el evento
+// "siguiente página" cuando el usuario navegue después.
+export const EXIT_INTENT_FLAG = "venta_exit_intent_shown_at";
 
 export default function ExitIntent() {
   const [show, setShow] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  // Guardamos cuando se mostró y si el usuario convirtió para calcular
+  // dwell time y disparar eventos de "abandono tras ver el popup".
+  const shownAtRef = useRef<number | null>(null);
+  const convertedRef = useRef(false);
+  const dwell10FiredRef = useRef(false);
 
   const handleMouseLeave = useCallback(
     (e: MouseEvent) => {
       if (dismissed) return;
       if (e.clientY <= 5 && !show) {
         setShow(true);
+        shownAtRef.current = Date.now();
+        try {
+          sessionStorage.setItem(EXIT_INTENT_FLAG, String(Date.now()));
+        } catch {
+          /* no-op */
+        }
         trackEvent("venta_exit_intent_shown", {});
       }
     },
@@ -28,10 +44,52 @@ export default function ExitIntent() {
     };
   }, [handleMouseLeave]);
 
+  // Timer: a los 10s de mostrarse, si sigue abierto sin convertir ni
+  // cerrarse, significa que está leyendo o pensando → señal útil
+  // para saber qué popups "enganchan" aunque no conviertan.
+  useEffect(() => {
+    if (!show) return;
+    const t = setTimeout(() => {
+      if (!dwell10FiredRef.current && !convertedRef.current) {
+        dwell10FiredRef.current = true;
+        trackEvent("venta_exit_intent_dwell_10s", {});
+      }
+    }, 10000);
+    return () => clearTimeout(t);
+  }, [show]);
+
+  // Al salir de la página (cerrar pestaña, navegar fuera) si vieron el
+  // popup pero no convirtieron, registramos abandono con el dwell time.
+  useEffect(() => {
+    function onHide() {
+      if (document.visibilityState !== "hidden") return;
+      const shownAt = shownAtRef.current;
+      if (!shownAt || convertedRef.current) return;
+      const dwellMs = Date.now() - shownAt;
+      trackEvent("venta_exit_intent_abandoned", {
+        dwell_ms: dwellMs,
+        dwell_more_than_10s: dwellMs >= 10000,
+      });
+      // No volver a disparar en esta sesión
+      shownAtRef.current = null;
+    }
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
+  }, []);
+
   function close() {
     setShow(false);
     setDismissed(true);
-    trackEvent("venta_exit_intent_closed", {});
+    if (convertedRef.current) return; // ya se emitió 'submit', no doblamos
+    const dwellMs = shownAtRef.current ? Date.now() - shownAtRef.current : 0;
+    trackEvent("venta_exit_intent_closed", {
+      dwell_ms: dwellMs,
+      dwell_more_than_10s: dwellMs >= 10000,
+    });
+  }
+
+  function markConverted() {
+    convertedRef.current = true;
   }
 
   if (!show) return null;
@@ -55,14 +113,14 @@ export default function ExitIntent() {
             Déjanos tu teléfono y te llamamos en menos de 24h con una valoración
             real de tu inmueble. <strong>Sin compromiso.</strong>
           </p>
-          <ExitForm onSuccess={close} />
+          <ExitForm onSuccess={close} onConvert={markConverted} />
         </div>
       </div>
     </div>
   );
 }
 
-function ExitForm({ onSuccess }: { onSuccess: () => void }) {
+function ExitForm({ onSuccess, onConvert }: { onSuccess: () => void; onConvert: () => void }) {
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
@@ -88,7 +146,11 @@ function ExitForm({ onSuccess }: { onSuccess: () => void }) {
       });
       if (!res.ok) throw new Error("fail");
       setStatus("sent");
+      onConvert();
       trackEvent("venta_exit_intent_submit", {});
+      // Limpia el flag para que no se dispare "next_page" después:
+      // ya convirtió, no necesitamos saber a dónde va.
+      try { sessionStorage.removeItem(EXIT_INTENT_FLAG); } catch {}
       setTimeout(onSuccess, 2000);
     } catch {
       setStatus("error");

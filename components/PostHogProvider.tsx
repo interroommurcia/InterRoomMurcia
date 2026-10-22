@@ -7,6 +7,13 @@ import posthog from "posthog-js";
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY ?? "";
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com";
 
+// Mismo literal que ExitIntent.EXIT_INTENT_FLAG. No lo importamos para
+// que PostHogProvider no arrastre la landing a su bundle.
+const EXIT_INTENT_FLAG = "venta_exit_intent_shown_at";
+// Ventana de tiempo tras ver el popup en la que una navegación cuenta
+// como "siguiente página tras exit intent".
+const NEXT_PAGE_WINDOW_MS = 60_000;
+
 function PostHogPageview() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -20,9 +27,27 @@ function PostHogPageview() {
       $referring_domain: document.referrer ? new URL(document.referrer).hostname : "",
     });
 
+    // Si el usuario vio el popup de exit intent en /venta y ahora
+    // navega a otra ruta dentro del mismo sitio, registramos a dónde
+    // fue — así sabes si abandonan al blog, al catálogo o se van.
+    try {
+      const raw = sessionStorage.getItem(EXIT_INTENT_FLAG);
+      if (raw && !pathname.startsWith("/venta")) {
+        const shownAt = Number(raw);
+        if (Number.isFinite(shownAt) && Date.now() - shownAt <= NEXT_PAGE_WINDOW_MS) {
+          posthog.capture("venta_exit_intent_next_page", {
+            next_page: pathname,
+            ms_since_shown: Date.now() - shownAt,
+          });
+        }
+        sessionStorage.removeItem(EXIT_INTENT_FLAG);
+      }
+    } catch {
+      /* no-op */
+    }
+
     // Pausa el session replay en el panel admin — no interesa grabar
     // nuestras propias navegaciones ni datos sensibles del backoffice.
-    if (!posthog.__loaded) return;
     if (pathname.startsWith("/admin")) {
       try { posthog.stopSessionRecording(); } catch {}
     } else {

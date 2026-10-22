@@ -29,7 +29,17 @@ type PostHogData = {
     waClicks: number;
     calcUses: number;
     scroll: { depth: number; hits: number; users: number }[];
-    exitIntent: { shown: number; closed: number; submitted: number; uniqueShown: number };
+    exitIntent: {
+      shown: number;
+      closed: number;
+      submitted: number;
+      uniqueShown: number;
+      dwell10s: number;
+      abandoned: number;
+      abandonedAfter10s: number;
+      avgCloseMs: number;
+      nextPages: { page: string; visits: number }[];
+    };
     convBySource: { source: string; conversions: number; users: number }[];
     calc: { avgPrecio: number; medianPrecio: number; avgAhorro: number; uses: number };
   };
@@ -515,6 +525,10 @@ export default function AnalyticsManager() {
           {openSections.venta && <VentaConversionBlock v={data.venta} />}
         </>
       )}
+
+      {/* ── Grabaciones de sesión ── */}
+      <SectionHead id="recordings" title="Grabaciones de sesión" tip="Reproduce visualmente lo que hace cada visitante en tu web (clicks, scroll, movimiento del cursor)" />
+      {openSections.recordings && <RecordingsBlock />}
     </div>
   );
 }
@@ -583,14 +597,37 @@ function VentaConversionBlock({ v }: { v: VentaStats }) {
           <div className="analytics-row"><span>👤 Usuarios únicos</span><span>{v.exitIntent.uniqueShown}</span></div>
           <div className="analytics-row"><span>❌ Cerraron sin más</span><span>{v.exitIntent.closed} ({exitCloseRate}%)</span></div>
           <div className="analytics-row"><span>✅ Dejaron teléfono</span><span style={{ color: "#059669", fontWeight: 600 }}>{v.exitIntent.submitted} ({exitConvRate}%)</span></div>
+          <div style={{ borderTop: "1px dashed #eee", margin: "10px 0 6px", paddingTop: 8 }}>
+            <div className="analytics-row"><span>👀 Lo leyeron ≥10s (siguen interesados)</span><span style={{ color: "#2563eb" }}>{v.exitIntent.dwell10s}</span></div>
+            <div className="analytics-row"><span>🏃 Se fueron tras verlo</span><span>{v.exitIntent.abandoned}</span></div>
+            <div className="analytics-row"><span>⏱ Se fueron tras ≥10s con él abierto</span><span>{v.exitIntent.abandonedAfter10s}</span></div>
+            {v.exitIntent.avgCloseMs > 0 && (
+              <div className="analytics-row"><span>⌛ Media al cerrar</span><span>{(v.exitIntent.avgCloseMs / 1000).toFixed(1)}s</span></div>
+            )}
+          </div>
           {exitShown > 0 && (
-            <p style={{ fontSize: 11, color: "#6b7280", margin: "10px 0 0", fontStyle: "italic" }}>
+            <p style={{ fontSize: 11, color: "#6b7280", margin: "6px 0 0", fontStyle: "italic" }}>
               {exitConvRate >= 5
                 ? "✨ Está funcionando muy bien."
                 : exitConvRate >= 2
                   ? "Correcto, podría mejorar con otro copy."
-                  : "Casi todos lo cierran sin leer. Prueba otro titular."}
+                  : v.exitIntent.dwell10s / Math.max(1, exitShown) > 0.3
+                    ? "📖 Mucha gente lo lee pero no convierte: cambia el CTA."
+                    : "Casi todos lo cierran sin leer. Prueba otro titular."}
             </p>
+          )}
+        </div>
+
+        {/* Después del exit intent */}
+        <div className="analytics-card">
+          <h3>Dónde van después del popup <HelpTip tip="A qué página saltan los que vieron el exit intent y no convirtieron (dentro de los 60 segundos siguientes)" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 10px" }}>Si no dejan teléfono, ¿se van del sitio o siguen navegando?</p>
+          {v.exitIntent.nextPages.length === 0 ? (
+            <p className="admin-empty">Nadie siguió navegando aún.</p>
+          ) : (
+            v.exitIntent.nextPages.map((n) => (
+              <div key={n.page} className="analytics-row"><span title={n.page}>{n.page}</span><span>{n.visits}</span></div>
+            ))
           )}
         </div>
 
@@ -675,6 +712,231 @@ function FunnelStep({ label, count, base, highlight }: { label: string; count: n
         />
       </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Bloque: Grabaciones de sesión (session replay)
+// ─────────────────────────────────────────────────────────────────
+
+type Recording = {
+  session_id: string;
+  start_time: string;
+  duration_sec: number;
+  active_sec: number;
+  clicks: number;
+  keypresses: number;
+  start_url: string;
+  country: string;
+  city: string;
+  device: string;
+  browser: string;
+  referrer_domain: string;
+  converted: boolean;
+  exit_intent_shown: boolean;
+  exit_intent_action: string;
+  player_url: string;
+};
+
+function RecordingsBlock() {
+  const [recordings, setRecordings] = useState<Recording[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [filter, setFilter] = useState<"todos" | "convertidos" | "exit">("todos");
+  const [pathFilter, setPathFilter] = useState("/venta");
+  const [playing, setPlaying] = useState<{ url: string; sessionId: string } | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams({ limit: "25" });
+      if (pathFilter) params.set("path", pathFilter);
+      if (filter === "convertidos") params.set("convertidos", "1");
+      const res = await fetch(`/api/admin/posthog/recordings?${params}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Error");
+      let list: Recording[] = data.recordings ?? [];
+      if (filter === "exit") list = list.filter((r) => r.exit_intent_shown);
+      setRecordings(list);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error");
+      setRecordings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [filter, pathFilter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function openPlayer(r: Recording) {
+    // Pedimos la URL pública compartida al vuelo (sin login en el iframe).
+    try {
+      const res = await fetch(`/api/admin/posthog/recordings/${r.session_id}/share`, { method: "POST" });
+      const data = await res.json();
+      const url = data?.shared_url || data?.fallback_url || r.player_url;
+      setPlaying({ url, sessionId: r.session_id });
+    } catch {
+      setPlaying({ url: r.player_url, sessionId: r.session_id });
+    }
+  }
+
+  function fmtDur(sec: number): string {
+    if (sec < 60) return `${sec}s`;
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}m ${s}s`;
+  }
+  function fmtDate(iso: string): string {
+    try {
+      return new Date(iso).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" });
+    } catch { return iso; }
+  }
+
+  return (
+    <>
+      <div className="analytics-card" style={{ marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+            Página contiene:
+            <input
+              type="text"
+              value={pathFilter}
+              onChange={(e) => setPathFilter(e.target.value)}
+              placeholder="/venta"
+              style={{ padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 12, width: 140 }}
+            />
+          </label>
+          <div style={{ display: "flex", gap: 4 }}>
+            {(["todos", "convertidos", "exit"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                style={{
+                  padding: "6px 12px",
+                  border: `1px solid ${filter === f ? "var(--orange)" : "#ddd"}`,
+                  background: filter === f ? "var(--orange)" : "transparent",
+                  color: filter === f ? "#fff" : "#333",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 500,
+                }}
+              >
+                {f === "todos" ? "Todas" : f === "convertidos" ? "Solo conversiones" : "Vieron exit intent"}
+              </button>
+            ))}
+          </div>
+          <button onClick={load} disabled={loading} style={{ padding: "6px 12px", border: "1px solid #ddd", background: "#fff", borderRadius: 6, cursor: "pointer", fontSize: 12, marginLeft: "auto" }}>
+            {loading ? "Cargando…" : "↻ Recargar"}
+          </button>
+        </div>
+      </div>
+
+      {error && <p className="lead-form-error" style={{ marginBottom: 10 }}>{error}</p>}
+
+      <div className="analytics-card" style={{ padding: 0, overflow: "hidden" }}>
+        {!recordings ? (
+          <div style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>Cargando grabaciones…</div>
+        ) : recordings.length === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>
+            Sin grabaciones todavía. Da margen de 10-15 min desde que empiezan a entrar visitantes.
+          </div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: "#fafafa", borderBottom: "1px solid #eee" }}>
+                <th style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666", fontWeight: 500 }}>Fecha</th>
+                <th style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666", fontWeight: 500 }}>Entró en</th>
+                <th style={{ textAlign: "right", padding: "10px 14px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666", fontWeight: 500 }}>Duración</th>
+                <th style={{ textAlign: "right", padding: "10px 14px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666", fontWeight: 500 }}>Clicks</th>
+                <th style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666", fontWeight: 500 }}>Device</th>
+                <th style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666", fontWeight: 500 }}>Origen</th>
+                <th style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666", fontWeight: 500 }}>Marcas</th>
+                <th style={{ padding: "10px 14px" }} />
+              </tr>
+            </thead>
+            <tbody>
+              {recordings.map((r) => (
+                <tr key={r.session_id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                  <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>{fmtDate(r.start_time)}</td>
+                  <td style={{ padding: "10px 14px", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.start_url}>
+                    {r.start_url.replace(/^https?:\/\/[^/]+/, "") || "/"}
+                  </td>
+                  <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtDur(r.duration_sec)}</td>
+                  <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{r.clicks}</td>
+                  <td style={{ padding: "10px 14px" }}>
+                    {r.device || "—"}
+                    {r.browser ? <span style={{ opacity: 0.5 }}> · {r.browser}</span> : null}
+                  </td>
+                  <td style={{ padding: "10px 14px" }}>
+                    {r.city || r.country || "—"}
+                    {r.referrer_domain ? <div style={{ fontSize: 10, opacity: 0.6 }}>{r.referrer_domain}</div> : null}
+                  </td>
+                  <td style={{ padding: "10px 14px" }}>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {r.converted && <span style={{ background: "#d1fae5", color: "#065f46", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 500 }}>✓ Convirtió</span>}
+                      {r.exit_intent_shown && <span style={{ background: "#fef3c7", color: "#92400e", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 500 }}>Exit popup</span>}
+                    </div>
+                  </td>
+                  <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                    <button
+                      onClick={() => openPlayer(r)}
+                      style={{
+                        padding: "6px 14px",
+                        background: "var(--orange)",
+                        color: "#fff",
+                        border: 0,
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        fontSize: 11,
+                        fontWeight: 500,
+                      }}
+                    >
+                      ▶ Reproducir
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {playing && (
+        <div
+          onClick={() => setPlaying(null)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 9999,
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff", borderRadius: 10, width: "min(1200px, 100%)", height: "min(90vh, 800px)",
+              display: "flex", flexDirection: "column", overflow: "hidden",
+            }}
+          >
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <strong>Grabación de sesión</strong>
+                <span style={{ fontSize: 12, color: "#666", marginLeft: 10 }}>{playing.sessionId.slice(0, 12)}…</span>
+              </div>
+              <button onClick={() => setPlaying(null)} style={{ padding: "6px 14px", border: "1px solid #ddd", background: "#fff", borderRadius: 6, cursor: "pointer" }}>
+                Cerrar ✕
+              </button>
+            </div>
+            <iframe
+              src={playing.url}
+              style={{ border: 0, flex: 1, width: "100%" }}
+              allow="autoplay; clipboard-write"
+              title="Session replay"
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
