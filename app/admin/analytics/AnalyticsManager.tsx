@@ -211,6 +211,20 @@ export default function AnalyticsManager() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // En móvil, cuando llegan los datos, los gráficos diarios se auto-desplazan
+  // al último día para que no quede escondido fuera del viewport.
+  useEffect(() => {
+    if (!data) return;
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia("(max-width: 640px)").matches) return;
+    const t = setTimeout(() => {
+      document.querySelectorAll<HTMLElement>(".analytics-daily-chart").forEach((el) => {
+        el.scrollLeft = el.scrollWidth;
+      });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [data]);
+
   useEffect(() => {
     fetch("/api/admin/leads-stats")
       .then((res) => (res.ok ? res.json() : null))

@@ -3074,6 +3074,30 @@ button {
   height: 150px;
 }
 
+/* En móvil las barras se encogen tanto que el último día no se lee.
+   Pasamos a scroll horizontal con un ancho mínimo por columna. */
+@media (max-width: 640px) {
+  .analytics-daily-chart {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    scroll-snap-type: x proximity;
+  }
+  .analytics-daily-chart::-webkit-scrollbar {
+    height: 6px;
+  }
+  .analytics-daily-chart::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+  .analytics-daily-col {
+    flex: 0 0 34px;
+    min-width: 34px;
+    scroll-snap-align: end;
+  }
+}
+
 .analytics-periodo-bar {
   display: flex;
   align-items: center;
