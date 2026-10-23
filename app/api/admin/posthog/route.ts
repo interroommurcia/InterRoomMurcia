@@ -220,7 +220,7 @@ export async function GET(req: NextRequest) {
           countIf(event = 'venta_exit_intent_dwell_10s') AS dwell_10s,
           countIf(event = 'venta_exit_intent_abandoned') AS abandoned,
           countIf(event = 'venta_exit_intent_abandoned' AND properties.dwell_more_than_10s = true) AS abandoned_after_10s,
-          avgIf(toFloat64(properties.dwell_ms), event = 'venta_exit_intent_closed' AND properties.dwell_ms IS NOT NULL) AS avg_close_ms
+          avgIf(toFloat(properties.dwell_ms), event = 'venta_exit_intent_closed' AND properties.dwell_ms IS NOT NULL) AS avg_close_ms
         FROM events
         WHERE ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
       `),
@@ -236,9 +236,9 @@ export async function GET(req: NextRequest) {
         // Precios con los que juega la gente en la calculadora de ahorro
         hogql(`
         SELECT
-          avg(toFloat64(properties.precio)) AS avg_precio,
-          median(toFloat64(properties.precio)) AS median_precio,
-          avg(toFloat64(properties.ahorro)) AS avg_ahorro,
+          avg(toFloat(properties.precio)) AS avg_precio,
+          median(toFloat(properties.precio)) AS median_precio,
+          avg(toFloat(properties.ahorro)) AS avg_ahorro,
           count() AS uses
         FROM events
         WHERE event = 'venta_calc_use' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}

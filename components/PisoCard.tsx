@@ -8,6 +8,7 @@ const ESTADO_LABEL: Record<string, string> = {
   alquilada: "Alquilada",
   vendida: "Vendida",
   no_disponible: "No disponible",
+  proximamente: "Próximamente",
 };
 
 const ESTADO_WATERMARK: Record<string, string> = {
