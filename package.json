@@ -10,7 +10,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
     "@react-pdf/renderer": "^4.9.0",
-    "@sparticuz/chromium": "^131.0.1",
+    "@sparticuz/chromium-min": "^131.0.1",
     "@supabase/supabase-js": "^2.110.7",
     "@vercel/postgres": "^0.10.0",
     "docx": "^9.7.1",

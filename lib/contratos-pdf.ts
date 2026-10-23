@@ -42,10 +42,20 @@ async function getBrowserLauncher(): Promise<BrowserBundle> {
     !!process.env.NEXT_RUNTIME_SERVERLESS;
 
   if (isServerless) {
-    const chromium = (await import("@sparticuz/chromium")).default;
+    // Usamos @sparticuz/chromium-min + pack remoto desde GitHub Releases.
+    // Motivo: con el paquete completo, el tracing de Vercel incluye el .br
+    // del binario pero no siempre bundelea los shared libs (libnss3.so,
+    // libatk, etc.), lo que provoca:
+    //   /tmp/chromium: error while loading shared libraries: libnss3.so
+    // Con chromium-min descargamos el pack entero (binario + libs) en
+    // runtime a /tmp, extraído por el propio sparticuz, evitando el problema.
+    const chromium = (await import("@sparticuz/chromium-min")).default;
+    const packUrl =
+      process.env.CHROMIUM_PACK_URL ||
+      "https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar";
     return {
       launch: async () => {
-        const executablePath = await chromium.executablePath();
+        const executablePath = await chromium.executablePath(packUrl);
         return (await puppeteer.launch({
           args: chromium.args,
           defaultViewport: chromium.defaultViewport,

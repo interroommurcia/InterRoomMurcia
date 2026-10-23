@@ -3,17 +3,12 @@ const nextConfig = {
   reactStrictMode: true,
   // Chromium y puppeteer-core deben resolverse en runtime en el serverless
   // de Vercel. Si Next los mete en el bundle, el binario no se encuentra y
-  // la generación del PDF del contrato falla silenciosamente.
+  // la generación del PDF del contrato falla.
+  // Usamos @sparticuz/chromium-min, que descarga el pack (binario + shared
+  // libs) desde GitHub Releases en runtime, así que ya NO necesitamos
+  // bundelar bin/*.br via outputFileTracingIncludes.
   experimental: {
-    serverComponentsExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
-  },
-  // Fuerza a incluir los binarios brotli de @sparticuz/chromium (bin/*.br)
-  // en el output de las rutas API que generan PDF. Sin esto, Vercel traza
-  // solo el JS y el `bin/` queda fuera -> "input directory /var/task/.next/
-  // server/bin does not exist" al llamar a executablePath().
-  outputFileTracingIncludes: {
-    "/api/admin/contratos/**": ["./node_modules/@sparticuz/chromium/bin/**"],
-    "/api/contratos/**": ["./node_modules/@sparticuz/chromium/bin/**"],
+    serverComponentsExternalPackages: ["@sparticuz/chromium-min", "puppeteer-core"],
   },
   images: {
     remotePatterns: [
