@@ -59,10 +59,13 @@ export type ServiciosGestion = {
   cobro_mensual: boolean;
 };
 
+export type ModalidadAlquiler = "tradicional" | "habitaciones";
+
 export type DatosContratoGestion = {
   propietario: DatosPropietario;
   inmueble: DatosInmueble;
-  renta_mensual: number;
+  modalidad_alquiler: ModalidadAlquiler;
+  renta_mensual: number;       // Renta de referencia (vivienda completa) o ingreso estimado al 100% ocupación (por habitaciones).
   modelo_comision: ModeloComisionGestion;
   comision_pct: number;        // 10 o 15, o lo que teclee el admin en manual.
   comision_texto: string;      // Texto libre para "manual" (p.e. "una mensualidad al alta + 8% + IVA").

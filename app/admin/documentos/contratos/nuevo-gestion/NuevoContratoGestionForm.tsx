@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Cliente } from "../../../../../lib/contabilidad";
-import type { DatosContratoGestion, ModeloComisionGestion } from "../../../../../lib/contratos";
+import type { DatosContratoGestion, ModalidadAlquiler, ModeloComisionGestion } from "../../../../../lib/contratos";
 
 const DEFAULT_DATOS: DatosContratoGestion = {
   propietario: { nombre: "", dni: "", direccion: "", telefono: "", email: "" },
@@ -15,6 +15,7 @@ const DEFAULT_DATOS: DatosContratoGestion = {
     cargas: "",
     estado_arrendaticio: "",
   },
+  modalidad_alquiler: "tradicional",
   renta_mensual: 0,
   modelo_comision: "mensual_10",
   comision_pct: 10,
@@ -199,8 +200,32 @@ export default function NuevoContratoGestionForm() {
       {/* Términos económicos */}
       <div className="analytics-card">
         <h3>Términos económicos</h3>
+
+        <div style={{ marginTop: 4, marginBottom: 14 }}>
+          <div style={{ fontSize: "0.78rem", fontWeight: 500, color: "#666", letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 8 }}>
+            Modalidad de alquiler *
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <ModeloChip
+              active={datos.modalidad_alquiler === "tradicional"}
+              label="Alquiler tradicional (vivienda completa)"
+              onClick={() => setDatos((p) => ({ ...p, modalidad_alquiler: "tradicional" as ModalidadAlquiler }))}
+            />
+            <ModeloChip
+              active={datos.modalidad_alquiler === "habitaciones"}
+              label="Alquiler por habitaciones"
+              onClick={() => setDatos((p) => ({ ...p, modalidad_alquiler: "habitaciones" as ModalidadAlquiler }))}
+            />
+          </div>
+        </div>
+
         <Grid>
-          <InputNum label="Renta mensual (€)" value={datos.renta_mensual} onChange={(v) => setDatos((p) => ({ ...p, renta_mensual: v }))} required />
+          <InputNum
+            label={datos.modalidad_alquiler === "habitaciones" ? "Ingresos estimados al 100% ocupación (€/mes)" : "Renta mensual (€)"}
+            value={datos.renta_mensual}
+            onChange={(v) => setDatos((p) => ({ ...p, renta_mensual: v }))}
+            required
+          />
           <InputNum label="Duración (meses)" value={datos.duracion_meses} onChange={(v) => setDatos((p) => ({ ...p, duracion_meses: v }))} />
         </Grid>
 
@@ -213,6 +238,11 @@ export default function NuevoContratoGestionForm() {
             <ModeloChip active={datos.modelo_comision === "mensual_15"} label="15% + IVA mensual" onClick={() => cambiarModeloComision("mensual_15")} />
             <ModeloChip active={datos.modelo_comision === "manual"} label="Manual (texto libre)" onClick={() => cambiarModeloComision("manual")} />
           </div>
+          <p style={{ fontSize: "0.8rem", color: "#6b7280", margin: "10px 0 0", lineHeight: 1.5 }}>
+            {datos.modalidad_alquiler === "habitaciones"
+              ? "El % se aplicará mes a mes sobre los ingresos reales generados por las habitaciones ocupadas ese mes. Si el inmueble queda totalmente vacío (típico julio-agosto en estudiantes) no se devengarán honorarios por ese mes."
+              : "El % se aplicará sobre lo efectivamente cobrado cada mes. Si el inmueble permanece vacío en una mensualidad no se devengarán honorarios por ese mes."}
+          </p>
           {datos.modelo_comision === "manual" && (
             <div style={{ marginTop: 12 }}>
               <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -223,7 +253,7 @@ export default function NuevoContratoGestionForm() {
                   value={datos.comision_texto}
                   onChange={(e) => setDatos((p) => ({ ...p, comision_texto: e.target.value }))}
                   rows={3}
-                  placeholder="Ej.: una mensualidad al alta + 7% + IVA sobre la renta mensual durante toda la vigencia"
+                  placeholder="Ej.: una mensualidad al alta + 7% + IVA sobre lo efectivamente cobrado"
                   style={{ padding: "10px 12px", border: "1px solid #ddd", borderRadius: 8, fontSize: "0.95rem", fontFamily: "inherit" }}
                 />
               </label>

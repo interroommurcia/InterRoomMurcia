@@ -117,10 +117,10 @@ function FirmaRendering({
 
 function textoComision(datos: DatosContratoGestion): string {
   if (datos.modelo_comision === "manual") {
-    return datos.comision_texto.trim() || `${datos.comision_pct} % + IVA sobre la renta mensual`;
+    return datos.comision_texto.trim() || `${datos.comision_pct} % + IVA`;
   }
   const pct = datos.modelo_comision === "mensual_15" ? 15 : 10;
-  return `${pct} % + IVA sobre la renta mensual percibida por El Propietario`;
+  return `${pct} % + IVA`;
 }
 
 export default function ContratoGestionHTML({
@@ -256,8 +256,17 @@ export default function ContratoGestionHTML({
 
         <section className="contrato-clause">
           <span className="contrato-clause-num">02</span>
-          <div className="contrato-clause-title">Renta mensual estimada</div>
-          <p>La renta mensual de referencia del inmueble, acordada por ambas partes como base de la gestión, se fija en <Field value={fmtPrecio(datos.renta_mensual)} show={show} min={120} /> € mensuales. Cualquier modificación posterior requerirá acuerdo expreso por escrito entre las partes.</p>
+          <div className="contrato-clause-title">
+            {datos.modalidad_alquiler === "habitaciones" ? "Modalidad y renta de referencia" : "Renta mensual de referencia"}
+          </div>
+          {datos.modalidad_alquiler === "habitaciones" ? (
+            <>
+              <p>El inmueble se gestionará mediante <strong>alquiler por habitaciones</strong>. Los ingresos mensuales variarán en función del número de habitaciones efectivamente ocupadas en cada mes.</p>
+              <p>A efectos informativos, los ingresos estimados con el inmueble al 100 % de ocupación ascenderían a <Field value={fmtPrecio(datos.renta_mensual)} show={show} min={120} /> € mensuales. Esta cifra es orientativa y no constituye garantía de ingresos.</p>
+            </>
+          ) : (
+            <p>El inmueble se gestionará mediante <strong>alquiler tradicional de la vivienda completa</strong>. La renta mensual de referencia, acordada por ambas partes como base de la gestión, se fija en <Field value={fmtPrecio(datos.renta_mensual)} show={show} min={120} /> € mensuales.</p>
+          )}
         </section>
 
         <section className="contrato-clause">
@@ -270,8 +279,14 @@ export default function ContratoGestionHTML({
         <section className="contrato-clause">
           <span className="contrato-clause-num">04</span>
           <div className="contrato-clause-title">Honorarios de La Agencia</div>
-          <p>En concepto de honorarios por la gestión del arrendamiento, La Agencia percibirá <strong>{comisionTxt}</strong>.</p>
-          <p>El importe se devengará mensualmente coincidiendo con el cobro de cada renta y será descontado por La Agencia de la remesa a entregar al Propietario, remitiendo la correspondiente factura.</p>
+          <p>En concepto de honorarios por la gestión del arrendamiento, La Agencia percibirá <strong>{comisionTxt}</strong> calculado <strong>sobre los ingresos efectivamente percibidos</strong> por el arrendamiento del inmueble en cada mensualidad.</p>
+          {datos.modalidad_alquiler === "habitaciones" ? (
+            <p>Por tratarse de alquiler por habitaciones, la base de cálculo de cada mes serán los ingresos reales generados por las habitaciones efectivamente ocupadas en ese mes. Las habitaciones vacías no computan a efectos de honorarios.</p>
+          ) : (
+            <p>Si en una mensualidad el inmueble generase, por cualquier causa, ingresos inferiores a la renta de referencia, la base de cálculo será el importe efectivamente cobrado.</p>
+          )}
+          <p>Si en una mensualidad el inmueble permaneciera totalmente desocupado y La Agencia no percibiera renta alguna, <strong>no se devengarán honorarios por ese mes</strong>. Esta cláusula aplica expresamente, entre otros, a los periodos de vacancia habituales en alquiler estudiantil (típicamente julio y agosto).</p>
+          <p>Los honorarios se devengarán mensualmente coincidiendo con el cobro de cada renta y serán descontados por La Agencia de la remesa a entregar al Propietario, remitiendo la correspondiente factura.</p>
         </section>
 
         <section className="contrato-clause">
