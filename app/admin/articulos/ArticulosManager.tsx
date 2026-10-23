@@ -116,6 +116,23 @@ async function saveAndPublish(
 
 type BulkItem = { keyword: string; status: "pendiente" | "generando" | "hecho" | "error"; message?: string };
 
+type Bucket = { key: string; label: string; count: number; pct: number };
+type ArticleStats = {
+  total: number;
+  unique: number;
+  returning: number;
+  newVisitors: number;
+  bots: number;
+  sources: Bucket[];
+  devices: Bucket[];
+  countries: Bucket[];
+  cities: Bucket[];
+  referrers: Bucket[];
+  utmCampaigns: Bucket[];
+  utmSources: Bucket[];
+  dailyViews: { date: string; views: number }[];
+};
+
 export default function ArticulosManager() {
   const [keyword, setKeyword] = useState("");
   const [tone, setTone] = useState<"cercano" | "profesional">("cercano");
@@ -131,7 +148,7 @@ export default function ArticulosManager() {
   const [savedArticles, setSavedArticles] = useState<SavedArticle[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [expandedStats, setExpandedStats] = useState<string | null>(null);
-  const [statsData, setStatsData] = useState<Record<string, { sources: { label: string; count: number }[]; total: number }>>({});
+  const [statsData, setStatsData] = useState<Record<string, ArticleStats>>({});
   const [editingArticle, setEditingArticle] = useState<EditableArticle | null>(null);
   const [bulkKeywords, setBulkKeywords] = useState("");
   const [bulkTone, setBulkTone] = useState<"cercano" | "profesional">("cercano");
@@ -582,7 +599,7 @@ function ArticleRow({
 }: {
   art: SavedArticle;
   expanded: boolean;
-  stats?: { sources: { label: string; count: number }[]; total: number };
+  stats?: ArticleStats;
   onToggleStats: () => void;
   onToggleEstado: () => void;
   onDelete: () => void;
@@ -608,20 +625,7 @@ function ArticleRow({
           {art.template !== "clasico" && <span> · {art.template}</span>}
         </div>
         {expanded && (
-          <div className="articulos-stats-box">
-            {!stats ? (
-              <span>Cargando...</span>
-            ) : stats.total === 0 ? (
-              <span>Sin visitas registradas aún.</span>
-            ) : (
-              stats.sources.map((s) => (
-                <div key={s.label} className="articulos-stats-row">
-                  <span>{s.label}</span>
-                  <span>{s.count}</span>
-                </div>
-              ))
-            )}
-          </div>
+          <ArticleStatsPanel stats={stats} views={art.views ?? 0} ctaClicks={art.cta_clicks ?? 0} />
         )}
       </div>
       <div className="pisos-list-actions">
@@ -630,7 +634,7 @@ function ArticleRow({
         </button>
         {art.estado === "publicado" && (
           <button type="button" className="btn-ghost" onClick={onToggleStats}>
-            Stats
+            {expanded ? "Ocultar stats" : "Stats"}
           </button>
         )}
         {art.estado === "publicado" && (
@@ -645,6 +649,92 @@ function ArticleRow({
           Borrar
         </button>
       </div>
+    </div>
+  );
+}
+
+function ArticleStatsPanel({ stats, views, ctaClicks }: { stats?: ArticleStats; views: number; ctaClicks: number }) {
+  if (!stats) return <div className="articulos-stats-box">Cargando…</div>;
+  if (stats.total === 0 && stats.bots === 0) {
+    return <div className="articulos-stats-box">Sin visitas registradas aún. Dale unas horas desde que se publicó.</div>;
+  }
+  const ctr = views > 0 ? Math.round((ctaClicks / views) * 100) : 0;
+  const maxDaily = Math.max(1, ...stats.dailyViews.map((d) => d.views));
+
+  return (
+    <div className="articulos-stats-wrap">
+      <div className="articulos-stats-kpis">
+        <StatKpi label="Vistas humanas" value={stats.total.toLocaleString("es-ES")} />
+        <StatKpi label="Visitantes únicos" value={stats.unique.toLocaleString("es-ES")} />
+        <StatKpi label="Nuevos" value={stats.newVisitors.toLocaleString("es-ES")} />
+        <StatKpi label="Recurrentes" value={stats.returning.toLocaleString("es-ES")} />
+        <StatKpi label="Clicks CTA" value={`${ctaClicks} · ${ctr}%`} />
+        {stats.bots > 0 && <StatKpi label="Bots / IA crawlers" value={stats.bots.toLocaleString("es-ES")} tone="muted" />}
+      </div>
+
+      {stats.dailyViews.length > 0 && (
+        <div className="articulos-stats-chart">
+          <div className="articulos-stats-chart-title">Últimos 30 días</div>
+          <div className="articulos-stats-chart-bars">
+            {stats.dailyViews.map((d) => (
+              <div
+                key={d.date}
+                className="articulos-stats-chart-bar"
+                style={{ height: `${(d.views / maxDaily) * 100}%` }}
+                title={`${d.date}: ${d.views} vista${d.views === 1 ? "" : "s"}`}
+              />
+            ))}
+          </div>
+          <div className="articulos-stats-chart-axis">
+            <span>{stats.dailyViews[0]?.date.slice(5)}</span>
+            <span>{stats.dailyViews[stats.dailyViews.length - 1]?.date.slice(5)}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="articulos-stats-grid">
+        <StatBlock title="De dónde vienen" rows={stats.sources} empty="Sin datos" />
+        <StatBlock title="Dispositivo" rows={stats.devices} empty="Sin datos" />
+        <StatBlock title="País" rows={stats.countries} empty="Sin datos" />
+        <StatBlock title="Ciudad" rows={stats.cities} empty="Sin datos" />
+        {stats.referrers.length > 0 && <StatBlock title="Webs concretas (referrer)" rows={stats.referrers} empty="Ninguna" />}
+        {stats.utmCampaigns.length > 0 && <StatBlock title="Campañas UTM" rows={stats.utmCampaigns} empty="Ninguna" />}
+      </div>
+    </div>
+  );
+}
+
+function StatKpi({ label, value, tone }: { label: string; value: string; tone?: "muted" }) {
+  return (
+    <div className={`articulos-stats-kpi${tone === "muted" ? " muted" : ""}`}>
+      <div className="articulos-stats-kpi-value">{value}</div>
+      <div className="articulos-stats-kpi-label">{label}</div>
+    </div>
+  );
+}
+
+function StatBlock({ title, rows, empty }: { title: string; rows: Bucket[]; empty: string }) {
+  if (rows.length === 0) {
+    return (
+      <div className="articulos-stats-block">
+        <div className="articulos-stats-block-title">{title}</div>
+        <div className="articulos-stats-empty">{empty}</div>
+      </div>
+    );
+  }
+  const maxCount = Math.max(1, ...rows.map((r) => r.count));
+  return (
+    <div className="articulos-stats-block">
+      <div className="articulos-stats-block-title">{title}</div>
+      {rows.map((r) => (
+        <div key={r.key} className="articulos-stats-bar-row">
+          <div className="articulos-stats-bar-label" title={r.label}>{r.label}</div>
+          <div className="articulos-stats-bar-track">
+            <div className="articulos-stats-bar-fill" style={{ width: `${(r.count / maxCount) * 100}%` }} />
+          </div>
+          <div className="articulos-stats-bar-val">{r.count}<span>·{r.pct}%</span></div>
+        </div>
+      ))}
     </div>
   );
 }

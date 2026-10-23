@@ -7,8 +7,14 @@ export function ViewTracker({ slug }: { slug: string }) {
     fetch("/api/blog/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, event: "view", referrer: document.referrer || null }),
-    });
+      body: JSON.stringify({
+        slug,
+        event: "view",
+        referrer: document.referrer || null,
+        url: window.location.href,
+      }),
+      keepalive: true,
+    }).catch(() => {});
   }, [slug]);
   return null;
 }
