@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import ContratoHTML from "../../../components/ContratoHTML";
+import ContratoRender from "../../../components/ContratoRender";
 import { getContratoPorToken } from "../../../lib/contratos";
 import FirmaPublicaPanel from "./FirmaPublicaPanel";
 
@@ -97,12 +97,7 @@ export default async function FirmarPage({ params }: { params: Promise<{ token: 
       )}
 
       {/* Preview completo del contrato */}
-      <ContratoHTML
-        datos={contrato.datos}
-        firmaPropietario={contrato.firma_propietario}
-        firmaAgencia={contrato.firma_agencia}
-        showPlaceholders={false}
-      />
+      <ContratoRender contrato={contrato} showPlaceholders={false} />
     </main>
   );
 }

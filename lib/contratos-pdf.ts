@@ -1,7 +1,14 @@
 import "server-only";
 import { createElement } from "react";
 import ContratoHTML from "../components/ContratoHTML";
-import { getContrato, subirPdfContrato, type Contrato } from "./contratos";
+import ContratoGestionHTML from "../components/ContratoGestionHTML";
+import {
+  getContrato,
+  subirPdfContrato,
+  type Contrato,
+  type DatosContratoExclusiva,
+  type DatosContratoGestion,
+} from "./contratos";
 
 // -----------------------------------------------------------------
 // Pipeline de PDF
@@ -80,20 +87,35 @@ export async function renderContratoHtml(contrato: Contrato): Promise<string> {
   // nivel de módulo porque podría acabar en el bundle cliente. Importándolo
   // aquí dentro, Next lo deja solo en el server.
   const { renderToStaticMarkup } = await import("react-dom/server");
-  const body = renderToStaticMarkup(
-    createElement(ContratoHTML, {
-      datos: contrato.datos,
-      firmaPropietario: contrato.firma_propietario,
-      firmaAgencia: contrato.firma_agencia,
-      showPlaceholders: false,
-    }),
-  );
+
+  const esGestion = contrato.tipo === "gestion_alquiler";
+  const titulo = esGestion
+    ? "Contrato de gestión integral de arrendamiento"
+    : "Contrato de encargo de venta en exclusiva";
+
+  const body = esGestion
+    ? renderToStaticMarkup(
+        createElement(ContratoGestionHTML, {
+          datos: contrato.datos as DatosContratoGestion,
+          firmaPropietario: contrato.firma_propietario,
+          firmaAgencia: contrato.firma_agencia,
+          showPlaceholders: false,
+        }),
+      )
+    : renderToStaticMarkup(
+        createElement(ContratoHTML, {
+          datos: contrato.datos as DatosContratoExclusiva,
+          firmaPropietario: contrato.firma_propietario,
+          firmaAgencia: contrato.firma_agencia,
+          showPlaceholders: false,
+        }),
+      );
   return `<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Contrato de encargo de venta en exclusiva</title>
+  <title>${titulo}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet" />

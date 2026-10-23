@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminNav } from "../../../../../components/AdminNav";
-import ContratoHTML from "../../../../../components/ContratoHTML";
+import ContratoRender from "../../../../../components/ContratoRender";
 import { getContrato } from "../../../../../lib/contratos";
 import { SITE_URL } from "../../../../../lib/site";
 import ContratoAcciones from "./ContratoAcciones";
@@ -73,12 +73,7 @@ export default async function ContratoDetailPage({ params }: { params: Promise<{
         <ContratoAcciones contratoId={contrato.id} estado={contrato.estado} signingLink={signingLink} />
 
         <div style={{ marginTop: 24, border: "1px solid #e5e5e5", borderRadius: 12, overflow: "hidden" }}>
-          <ContratoHTML
-            datos={contrato.datos}
-            firmaPropietario={contrato.firma_propietario}
-            firmaAgencia={contrato.firma_agencia}
-            showPlaceholders={true}
-          />
+          <ContratoRender contrato={contrato} showPlaceholders={true} />
         </div>
       </div>
     </section>

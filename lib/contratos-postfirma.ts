@@ -76,6 +76,37 @@ export async function tramitarPostFirma(contratoId: string): Promise<{
   return { pdfGenerado, emailOk, telegramOk, errores };
 }
 
+function tipoLabel(contrato: Contrato): string {
+  return contrato.tipo === "gestion_alquiler"
+    ? "gestión de alquiler"
+    : "exclusiva";
+}
+
+function filenameBase(contrato: Contrato): string {
+  return contrato.tipo === "gestion_alquiler"
+    ? "contrato-gestion-alquiler"
+    : "contrato-exclusiva";
+}
+
+function cifra(contrato: Contrato): string {
+  if (contrato.tipo === "gestion_alquiler") {
+    const d = contrato.datos as import("./contratos").DatosContratoGestion;
+    const renta = d.renta_mensual
+      ? `${d.renta_mensual.toLocaleString("es-ES")} €/mes`
+      : "sin renta indicada";
+    const com =
+      d.modelo_comision === "manual"
+        ? d.comision_texto || `${d.comision_pct}% + IVA`
+        : `${d.modelo_comision === "mensual_15" ? 15 : 10}% + IVA / mes`;
+    return `Renta: ${renta}\nComisión: ${com}`;
+  }
+  const d = contrato.datos as import("./contratos").DatosContratoExclusiva;
+  const precio = d.precio_venta
+    ? `${d.precio_venta.toLocaleString("es-ES")} €`
+    : "sin precio";
+  return `Precio: ${precio}\nComisión: ${d.comision_pct}%`;
+}
+
 async function notificarAdminFirmaCompletaSinPdf(contrato: Contrato): Promise<boolean> {
   const chatIds = (process.env.TELEGRAM_CHAT_ID ?? "")
     .split(",")
@@ -84,7 +115,7 @@ async function notificarAdminFirmaCompletaSinPdf(contrato: Contrato): Promise<bo
   if (!chatIds.length) return false;
   const nombre = contrato.datos.propietario?.nombre || "sin nombre";
   const inmueble = contrato.datos.inmueble?.direccion || "sin dirección";
-  const msg = `✅ Contrato de exclusiva FIRMADO por ambas partes.
+  const msg = `✅ Contrato de ${tipoLabel(contrato)} FIRMADO por ambas partes.
 
 Cliente: ${nombre}
 Inmueble: ${inmueble}
@@ -105,7 +136,7 @@ async function notificarAdminFirmaParcial(contrato: Contrato): Promise<boolean> 
   const falta = contrato.estado === "firmado_propietario" ? "La Agencia" : "El Propietario";
   const nombre = contrato.datos.propietario?.nombre || "sin nombre";
   const inmueble = contrato.datos.inmueble?.direccion || "sin dirección";
-  const msg = `${quien} ha firmado el contrato de exclusiva.
+  const msg = `${quien} ha firmado el contrato de ${tipoLabel(contrato)}.
 
 Cliente: ${nombre}
 Inmueble: ${inmueble}
@@ -125,17 +156,13 @@ async function enviarPdfATelegramAdmin(contrato: Contrato, pdf: Buffer): Promise
 
   const nombre = contrato.datos.propietario?.nombre || "sin nombre";
   const inmueble = contrato.datos.inmueble?.direccion || "sin dirección";
-  const precio = contrato.datos.precio_venta
-    ? `${contrato.datos.precio_venta.toLocaleString("es-ES")} €`
-    : "sin precio";
-  const caption = `✅ Contrato de exclusiva FIRMADO por ambas partes.
+  const caption = `✅ Contrato de ${tipoLabel(contrato)} FIRMADO por ambas partes.
 
 Cliente: ${nombre}
 Inmueble: ${inmueble}
-Precio: ${precio}
-Comisión: ${contrato.datos.comision_pct}%`;
+${cifra(contrato)}`;
 
-  const filename = `contrato-exclusiva-${contrato.id.slice(0, 8)}.pdf`;
+  const filename = `${filenameBase(contrato)}-${contrato.id.slice(0, 8)}.pdf`;
   await Promise.all(
     chatIds.map((id) =>
       telegramSendDocument(id, pdf, filename, caption).catch(() => undefined),

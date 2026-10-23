@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from "./supabaseAdmin";
 // Tipos
 // ---------------------------------------------------------------
 
-export type TipoContrato = "exclusiva_venta";
+export type TipoContrato = "exclusiva_venta" | "gestion_alquiler";
 
 export type EstadoContrato =
   | "borrador"
@@ -49,6 +49,31 @@ export type DatosContratoExclusiva = {
   agencia: DatosAgencia;
 };
 
+// Dos modelos preestablecidos + "manual" para texto libre.
+export type ModeloComisionGestion = "mensual_10" | "mensual_15" | "manual";
+
+export type ServiciosGestion = {
+  marketing: boolean;
+  scoring: boolean;
+  redaccion_arrendamiento: boolean;
+  cobro_mensual: boolean;
+};
+
+export type DatosContratoGestion = {
+  propietario: DatosPropietario;
+  inmueble: DatosInmueble;
+  renta_mensual: number;
+  modelo_comision: ModeloComisionGestion;
+  comision_pct: number;        // 10 o 15, o lo que teclee el admin en manual.
+  comision_texto: string;      // Texto libre para "manual" (p.e. "una mensualidad al alta + 8% + IVA").
+  duracion_meses: number;      // Por defecto 3.
+  servicios: ServiciosGestion;
+  agencia: DatosAgencia;
+};
+
+// Union usada en los flujos (render, PDF, email, Telegram) con narrowing por `tipo`.
+export type DatosContrato = DatosContratoExclusiva | DatosContratoGestion;
+
 export type Firma = {
   mode: "draw" | "electronic";
   dataUrl?: string;
@@ -63,7 +88,7 @@ export type Contrato = {
   id: string;
   tipo: TipoContrato;
   cliente_id: string | null;
-  datos: DatosContratoExclusiva;
+  datos: DatosContrato;
   estado: EstadoContrato;
   signing_token: string | null;
   firma_propietario: Firma | null;
@@ -99,7 +124,7 @@ function row(c: Record<string, unknown>): Contrato {
     id: String(c.id),
     tipo: c.tipo as TipoContrato,
     cliente_id: (c.cliente_id as string | null) ?? null,
-    datos: (c.datos as DatosContratoExclusiva) ?? ({} as DatosContratoExclusiva),
+    datos: (c.datos as DatosContrato) ?? ({} as DatosContrato),
     estado: c.estado as EstadoContrato,
     signing_token: (c.signing_token as string | null) ?? null,
     firma_propietario: (c.firma_propietario as Firma | null) ?? null,
@@ -109,6 +134,14 @@ function row(c: Record<string, unknown>): Contrato {
     created_at: String(c.created_at),
     updated_at: String(c.updated_at),
   };
+}
+
+// Narrowing helpers (ergonomía en los flujos server-side).
+export function esGestion(c: Contrato): c is Contrato & { datos: DatosContratoGestion } {
+  return c.tipo === "gestion_alquiler";
+}
+export function esExclusiva(c: Contrato): c is Contrato & { datos: DatosContratoExclusiva } {
+  return c.tipo === "exclusiva_venta";
 }
 
 // ---------------------------------------------------------------
@@ -146,7 +179,7 @@ export async function getContratoPorToken(token: string): Promise<Contrato | nul
 export async function crearContrato(input: {
   tipo?: TipoContrato;
   cliente_id?: string | null;
-  datos: DatosContratoExclusiva;
+  datos: DatosContrato;
 }): Promise<Contrato> {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
@@ -165,7 +198,7 @@ export async function crearContrato(input: {
 
 export async function actualizarDatosContrato(
   id: string,
-  datos: DatosContratoExclusiva,
+  datos: DatosContrato,
 ): Promise<Contrato> {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin

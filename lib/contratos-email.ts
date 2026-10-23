@@ -24,6 +24,7 @@ export async function enviarContratoFirmadoPropietario(
   const destinatario = contrato.datos.propietario?.email?.trim();
   if (!destinatario) return { ok: false, error: "El propietario no tiene email en el contrato" };
 
+  const esGestion = contrato.tipo === "gestion_alquiler";
   const nombre = contrato.datos.propietario?.nombre || "cliente";
   const inmueble = contrato.datos.inmueble?.direccion || "";
   const tienePdf = Boolean(pdfBuffer);
@@ -31,6 +32,20 @@ export async function enviarContratoFirmadoPropietario(
     contrato.signing_token
       ? `${process.env.NEXT_PUBLIC_SITE_URL || "https://interroommurcia.com"}/api/contratos/pdf/${contrato.signing_token}`
       : null;
+
+  const tipoLabel = esGestion
+    ? "contrato de gestión de alquiler"
+    : "contrato de encargo de venta en exclusiva";
+  const tituloCorreo = esGestion
+    ? "Tu contrato de gestión de alquiler firmado"
+    : "Tu contrato de exclusiva firmado";
+  const subject = esGestion
+    ? "Tu contrato de gestión de alquiler firmado — InterRoom Murcia"
+    : "Tu contrato de exclusiva firmado — InterRoom Murcia";
+  const filenameBase = esGestion ? "contrato-gestion-alquiler" : "contrato-exclusiva";
+  const colaAccion = esGestion
+    ? "A partir de ahora comenzamos la publicación y la selección de inquilino. Te mantendremos informado en cada paso."
+    : "A partir de ahora comenzamos la comercialización profesional de tu vivienda. Te mantendremos informado con un reporte mensual.";
 
   const html = `
 <!DOCTYPE html>
@@ -54,7 +69,7 @@ export async function enviarContratoFirmadoPropietario(
           <tr>
             <td style="padding:36px 40px 20px;">
               <h1 style="font-size:20px;font-weight:600;color:#111827;margin:0 0 12px;letter-spacing:-0.01em;">
-                Tu contrato de exclusiva firmado
+                ${tituloCorreo}
               </h1>
               <p style="font-size:15px;color:#4b5563;line-height:1.6;margin:0 0 16px;">
                 Hola ${nombre.split(" ")[0]},
@@ -62,8 +77,8 @@ export async function enviarContratoFirmadoPropietario(
               <p style="font-size:15px;color:#4b5563;line-height:1.6;margin:0 0 16px;">
                 ${
                   tienePdf
-                    ? "Adjunto encontrarás una copia del <strong>contrato de encargo de venta en exclusiva</strong> firmado por ambas partes. Guárdalo para tu archivo personal."
-                    : `El <strong>contrato de encargo de venta en exclusiva</strong> ya está firmado por ambas partes. Puedes descargar tu copia en PDF desde este enlace:${linkPublico ? ` <a href="${linkPublico}" style="color:#ea6a12;font-weight:500;">Descargar contrato PDF</a>.` : " te la enviaremos en cuanto esté lista."}`
+                    ? `Adjunto encontrarás una copia del <strong>${tipoLabel}</strong> firmado por ambas partes. Guárdalo para tu archivo personal.`
+                    : `El <strong>${tipoLabel}</strong> ya está firmado por ambas partes. Puedes descargar tu copia en PDF desde este enlace:${linkPublico ? ` <a href="${linkPublico}" style="color:#ea6a12;font-weight:500;">Descargar contrato PDF</a>.` : " te la enviaremos en cuanto esté lista."}`
                 }
               </p>
               ${
@@ -81,7 +96,7 @@ export async function enviarContratoFirmadoPropietario(
                   : ""
               }
               <p style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 24px;">
-                A partir de ahora comenzamos la comercialización profesional de tu vivienda. Te mantendremos informado con un reporte mensual.
+                ${colaAccion}
               </p>
               <p style="font-size:13px;color:#9ca3af;line-height:1.5;margin:0;border-top:1px solid #f3f4f6;padding-top:16px;">
                 Si tienes cualquier duda sobre el contrato, responde a este correo o contacta con nosotros directamente.
@@ -108,12 +123,12 @@ export async function enviarContratoFirmadoPropietario(
     const { error } = await resend.emails.send({
       from: FROM(),
       to: destinatario,
-      subject: "Tu contrato de exclusiva firmado — InterRoom Murcia",
+      subject,
       html,
       attachments: pdfBuffer
         ? [
             {
-              filename: `contrato-exclusiva-${contrato.id.slice(0, 8)}.pdf`,
+              filename: `${filenameBase}-${contrato.id.slice(0, 8)}.pdf`,
               content: pdfBuffer,
             },
           ]
