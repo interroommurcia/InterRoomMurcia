@@ -160,16 +160,24 @@ export default function ContratoHTML({
         <p className="contrato-p">
           <strong>De una parte,</strong> D./Dª.{" "}
           <Field value={propietario.nombre} show={show} min={280} />, mayor de edad, con DNI nº{" "}
-          <Field value={propietario.dni} show={show} min={120} />, y domicilio en{" "}
-          <Field value={propietario.direccion} show={show} min={300} />, en adelante{" "}
-          <strong>«El Propietario»</strong>.
+          <Field value={propietario.dni} show={show} min={120} />
+          {(propietario.direccion ?? "").trim() && (
+            <>, y domicilio en <Field value={propietario.direccion} show={show} min={300} /></>
+          )}
+          , en adelante <strong>«El Propietario»</strong>.
         </p>
         <p className="contrato-p">
-          <strong>Y de otra parte,</strong> <strong>{agencia.nombre}</strong>, con CIF/NIF nº{" "}
-          <Field value={agencia.cif} show={show} min={120} />, con domicilio profesional en{" "}
-          <Field value={agencia.direccion} show={show} min={300} />, representada en este acto por
-          D./Dª. <Field value={agencia.representante} show={show} min={220} />, en adelante{" "}
-          <strong>«La Agencia»</strong>.
+          <strong>Y de otra parte,</strong> <strong>{agencia.nombre}</strong>
+          {(agencia.cif ?? "").trim() && (
+            <>, con CIF/NIF nº <Field value={agencia.cif} show={show} min={120} /></>
+          )}
+          {(agencia.direccion ?? "").trim() && (
+            <>, con domicilio profesional en <Field value={agencia.direccion} show={show} min={300} /></>
+          )}
+          {(agencia.representante ?? "").trim() && (
+            <>, representada en este acto por D./Dª. <Field value={agencia.representante} show={show} min={220} /></>
+          )}
+          , en adelante <strong>«La Agencia»</strong>.
         </p>
         <p className="contrato-p">
           Ambas partes se reconocen mutuamente capacidad legal suficiente para contratar y
@@ -180,30 +188,42 @@ export default function ContratoHTML({
           <strong>I.</strong> Que El Propietario es dueño en pleno dominio del siguiente inmueble:
         </p>
         <ul className="contrato-prop-list">
+          {/* Dirección es obligatoria: siempre se muestra */}
           <li className="contrato-prop-item">
             <span className="contrato-prop-label">Dirección</span>
             <span className="contrato-prop-value"><Field value={inmueble.direccion} show={show} /></span>
           </li>
-          <li className="contrato-prop-item">
-            <span className="contrato-prop-label">Ref. catastral</span>
-            <span className="contrato-prop-value"><Field value={inmueble.referencia_catastral} show={show} /></span>
-          </li>
-          <li className="contrato-prop-item">
-            <span className="contrato-prop-label">Datos registrales</span>
-            <span className="contrato-prop-value"><Field value={inmueble.datos_registrales} show={show} /></span>
-          </li>
-          <li className="contrato-prop-item">
-            <span className="contrato-prop-label">Superficie</span>
-            <span className="contrato-prop-value"><Field value={inmueble.superficie} show={show} /></span>
-          </li>
-          <li className="contrato-prop-item">
-            <span className="contrato-prop-label">Cargas</span>
-            <span className="contrato-prop-value"><Field value={inmueble.cargas} show={show} /></span>
-          </li>
-          <li className="contrato-prop-item">
-            <span className="contrato-prop-label">Arrendamiento</span>
-            <span className="contrato-prop-value"><Field value={inmueble.estado_arrendaticio} show={show} /></span>
-          </li>
+          {/* Opcionales: solo si tienen valor */}
+          {(inmueble.referencia_catastral ?? "").trim() && (
+            <li className="contrato-prop-item">
+              <span className="contrato-prop-label">Ref. catastral</span>
+              <span className="contrato-prop-value"><Field value={inmueble.referencia_catastral} show={show} /></span>
+            </li>
+          )}
+          {(inmueble.datos_registrales ?? "").trim() && (
+            <li className="contrato-prop-item">
+              <span className="contrato-prop-label">Datos registrales</span>
+              <span className="contrato-prop-value"><Field value={inmueble.datos_registrales} show={show} /></span>
+            </li>
+          )}
+          {(inmueble.superficie ?? "").trim() && (
+            <li className="contrato-prop-item">
+              <span className="contrato-prop-label">Superficie</span>
+              <span className="contrato-prop-value"><Field value={inmueble.superficie} show={show} /></span>
+            </li>
+          )}
+          {(inmueble.cargas ?? "").trim() && (
+            <li className="contrato-prop-item">
+              <span className="contrato-prop-label">Cargas</span>
+              <span className="contrato-prop-value"><Field value={inmueble.cargas} show={show} /></span>
+            </li>
+          )}
+          {(inmueble.estado_arrendaticio ?? "").trim() && (
+            <li className="contrato-prop-item">
+              <span className="contrato-prop-label">Arrendamiento</span>
+              <span className="contrato-prop-value"><Field value={inmueble.estado_arrendaticio} show={show} /></span>
+            </li>
+          )}
         </ul>
         <p className="contrato-p">
           <strong>II.</strong> Que El Propietario desea encomendar a La Agencia la gestión

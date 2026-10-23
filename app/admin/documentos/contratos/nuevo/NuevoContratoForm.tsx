@@ -27,6 +27,8 @@ const DEFAULT_DATOS: DatosContratoExclusiva = {
   },
 };
 
+const STORAGE_KEY = "ir_nuevo_contrato_draft_v1";
+
 export default function NuevoContratoForm() {
   const router = useRouter();
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -34,6 +36,28 @@ export default function NuevoContratoForm() {
   const [datos, setDatos] = useState<DatosContratoExclusiva>(DEFAULT_DATOS);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string>("");
+  const [hidratado, setHidratado] = useState(false);
+
+  // Rehidratar borrador local al montar
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as { clienteId?: string; datos?: DatosContratoExclusiva };
+        if (saved?.datos) setDatos({ ...DEFAULT_DATOS, ...saved.datos });
+        if (saved?.clienteId) setClienteId(saved.clienteId);
+      }
+    } catch {}
+    setHidratado(true);
+  }, []);
+
+  // Guardar en sessionStorage cada vez que cambian los datos
+  useEffect(() => {
+    if (!hidratado) return;
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ clienteId, datos }));
+    } catch {}
+  }, [clienteId, datos, hidratado]);
 
   useEffect(() => {
     fetch("/api/admin/clientes")
@@ -87,6 +111,7 @@ export default function NuevoContratoForm() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Error desconocido");
+      try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
       router.push(`/admin/documentos/contratos/${data.id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error al guardar");
@@ -178,7 +203,20 @@ export default function NuevoContratoForm() {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={() => {
+            if (!confirm("¿Vaciar todos los campos del formulario?")) return;
+            try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+            setDatos(DEFAULT_DATOS);
+            setClienteId("");
+            setError("");
+          }}
+          style={{ padding: "10px 20px", border: "1px solid #ddd", background: "#fff", borderRadius: 8, cursor: "pointer" }}
+        >
+          Vaciar formulario
+        </button>
         <button
           type="button"
           onClick={() => history.back()}
