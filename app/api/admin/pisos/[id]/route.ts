@@ -80,6 +80,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     await actualizarPiso(params.id, updates);
+    revalidatePath("/catalogo");
+    revalidatePath("/admin/pisos");
+    revalidatePath("/admin/leads");
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Error actualizando piso", err);

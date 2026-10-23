@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { crearPiso, subirImagenPiso } from "../../../../lib/pisosAdmin";
 import type { ZonaSlug } from "../../../../lib/pisos";
 
@@ -74,6 +75,9 @@ export async function POST(req: NextRequest) {
       categoria,
       tipoAlquiler: categoria === "alquiler" ? tipoAlquiler : undefined,
     });
+    revalidatePath("/catalogo");
+    revalidatePath("/admin/pisos");
+    revalidatePath("/admin/leads");
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Error creando piso", err);

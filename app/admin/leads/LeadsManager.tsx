@@ -30,8 +30,16 @@ function seccionLabel(s: string | null): string {
   return map[s] ?? s;
 }
 
-function groupByPiso(leads: LeadProximamente[]) {
+export type PisoProximamenteItem = { id: string; titulo: string; categoria: string };
+
+function groupByPiso(
+  leads: LeadProximamente[],
+  pisosProximamente: PisoProximamenteItem[] = [],
+) {
   const groups: Record<string, { titulo: string; categoria: string; leads: LeadProximamente[] }> = {};
+  for (const p of pisosProximamente) {
+    groups[p.id] = { titulo: p.titulo, categoria: p.categoria, leads: [] };
+  }
   for (const l of leads) {
     if (!groups[l.piso_id]) {
       groups[l.piso_id] = { titulo: l.piso_titulo, categoria: l.piso_categoria, leads: [] };
@@ -66,7 +74,15 @@ function descargarExcel(leads: LeadProximamente[]) {
   URL.revokeObjectURL(url);
 }
 
-export default function LeadsManager({ leads, leadsProximamente }: { leads: Lead[]; leadsProximamente: LeadProximamente[] }) {
+export default function LeadsManager({
+  leads,
+  leadsProximamente,
+  pisosProximamente = [],
+}: {
+  leads: Lead[];
+  leadsProximamente: LeadProximamente[];
+  pisosProximamente?: PisoProximamenteItem[];
+}) {
   const [filtro, setFiltro] = useState<CatKey>("todos");
 
   useEffect(() => {
@@ -85,7 +101,7 @@ export default function LeadsManager({ leads, leadsProximamente }: { leads: Lead
     counts[s] = (counts[s] || 0) + 1;
   }
 
-  const proxGroups = groupByPiso(leadsProximamente);
+  const proxGroups = groupByPiso(leadsProximamente, pisosProximamente);
 
   return (
     <>
@@ -135,7 +151,7 @@ export default function LeadsManager({ leads, leadsProximamente }: { leads: Lead
           )}
 
           {proxGroups.length === 0 && (
-            <p className="admin-empty">No hay leads de propiedades próximamente.</p>
+            <p className="admin-empty">No hay propiedades en Próximamente ni interesados registrados.</p>
           )}
 
           {proxGroups.map(([pisoId, group]) => {
@@ -151,26 +167,32 @@ export default function LeadsManager({ leads, leadsProximamente }: { leads: Lead
                     {group.leads.length} interesado{group.leads.length !== 1 ? "s" : ""}
                   </span>
                 </div>
-                <div className="admin-table-wrap">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Fecha</th>
-                        <th>Nombre</th>
-                        <th>Teléfono</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.leads.map((l) => (
-                        <tr key={l.id}>
-                          <td>{new Date(l.created_at).toLocaleString("es-ES")}</td>
-                          <td>{l.nombre || "—"}</td>
-                          <td><a href={`tel:${l.telefono}`}>{l.telefono}</a></td>
+                {group.leads.length === 0 ? (
+                  <p className="admin-empty" style={{ margin: 0, fontSize: 13 }}>
+                    Sin interesados todavía. Comparte el enlace para captar leads.
+                  </p>
+                ) : (
+                  <div className="admin-table-wrap">
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Nombre</th>
+                          <th>Teléfono</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {group.leads.map((l) => (
+                          <tr key={l.id}>
+                            <td>{new Date(l.created_at).toLocaleString("es-ES")}</td>
+                            <td>{l.nombre || "—"}</td>
+                            <td><a href={`tel:${l.telefono}`}>{l.telefono}</a></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             );
           })}
