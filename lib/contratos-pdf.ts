@@ -50,9 +50,12 @@ async function getBrowserLauncher(): Promise<BrowserBundle> {
     // Con chromium-min descargamos el pack entero (binario + libs) en
     // runtime a /tmp, extraído por el propio sparticuz, evitando el problema.
     const chromium = (await import("@sparticuz/chromium-min")).default;
+    // Reduce dependencias de GPU/graphics libs; para PDFs no las necesitamos
+    // y evitamos errores de carga de libgobject / libdbus en AL2023.
+    chromium.setGraphicsMode = false;
     const packUrl =
       process.env.CHROMIUM_PACK_URL ||
-      "https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar";
+      "https://github.com/Sparticuz/chromium/releases/download/v133.0.0/chromium-v133.0.0-pack.tar";
     return {
       launch: async () => {
         const executablePath = await chromium.executablePath(packUrl);
