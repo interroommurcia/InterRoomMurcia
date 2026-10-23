@@ -202,7 +202,7 @@ export async function GET(req: NextRequest) {
       `),
         // Distribución de scroll depth en /venta (cuántos llegan a cada umbral)
         hogql(`
-        SELECT toInt32(properties.depth) AS depth,
+        SELECT toInt(properties.depth) AS depth,
           count() AS hits,
           uniqExact(distinct_id) AS users
         FROM events
