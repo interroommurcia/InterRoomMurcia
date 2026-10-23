@@ -32,6 +32,9 @@ export const metadata: Metadata = {
     title: "InterRoom",
     statusBarStyle: "default",
   },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export const viewport = {
