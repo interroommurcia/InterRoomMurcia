@@ -68,6 +68,15 @@ export async function GET(req: NextRequest) {
     );
     if (!listRes.ok) {
       const txt = await listRes.text();
+      if (listRes.status === 403 && /session_recording/i.test(txt)) {
+        return NextResponse.json(
+          {
+            error:
+              "La API key de PostHog no tiene permiso para leer grabaciones. Entra en PostHog → Personal API keys, edita la key y añade el scope 'session_recording:read' (y 'query:read' si no lo tiene). Después recarga esta página.",
+          },
+          { status: 403 },
+        );
+      }
       return NextResponse.json({ error: `PostHog ${listRes.status}: ${txt.slice(0, 300)}` }, { status: 502 });
     }
     const list = (await listRes.json()) as { results?: Recording[] };

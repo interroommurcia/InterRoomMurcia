@@ -2874,37 +2874,37 @@ button {
 }
 .analytics-stat-help,
 .analytics-help-tip {
-  font-size: 0.65rem;
-  cursor: help;
+  font-size: 0.7rem;
+  cursor: pointer;
   position: relative;
-  opacity: 0.45;
-  transition: opacity 0.2s;
+  opacity: 1;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  border: 1.5px solid #9ca3af;
-  color: #6b7280;
+  border: 1.5px solid var(--orange, #ea7a1e);
+  background: #fff;
+  color: var(--orange, #ea7a1e);
   font-weight: 700;
   margin-left: 6px;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
   vertical-align: middle;
   flex-shrink: 0;
   font-style: normal;
 }
 .analytics-stat-help:hover,
-.analytics-help-tip:hover {
-  opacity: 1;
-  border-color: #6b7280;
-  color: #374151;
-  /* El tooltip es un pseudo-elemento del propio chip; sube el chip
-     entero por encima de las tarjetas vecinas para que no se recorte. */
+.analytics-help-tip:hover,
+.analytics-help-tip.is-open {
+  background: var(--orange, #ea7a1e);
+  color: #fff;
   z-index: 1000;
 }
-.analytics-stat-help::after,
-.analytics-help-tip::after {
-  content: attr(data-tip);
+.analytics-help-tip-bubble {
   position: absolute;
   bottom: calc(100% + 8px);
   left: 50%;
@@ -2913,22 +2913,32 @@ button {
   color: #f9fafb;
   padding: 8px 12px;
   border-radius: 8px;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 400;
   white-space: normal;
   width: max-content;
-  max-width: 240px;
+  max-width: 260px;
   text-align: left;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s;
-  z-index: 1000;
+  z-index: 10000;
   line-height: 1.4;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
 }
-.analytics-stat-help:hover::after,
-.analytics-help-tip:hover::after {
-  opacity: 1;
+.analytics-help-tip-bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1f2937;
+}
+/* Si el chip está cerca del borde izquierdo (section head), alinear a la izquierda */
+@media (max-width: 640px) {
+  .analytics-help-tip-bubble {
+    max-width: calc(100vw - 32px);
+    font-size: 0.82rem;
+  }
 }
 /* Las tarjetas del panel analytics no deben recortar los tooltips
    que salen por su borde. */

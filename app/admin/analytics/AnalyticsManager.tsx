@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 
 type PostHogData = {
   stats: { pageviews: number; visitors: number; sessions: number };
@@ -81,7 +81,45 @@ function calcRange(periodo: Periodo, mesVal: string, anioVal: number, customDesd
 }
 
 function HelpTip({ tip }: { tip: string }) {
-  return <span className="analytics-help-tip" data-tip={tip}>?</span>;
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent | TouchEvent) {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("touchstart", onDoc);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("touchstart", onDoc);
+    };
+  }, [open]);
+  return (
+    <span
+      ref={ref}
+      className={`analytics-help-tip${open ? " is-open" : ""}`}
+      role="button"
+      tabIndex={0}
+      aria-label={tip}
+      aria-expanded={open}
+      onClick={(e) => {
+        e.stopPropagation();
+        setOpen((v) => !v);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }
+        if (e.key === "Escape") setOpen(false);
+      }}
+    >
+      ?
+      {open && <span className="analytics-help-tip-bubble" role="tooltip">{tip}</span>}
+    </span>
+  );
 }
 
 function Bar({ label, value, max }: { label: string; value: number; max: number }) {
