@@ -279,14 +279,14 @@ export default function ContratoGestionHTML({
         <section className="contrato-clause">
           <span className="contrato-clause-num">04</span>
           <div className="contrato-clause-title">Honorarios de La Agencia</div>
-          <p>En concepto de honorarios por la gestión del arrendamiento, La Agencia percibirá <strong>{comisionTxt}</strong> calculado <strong>sobre los ingresos efectivamente percibidos</strong> por el arrendamiento del inmueble en cada mensualidad.</p>
+          <p>En concepto de honorarios por la gestión del arrendamiento, La Agencia percibirá <strong>{comisionTxt}</strong> calculado <strong>sobre los ingresos efectivamente percibidos por El Propietario</strong> por el arrendamiento del inmueble en cada mensualidad.</p>
           {datos.modalidad_alquiler === "habitaciones" ? (
             <p>Por tratarse de alquiler por habitaciones, la base de cálculo de cada mes serán los ingresos reales generados por las habitaciones efectivamente ocupadas en ese mes. Las habitaciones vacías no computan a efectos de honorarios.</p>
           ) : (
-            <p>Si en una mensualidad el inmueble generase, por cualquier causa, ingresos inferiores a la renta de referencia, la base de cálculo será el importe efectivamente cobrado.</p>
+            <p>Si en una mensualidad El Propietario percibiese, por cualquier causa, ingresos inferiores a la renta de referencia, la base de cálculo será el importe efectivamente cobrado.</p>
           )}
-          <p>Si en una mensualidad el inmueble permaneciera totalmente desocupado y La Agencia no percibiera renta alguna, <strong>no se devengarán honorarios por ese mes</strong>. Esta cláusula aplica expresamente, entre otros, a los periodos de vacancia habituales en alquiler estudiantil (típicamente julio y agosto).</p>
-          <p>Los honorarios se devengarán mensualmente coincidiendo con el cobro de cada renta y serán descontados por La Agencia de la remesa a entregar al Propietario, remitiendo la correspondiente factura.</p>
+          <p>Si en una mensualidad el inmueble permaneciera totalmente desocupado y El Propietario no percibiera renta alguna, <strong>no se devengarán honorarios por ese mes</strong>. Esta cláusula aplica expresamente, entre otros, a los periodos de vacancia habituales en alquiler estudiantil (típicamente julio y agosto).</p>
+          <p><strong>Flujo de pagos:</strong> los inquilinos abonarán la renta mensual directamente a El Propietario, remitiendo justificante de pago a La Agencia para su control. La Agencia no recibe en ningún caso dinero de los inquilinos. Una vez acreditado el cobro, El Propietario abonará a La Agencia los honorarios devengados ese mes, contra la factura emitida por La Agencia.</p>
         </section>
 
         <section className="contrato-clause">
@@ -326,7 +326,7 @@ export default function ContratoGestionHTML({
           <span className="contrato-clause-num">08</span>
           <div className="contrato-clause-title">Obligaciones de El Propietario</div>
           <ul>
-            <li>Entregar la documentación necesaria para arrendar: nota simple registral actualizada, certificado energético, cédula de habitabilidad y último recibo de IBI.</li>
+            <li>Entregar la documentación necesaria para arrendar y para gestionar incidencias: nota simple registral actualizada, certificado energético, último recibo de IBI, última factura de los suministros (luz y agua) y copia de la póliza del seguro del hogar.</li>
             <li>Facilitar el acceso al inmueble para las visitas y mantenerlo en condiciones adecuadas para su alquiler.</li>
             <li>Comunicar inmediatamente a La Agencia cualquier oferta, contacto o visita que haya recibido por su cuenta durante la vigencia de este contrato.</li>
             <li>Abonar los gastos de reparación o mantenimiento que, por naturaleza o legislación, correspondan a la propiedad.</li>
