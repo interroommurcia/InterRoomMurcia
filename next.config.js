@@ -7,6 +7,14 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
   },
+  // Fuerza a incluir los binarios brotli de @sparticuz/chromium (bin/*.br)
+  // en el output de las rutas API que generan PDF. Sin esto, Vercel traza
+  // solo el JS y el `bin/` queda fuera -> "input directory /var/task/.next/
+  // server/bin does not exist" al llamar a executablePath().
+  outputFileTracingIncludes: {
+    "/api/admin/contratos/**": ["./node_modules/@sparticuz/chromium/bin/**"],
+    "/api/contratos/**": ["./node_modules/@sparticuz/chromium/bin/**"],
+  },
   images: {
     remotePatterns: [
       {
