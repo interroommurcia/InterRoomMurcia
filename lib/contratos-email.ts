@@ -19,13 +19,18 @@ const FROM = () => process.env.EMAIL_FROM || "InterRoom Murcia <onboarding@resen
  */
 export async function enviarContratoFirmadoPropietario(
   contrato: Contrato,
-  pdfBuffer: Buffer,
+  pdfBuffer: Buffer | null,
 ): Promise<{ ok: boolean; error?: string }> {
   const destinatario = contrato.datos.propietario?.email?.trim();
   if (!destinatario) return { ok: false, error: "El propietario no tiene email en el contrato" };
 
   const nombre = contrato.datos.propietario?.nombre || "cliente";
   const inmueble = contrato.datos.inmueble?.direccion || "";
+  const tienePdf = Boolean(pdfBuffer);
+  const linkPublico =
+    contrato.signing_token
+      ? `${process.env.NEXT_PUBLIC_SITE_URL || "https://interroommurcia.com"}/api/contratos/pdf/${contrato.signing_token}`
+      : null;
 
   const html = `
 <!DOCTYPE html>
@@ -55,7 +60,11 @@ export async function enviarContratoFirmadoPropietario(
                 Hola ${nombre.split(" ")[0]},
               </p>
               <p style="font-size:15px;color:#4b5563;line-height:1.6;margin:0 0 16px;">
-                Adjunto encontrarás una copia del <strong>contrato de encargo de venta en exclusiva</strong> firmado por ambas partes. Guárdalo para tu archivo personal.
+                ${
+                  tienePdf
+                    ? "Adjunto encontrarás una copia del <strong>contrato de encargo de venta en exclusiva</strong> firmado por ambas partes. Guárdalo para tu archivo personal."
+                    : `El <strong>contrato de encargo de venta en exclusiva</strong> ya está firmado por ambas partes. Puedes descargar tu copia en PDF desde este enlace:${linkPublico ? ` <a href="${linkPublico}" style="color:#ea6a12;font-weight:500;">Descargar contrato PDF</a>.` : " te la enviaremos en cuanto esté lista."}`
+                }
               </p>
               ${
                 inmueble
@@ -101,12 +110,14 @@ export async function enviarContratoFirmadoPropietario(
       to: destinatario,
       subject: "Tu contrato de exclusiva firmado — InterRoom Murcia",
       html,
-      attachments: [
-        {
-          filename: `contrato-exclusiva-${contrato.id.slice(0, 8)}.pdf`,
-          content: pdfBuffer,
-        },
-      ],
+      attachments: pdfBuffer
+        ? [
+            {
+              filename: `contrato-exclusiva-${contrato.id.slice(0, 8)}.pdf`,
+              content: pdfBuffer,
+            },
+          ]
+        : undefined,
     });
     if (error) return { ok: false, error: error.message };
     return { ok: true };

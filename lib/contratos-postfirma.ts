@@ -46,25 +46,52 @@ export async function tramitarPostFirma(contratoId: string): Promise<{
       pdfGenerado = true;
     }
   } catch (e: unknown) {
-    errores.push(`pdf: ${e instanceof Error ? e.message : "error"}`);
+    const msg = e instanceof Error ? e.message : "error";
+    console.error("[postfirma] PDF generation failed:", e);
+    errores.push(`pdf: ${msg}`);
   }
 
-  // Email al propietario con el PDF.
-  if (pdf) {
-    const r = await enviarContratoFirmadoPropietario(contrato, pdf);
-    emailOk = r.ok;
-    if (!r.ok && r.error) errores.push(`email: ${r.error}`);
+  // Email al propietario SIEMPRE (con PDF si lo tenemos, sin él si no).
+  // Que falle el PDF no debe impedir que el cliente reciba el aviso.
+  const r = await enviarContratoFirmadoPropietario(contrato, pdf);
+  emailOk = r.ok;
+  if (!r.ok && r.error) {
+    console.error("[postfirma] email failed:", r.error);
+    errores.push(`email: ${r.error}`);
   }
 
-  // Telegram al admin con el PDF + resumen.
+  // Telegram al admin con el PDF si lo tenemos; si no, mensaje de aviso.
   if (pdf) {
     telegramOk = await enviarPdfATelegramAdmin(contrato, pdf).catch((e) => {
       errores.push(`telegram pdf: ${e?.message ?? e}`);
       return false;
     });
+  } else {
+    telegramOk = await notificarAdminFirmaCompletaSinPdf(contrato).catch((e) => {
+      errores.push(`telegram sin-pdf: ${e?.message ?? e}`);
+      return false;
+    });
   }
 
   return { pdfGenerado, emailOk, telegramOk, errores };
+}
+
+async function notificarAdminFirmaCompletaSinPdf(contrato: Contrato): Promise<boolean> {
+  const chatIds = (process.env.TELEGRAM_CHAT_ID ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!chatIds.length) return false;
+  const nombre = contrato.datos.propietario?.nombre || "sin nombre";
+  const inmueble = contrato.datos.inmueble?.direccion || "sin dirección";
+  const msg = `✅ Contrato de exclusiva FIRMADO por ambas partes.
+
+Cliente: ${nombre}
+Inmueble: ${inmueble}
+
+⚠️ El PDF no se pudo generar en este momento. Entra al panel admin para reintentar la descarga: /admin/documentos/contratos/${contrato.id}`;
+  await Promise.all(chatIds.map((id) => telegramSendMessage(id, msg).catch(() => undefined)));
+  return true;
 }
 
 async function notificarAdminFirmaParcial(contrato: Contrato): Promise<boolean> {

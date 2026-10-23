@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Chromium y puppeteer-core deben resolverse en runtime en el serverless
+  // de Vercel. Si Next los mete en el bundle, el binario no se encuentra y
+  // la generación del PDF del contrato falla silenciosamente.
+  experimental: {
+    serverComponentsExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  },
   images: {
     remotePatterns: [
       {

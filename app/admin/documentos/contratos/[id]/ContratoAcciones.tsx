@@ -164,20 +164,47 @@ export default function ContratoAcciones({ contratoId, estado, signingLink }: Pr
           <p style={{ fontSize: "0.9rem", opacity: 0.75, margin: "4px 0 14px" }}>
             Se ha enviado una copia por email al propietario y por Telegram a tu chat.
           </p>
-          <a
-            href={`/api/admin/contratos/${contratoId}/pdf`}
+          <button
+            type="button"
+            onClick={async () => {
+              setError("");
+              setCargando(true);
+              try {
+                const res = await fetch(`/api/admin/contratos/${contratoId}/pdf`);
+                if (!res.ok) {
+                  const data = await res.json().catch(() => ({ error: "" }));
+                  throw new Error(data?.error || `Error ${res.status}`);
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `contrato-exclusiva-${contratoId.slice(0, 8)}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+              } catch (e: unknown) {
+                setError(e instanceof Error ? e.message : "No se pudo descargar el PDF");
+              } finally {
+                setCargando(false);
+              }
+            }}
+            disabled={cargando}
             style={{
               display: "inline-block",
               padding: "10px 22px",
               background: "var(--orange)",
               color: "#fff",
+              border: 0,
               borderRadius: 8,
-              textDecoration: "none",
               fontWeight: 500,
+              cursor: cargando ? "wait" : "pointer",
+              opacity: cargando ? 0.6 : 1,
             }}
           >
-            📄 Descargar PDF firmado
-          </a>
+            {cargando ? "Generando PDF…" : "📄 Descargar PDF firmado"}
+          </button>
         </>
       )}
 
