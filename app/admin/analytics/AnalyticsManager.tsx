@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 
 type PostHogData = {
   stats: { pageviews: number; visitors: number; sessions: number };
@@ -82,19 +83,53 @@ function calcRange(periodo: Periodo, mesVal: string, anioVal: number, customDesd
 
 function HelpTip({ tip }: { tip: string }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number; placement: "top" | "bottom" } | null>(null);
   const ref = useRef<HTMLSpanElement>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  // Calcula posición del bubble en viewport cada vez que abre o se hace scroll/resize.
   useEffect(() => {
     if (!open) return;
+    function recompute() {
+      const el = ref.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const bubbleW = Math.min(280, vw - 24);
+      const bubbleH = bubbleRef.current?.offsetHeight ?? 80;
+      const spaceAbove = rect.top;
+      const spaceBelow = vh - rect.bottom;
+      const placement: "top" | "bottom" = spaceAbove > bubbleH + 16 ? "top" : spaceBelow > bubbleH + 16 ? "bottom" : "top";
+      const top = placement === "top" ? rect.top - 8 : rect.bottom + 8;
+      let left = rect.left + rect.width / 2;
+      // Clamp horizontalmente al viewport con margen de 12px.
+      const half = bubbleW / 2;
+      if (left - half < 12) left = half + 12;
+      if (left + half > vw - 12) left = vw - 12 - half;
+      setPos({ top, left, placement });
+    }
+    recompute();
+    window.addEventListener("scroll", recompute, true);
+    window.addEventListener("resize", recompute);
     function onDoc(e: MouseEvent | TouchEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+      if (!ref.current?.contains(e.target as Node) && !bubbleRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
     }
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("touchstart", onDoc);
     return () => {
+      window.removeEventListener("scroll", recompute, true);
+      window.removeEventListener("resize", recompute);
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("touchstart", onDoc);
     };
   }, [open]);
+
   return (
     <span
       ref={ref}
@@ -117,7 +152,18 @@ function HelpTip({ tip }: { tip: string }) {
       }}
     >
       ?
-      {open && <span className="analytics-help-tip-bubble" role="tooltip">{tip}</span>}
+      {open && mounted && pos &&
+        createPortal(
+          <div
+            ref={bubbleRef}
+            className={`analytics-help-tip-portal analytics-help-tip-portal--${pos.placement}`}
+            role="tooltip"
+            style={{ top: pos.top, left: pos.left }}
+          >
+            {tip}
+          </div>,
+          document.body,
+        )}
     </span>
   );
 }
@@ -224,6 +270,7 @@ export default function AnalyticsManager() {
     audiencia: true,
     trafico: true,
     contenido: true,
+    estrategia: true,
   });
 
   const loadData = useCallback(() => {
@@ -568,6 +615,19 @@ export default function AnalyticsManager() {
             )}
           </div>
         </div>
+      )}
+
+      {/* ── Estrategia: SEO / SEM / GEO ── */}
+      <SectionHead id="estrategia" title="Estrategia · SEO · SEM · GEO" tip="Clasifica tu tráfico en canales estratégicos (orgánico, pagado, IA generativa, social, directo) y propone acciones concretas basadas en tus números reales" />
+      {openSections.estrategia && (
+        <EstrategiaBlock
+          sources={data.sources}
+          referrers={data.referrers}
+          utmSources={data.utmSources}
+          totalVisitors={data.stats.visitors}
+          totalVisits={data.stats.sessions}
+          leads30d={leads?.total30d ?? null}
+        />
       )}
 
       {/* ── Conversión Vende tu Casa ── */}
@@ -990,6 +1050,437 @@ function RecordingsBlock() {
       )}
     </>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Bloque: Estrategia SEO / SEM / GEO
+// Clasifica el tráfico que ya nos reporta PostHog en canales
+// estratégicos y propone acciones concretas basadas en esos números.
+// NO inventa datos: todo lo que muestra sale de data.sources/referrers/utm.
+// ─────────────────────────────────────────────────────────────────
+
+type CanalKey = "seo" | "sem" | "geo" | "social" | "direct" | "other";
+
+const CANAL_META: Record<CanalKey, { label: string; color: string; descripcion: string }> = {
+  seo:    { label: "SEO · Buscadores (orgánico)", color: "#2563eb", descripcion: "Google, Bing, DuckDuckGo sin pagar" },
+  sem:    { label: "SEM · Anuncios pagados",      color: "#dc2626", descripcion: "Google Ads, Meta Ads, campañas UTM cpc/paid" },
+  geo:    { label: "GEO · IA generativa",         color: "#7c3aed", descripcion: "ChatGPT, Claude, Perplexity, Gemini, Copilot, Grok" },
+  social: { label: "Social · Redes sociales",     color: "#ea580c", descripcion: "Instagram, TikTok, Facebook, X, LinkedIn, YouTube" },
+  direct: { label: "Directo · Marca",             color: "#059669", descripcion: "Escriben la URL o la tienen guardada" },
+  other:  { label: "Otros · Referrals",           color: "#6b7280", descripcion: "Webs que nos enlazan, blogs externos, foros" },
+};
+
+const DOMINIOS_IA = [
+  "chat.openai.com", "chatgpt.com", "openai.com",
+  "claude.ai", "anthropic.com",
+  "perplexity.ai", "www.perplexity.ai",
+  "gemini.google.com", "bard.google.com",
+  "copilot.microsoft.com", "bing.com/chat",
+  "grok.com", "x.ai",
+  "you.com", "duckduckgo.com/aichat",
+  "poe.com", "meta.ai", "character.ai",
+];
+const DOMINIOS_SEARCH = [
+  "google.", "bing.com", "duckduckgo.com", "yahoo.", "ecosia.org", "startpage.com", "yandex.", "baidu.com",
+];
+const DOMINIOS_SOCIAL = [
+  "instagram.com", "facebook.com", "m.facebook.com", "l.facebook.com", "lm.facebook.com",
+  "tiktok.com", "linkedin.com", "lnkd.in",
+  "twitter.com", "x.com", "t.co",
+  "youtube.com", "youtu.be",
+  "reddit.com", "whatsapp.com", "wa.me", "api.whatsapp.com",
+  "pinterest.com", "snapchat.com", "threads.net",
+];
+
+function clasificarSource(source: string, medium: string | null): CanalKey {
+  const s = source.toLowerCase();
+  const m = (medium || "").toLowerCase();
+  if (m === "cpc" || m === "paid" || m === "ads" || m === "ppc" || m === "paidsocial") return "sem";
+  if (s === "(directo)" || s === "direct" || s === "$direct" || s === "") return "direct";
+  if (DOMINIOS_IA.some((d) => s.includes(d))) return "geo";
+  if (/^(chatgpt|openai|claude|anthropic|perplexity|gemini|bard|copilot|grok|poe|meta[\s-]*ai|you\.com)/.test(s)) return "geo";
+  if (DOMINIOS_SOCIAL.some((d) => s.includes(d))) return "social";
+  if (/^(instagram|facebook|tiktok|linkedin|x|twitter|youtube|reddit|whatsapp|pinterest|snapchat|threads)$/.test(s)) return "social";
+  if (DOMINIOS_SEARCH.some((d) => s.includes(d)) || /^(google|bing|duckduckgo|yahoo|ecosia)$/.test(s)) return "seo";
+  return "other";
+}
+
+function clasificarReferrer(url: string): CanalKey {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+    if (DOMINIOS_IA.some((d) => host.endsWith(d) || host === d)) return "geo";
+    if (DOMINIOS_SOCIAL.some((d) => host === d || host.endsWith(d))) return "social";
+    if (DOMINIOS_SEARCH.some((d) => host.startsWith(d) || host.includes(d))) return "seo";
+    return "other";
+  } catch { return "other"; }
+}
+
+function EstrategiaBlock({
+  sources,
+  referrers,
+  utmSources,
+  totalVisitors,
+  totalVisits,
+  leads30d,
+}: {
+  sources: { source: string; visits: number; visitors: number }[];
+  referrers: { url: string; visits: number; visitors: number }[];
+  utmSources: { source: string; medium: string; visits: number; visitors: number }[];
+  totalVisitors: number;
+  totalVisits: number;
+  leads30d: number | null;
+}) {
+  const { porCanal, iaBreakdown, hayPaid } = useMemo(() => {
+    const porCanal: Record<CanalKey, { visits: number; visitors: number; items: { label: string; visits: number }[] }> = {
+      seo: { visits: 0, visitors: 0, items: [] },
+      sem: { visits: 0, visitors: 0, items: [] },
+      geo: { visits: 0, visitors: 0, items: [] },
+      social: { visits: 0, visitors: 0, items: [] },
+      direct: { visits: 0, visitors: 0, items: [] },
+      other: { visits: 0, visitors: 0, items: [] },
+    };
+    for (const s of sources) {
+      const canal = clasificarSource(s.source, null);
+      porCanal[canal].visits += s.visits;
+      porCanal[canal].visitors += s.visitors;
+      porCanal[canal].items.push({ label: s.source, visits: s.visits });
+    }
+    // Referrers aportan señales adicionales para GEO/social (sobre todo si vienen por link)
+    const iaMap = new Map<string, number>();
+    for (const r of referrers) {
+      try {
+        const host = new URL(r.url).hostname.replace(/^www\./, "").toLowerCase();
+        const canal = clasificarReferrer(r.url);
+        if (canal === "geo") iaMap.set(host, (iaMap.get(host) || 0) + r.visits);
+      } catch { /* ignore */ }
+    }
+    // UTM paid detection
+    let hayPaid = false;
+    for (const u of utmSources) {
+      const canal = clasificarSource(u.source, u.medium);
+      if (canal === "sem") hayPaid = true;
+    }
+    const iaBreakdown = Array.from(iaMap.entries()).sort((a, b) => b[1] - a[1]);
+    return { porCanal, iaBreakdown, hayPaid };
+  }, [sources, referrers, utmSources]);
+
+  const canalesOrdenados = (Object.entries(porCanal) as [CanalKey, (typeof porCanal)[CanalKey]][])
+    .sort((a, b) => b[1].visits - a[1].visits);
+  const totalCanales = canalesOrdenados.reduce((s, [, c]) => s + c.visits, 0) || 1;
+
+  const propuestas = generarPropuestas(porCanal, hayPaid, iaBreakdown, totalCanales, leads30d);
+
+  return (
+    <>
+      <div className="analytics-stat-row" style={{ marginBottom: 16 }}>
+        {(["seo", "sem", "geo", "social"] as CanalKey[]).map((k) => {
+          const c = porCanal[k];
+          const pct = Math.round((c.visits / totalCanales) * 100);
+          const meta = CANAL_META[k];
+          return (
+            <div key={k} className="analytics-stat" style={{ textAlign: "left" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: meta.color }} />
+                <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#4b5563" }}>
+                  {k.toUpperCase()}
+                </span>
+              </div>
+              <div style={{ fontSize: "1.4rem", fontWeight: 800, color: meta.color }}>{pct}%</div>
+              <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>
+                {c.visits.toLocaleString()} visitas · {c.visitors.toLocaleString()} personas
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="analytics-grid">
+        {/* Reparto global */}
+        <div className="analytics-card">
+          <h3>Reparto de canales <HelpTip tip="Cuánto peso tiene cada canal en el total de tráfico. Un reparto equilibrado reduce el riesgo si un canal cae" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 10px" }}>
+            Diagnóstico: dependencia por canal
+          </p>
+          <div style={{ display: "flex", height: 14, borderRadius: 999, overflow: "hidden", background: "#f3f4f6", marginBottom: 14 }}>
+            {canalesOrdenados.map(([k, c]) => {
+              const pct = (c.visits / totalCanales) * 100;
+              if (pct < 0.5) return null;
+              return (
+                <div
+                  key={k}
+                  style={{ width: `${pct}%`, background: CANAL_META[k].color }}
+                  title={`${CANAL_META[k].label}: ${pct.toFixed(1)}%`}
+                />
+              );
+            })}
+          </div>
+          {canalesOrdenados.map(([k, c]) => {
+            const pct = totalCanales > 0 ? Math.round((c.visits / totalCanales) * 100) : 0;
+            return (
+              <div key={k} className="analytics-row">
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: CANAL_META[k].color, display: "inline-block" }} />
+                  <span>{CANAL_META[k].label}</span>
+                </span>
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>{c.visits} · {pct}%</span>
+              </div>
+            );
+          })}
+          <p style={{ fontSize: 11, color: "#6b7280", margin: "10px 0 0", fontStyle: "italic" }}>
+            Un sitio sano suele estar 40–60% SEO, 10–25% directo, 10–20% social y GEO/SEM creciendo.
+          </p>
+        </div>
+
+        {/* GEO breakdown */}
+        <div className="analytics-card">
+          <h3>GEO · ¿Qué IAs te mandan tráfico? <HelpTip tip="Visitas identificadas que llegan desde el chat de una IA generativa (ChatGPT, Claude, Perplexity, Gemini, Copilot, Grok…). Son el tráfico del futuro — optimizar para IA = GEO" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 10px" }}>
+            Generative Engine Optimization
+          </p>
+          {iaBreakdown.length === 0 && porCanal.geo.visits === 0 ? (
+            <>
+              <p className="admin-empty" style={{ margin: "8px 0" }}>Aún no detectamos tráfico desde IA en este periodo.</p>
+              <p style={{ fontSize: 12, color: "#374151", margin: "8px 0" }}>
+                No es raro: muchas IAs no envían <code>Referer</code> cuando el usuario hace click. Para medirlo mejor, añade siempre <code>?utm_source=chatgpt</code> o similar en los enlaces que publiques y pídele a Gladis que mencione tu web con URL completa.
+              </p>
+            </>
+          ) : (
+            <>
+              {iaBreakdown.slice(0, 10).map(([host, visits]) => (
+                <div key={host} className="analytics-row">
+                  <span>{iaLabel(host)}</span>
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>{visits}</span>
+                </div>
+              ))}
+              {porCanal.geo.visits > iaBreakdown.reduce((s, [, v]) => s + v, 0) && (
+                <div className="analytics-row">
+                  <span style={{ opacity: 0.7 }}>Otras IAs / UTMs IA</span>
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {porCanal.geo.visits - iaBreakdown.reduce((s, [, v]) => s + v, 0)}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* SEO breakdown */}
+        <div className="analytics-card">
+          <h3>SEO · Buscadores que te traen tráfico <HelpTip tip="Visitas desde buscadores sin pagar. Si Google es casi el 100%, tienes concentración de riesgo" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 10px" }}>Posicionamiento orgánico</p>
+          {porCanal.seo.items.length === 0 ? (
+            <p className="admin-empty">Sin tráfico orgánico detectado.</p>
+          ) : (
+            porCanal.seo.items.sort((a, b) => b.visits - a.visits).slice(0, 6).map((it) => (
+              <div key={it.label} className="analytics-row">
+                <span>{it.label}</span>
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>{it.visits}</span>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* SEM breakdown */}
+        <div className="analytics-card">
+          <h3>SEM · Campañas pagadas <HelpTip tip="Tráfico identificado como pagado (UTM medium cpc/paid/ads). Si está vacío, no hay inversión activa en Google Ads o Meta Ads" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 10px" }}>Inversión publicitaria</p>
+          {!hayPaid ? (
+            <>
+              <p className="admin-empty" style={{ margin: "8px 0" }}>No se detectan campañas de pago activas.</p>
+              <p style={{ fontSize: 12, color: "#374151", margin: "8px 0 0" }}>
+                Para medir SEM, etiqueta siempre tus anuncios con <code>?utm_source=google&amp;utm_medium=cpc&amp;utm_campaign=NOMBRE</code>.
+              </p>
+            </>
+          ) : (
+            utmSources
+              .filter((u) => clasificarSource(u.source, u.medium) === "sem")
+              .map((u) => (
+                <div key={u.source + u.medium} className="analytics-row">
+                  <span>{u.source} / {u.medium}</span>
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>{u.visits}</span>
+                </div>
+              ))
+          )}
+        </div>
+
+        {/* Propuestas accionables */}
+        <div className="analytics-card" style={{ gridColumn: "1 / -1" }}>
+          <h3>🎯 Propuestas accionables <HelpTip tip="Recomendaciones generadas automáticamente a partir de tus propios números. No son plantillas: cada punto responde a algo que se ve (o no se ve) en tus datos" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 12px" }}>
+            Generadas desde el reparto real de canales del periodo seleccionado
+          </p>
+          {propuestas.length === 0 ? (
+            <p className="admin-empty">Todo está sorprendentemente equilibrado. Mantén el ritmo.</p>
+          ) : (
+            <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
+              {propuestas.map((p, i) => (
+                <li
+                  key={i}
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    padding: 12,
+                    background: p.urgente ? "#fef2f2" : "#f9fafb",
+                    border: `1px solid ${p.urgente ? "#fecaca" : "#e5e7eb"}`,
+                    borderRadius: 8,
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 24,
+                      height: 24,
+                      borderRadius: 6,
+                      background: CANAL_META[p.canal].color,
+                      color: "#fff",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {p.canal.toUpperCase().slice(0, 3)}
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: "0.88rem", marginBottom: 4 }}>{p.titulo}</div>
+                    <div style={{ fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.5 }}>{p.detalle}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function iaLabel(host: string): string {
+  const h = host.toLowerCase();
+  if (h.includes("chatgpt") || h.includes("openai")) return "ChatGPT (OpenAI)";
+  if (h.includes("claude") || h.includes("anthropic")) return "Claude (Anthropic)";
+  if (h.includes("perplexity")) return "Perplexity";
+  if (h.includes("gemini") || h.includes("bard")) return "Gemini (Google)";
+  if (h.includes("copilot") || h.includes("bing.com/chat")) return "Copilot (Microsoft)";
+  if (h.includes("grok") || h.includes("x.ai")) return "Grok (xAI)";
+  if (h.includes("you.com")) return "You.com";
+  if (h.includes("duckduckgo.com/aichat")) return "DuckDuckGo AI";
+  if (h.includes("poe.com")) return "Poe";
+  if (h.includes("meta.ai")) return "Meta AI";
+  return host;
+}
+
+type Propuesta = { canal: CanalKey; titulo: string; detalle: string; urgente: boolean };
+
+function generarPropuestas(
+  porCanal: Record<CanalKey, { visits: number; visitors: number; items: { label: string; visits: number }[] }>,
+  hayPaid: boolean,
+  iaBreakdown: [string, number][],
+  total: number,
+  leads30d: number | null,
+): Propuesta[] {
+  const propuestas: Propuesta[] = [];
+  const pct = (k: CanalKey) => (total > 0 ? (porCanal[k].visits / total) * 100 : 0);
+
+  const seoPct = pct("seo");
+  const geoPct = pct("geo");
+  const semPct = pct("sem");
+  const socialPct = pct("social");
+  const directPct = pct("direct");
+
+  // ── SEO ────────────────────────────────────────────────────────
+  if (seoPct < 20) {
+    propuestas.push({
+      canal: "seo",
+      titulo: `Tu SEO es flojo (${seoPct.toFixed(0)}% del tráfico).`,
+      detalle: "La vía más barata a medio plazo. Prioridad: contenido en el blog respondiendo preguntas reales (\"cuánto cuesta alquilar en Murcia\", \"gestión de alquiler Murcia\", zonas universitarias). Técnico: revisa títulos, metadescripciones, enlazado interno y velocidad en móvil (Lighthouse > 90). Objetivo realista: subir a 40% en 6 meses.",
+      urgente: true,
+    });
+  } else if (seoPct > 65 && !hayPaid) {
+    propuestas.push({
+      canal: "seo",
+      titulo: `${seoPct.toFixed(0)}% del tráfico es SEO: riesgo de concentración.`,
+      detalle: "Un cambio de algoritmo de Google y pierdes la mitad del negocio en un mes. Diversifica abriendo un canal secundario fuerte (Instagram Reels, campaña SEM pequeña, o posicionamiento en IAs).",
+      urgente: false,
+    });
+  } else {
+    // SEO está entre 20-65% — está sano, propuestas de mejora
+    const topBuscadores = porCanal.seo.items.sort((a, b) => b.visits - a.visits);
+    const google = topBuscadores.find((it) => /google/i.test(it.label));
+    if (google && google.visits / Math.max(1, porCanal.seo.visits) > 0.9) {
+      propuestas.push({
+        canal: "seo",
+        titulo: "Casi todo tu SEO es Google.",
+        detalle: "Bing/DuckDuckGo pesan poco pero sus índices alimentan a Copilot y ChatGPT (OpenAI usa Bing). Da de alta la web en Bing Webmaster Tools y verifica indexación. Ganancia doble: SEO Bing + aparecer en Copilot.",
+        urgente: false,
+      });
+    }
+  }
+
+  // ── GEO (IA generativa) ────────────────────────────────────────
+  if (geoPct < 2) {
+    propuestas.push({
+      canal: "geo",
+      titulo: `GEO prácticamente a 0 (${porCanal.geo.visits} visitas).`,
+      detalle: "ChatGPT, Perplexity y Gemini ya están desviando búsquedas de Google. Acciones concretas: (1) añade schema.org/RealEstateAgent y FAQPage en las páginas clave; (2) escribe artículos tipo \"guía de\" con bullets claros que las IAs puedan citar; (3) regístrate en Perplexity Business para aparecer en sus respuestas; (4) consigue menciones en portales que las IAs citan (idealista noticias, La Verdad, La Opinión de Murcia); (5) añade utm_source=chatgpt a tus enlaces compartidos para medirlo.",
+      urgente: true,
+    });
+  } else if (geoPct < 8) {
+    propuestas.push({
+      canal: "geo",
+      titulo: `GEO empieza a tirar (${geoPct.toFixed(1)}%). Dobla la apuesta.`,
+      detalle: `Ya vienen de ${iaBreakdown.length} IAs. Identifica qué páginas te está citando (mira los paths de entrada de esas visitas) y haz más contenido parecido. Añade un apartado \"Preguntas frecuentes\" con respuestas de 2-3 frases: ese formato es el que las IAs copian.`,
+      urgente: false,
+    });
+  }
+
+  // ── SEM ────────────────────────────────────────────────────────
+  if (!hayPaid) {
+    propuestas.push({
+      canal: "sem",
+      titulo: "Cero inversión publicitaria detectada.",
+      detalle: "Para activar SEM con riesgo bajo: Google Ads 200€/mes a palabras clave de alta intención (\"alquiler piso Murcia centro\", \"habitación universidad Murcia\", \"vender piso Murcia\"), landing dedicada y UTMs. Si ya haces anuncios y no se ven aquí, es que no estás etiquetando con utm_medium=cpc.",
+      urgente: false,
+    });
+  } else if (semPct > 40 && leads30d !== null && leads30d < 10) {
+    propuestas.push({
+      canal: "sem",
+      titulo: `Pagas por el ${semPct.toFixed(0)}% del tráfico pero generas pocos leads.`,
+      detalle: "El coste por lead está probablemente alto. Pausa las campañas con peor CTR, concentra el presupuesto en 2-3 anuncios ganadores y revisa la landing: si no convierte, el problema no es el anuncio.",
+      urgente: true,
+    });
+  }
+
+  // ── Social ─────────────────────────────────────────────────────
+  if (socialPct < 5) {
+    propuestas.push({
+      canal: "social",
+      titulo: `Las redes sociales apenas te traen tráfico (${socialPct.toFixed(1)}%).`,
+      detalle: "Instagram y TikTok son los que mejor funcionan para inmobiliaria local en 2026. 2 Reels/semana con tour de habitaciones + 1 Story diaria con precio y zona. En descripción, siempre link a interroommurcia.com/habitaciones.",
+      urgente: false,
+    });
+  }
+
+  // ── Directo ────────────────────────────────────────────────────
+  if (directPct > 50) {
+    propuestas.push({
+      canal: "direct",
+      titulo: `${directPct.toFixed(0)}% directo: marca fuerte, pero techo de crecimiento.`,
+      detalle: "La gente ya te conoce, no te está encontrando por canales nuevos. Para crecer necesitas captar frío: SEO de contenidos + GEO + un canal social activo.",
+      urgente: false,
+    });
+  } else if (directPct < 10 && total > 100) {
+    propuestas.push({
+      canal: "direct",
+      titulo: `Marca débil: solo ${directPct.toFixed(1)}% escribe la URL directa.`,
+      detalle: "Para subirlo: aparecer con URL completa en los artículos de contenido, firmar los emails con la URL, poner la URL en el perfil de Instagram y en firma de WhatsApp Business.",
+      urgente: false,
+    });
+  }
+
+  return propuestas.slice(0, 7);
 }
 
 function ScrollBar({ label, users, total }: { label: string; users: number; total: number }) {
