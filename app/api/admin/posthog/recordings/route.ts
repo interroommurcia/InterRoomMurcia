@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
   }
 
   const limit = Math.min(Math.max(1, Number(req.nextUrl.searchParams.get("limit") || 20)), 100);
+  const offset = Math.max(0, Number(req.nextUrl.searchParams.get("offset") || 0));
   const pathFilter = req.nextUrl.searchParams.get("path") || "";
   const soloConvertidos = req.nextUrl.searchParams.get("convertidos") === "1";
 
@@ -51,7 +52,7 @@ export async function GET(req: NextRequest) {
     // 1. Lista de grabaciones recientes (orden por hora de inicio desc)
     const params = new URLSearchParams({
       limit: String(limit),
-      offset: "0",
+      offset: String(offset),
       order: "start_time",
     });
     // Filtro opcional por path visitado
@@ -82,8 +83,9 @@ export async function GET(req: NextRequest) {
       }
       return NextResponse.json({ error: `PostHog ${listRes.status}: ${txt.slice(0, 300)}` }, { status: 502 });
     }
-    const list = (await listRes.json()) as { results?: Recording[] };
+    const list = (await listRes.json()) as { results?: Recording[]; has_next?: boolean };
     const rec = list.results ?? [];
+    const hasNext = Boolean(list.has_next);
 
     // 2. Cruzar con eventos custom: para cada sesión miramos si convirtió
     //    o vio el exit intent en el período que cubren.
@@ -161,7 +163,7 @@ export async function GET(req: NextRequest) {
 
     if (soloConvertidos) enriched = enriched.filter((r) => r.converted);
 
-    return NextResponse.json({ recordings: enriched });
+    return NextResponse.json({ recordings: enriched, has_next: hasNext });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Error desconocido";
     console.error("[posthog recordings]", msg);

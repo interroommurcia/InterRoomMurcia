@@ -868,27 +868,60 @@ function RecordingsBlock() {
   const [filter, setFilter] = useState<"todos" | "convertidos" | "exit">("todos");
   const [pathFilter, setPathFilter] = useState("/venta");
   const [playing, setPlaying] = useState<{ url: string; sessionId: string } | null>(null);
+  const [hasNext, setHasNext] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  // Offset real pedido a PostHog (independiente del nº de filas ya filtradas).
+  const nextOffsetRef = useRef(0);
+
+  const PAGE = 25;
+
+  // Trae una página. offset=0 reemplaza la lista; offset>0 añade al final.
+  const fetchPage = useCallback(async (offset: number) => {
+    const params = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
+    if (pathFilter) params.set("path", pathFilter);
+    if (filter === "convertidos") params.set("convertidos", "1");
+    const res = await fetch(`/api/admin/posthog/recordings?${params}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Error");
+    let list: Recording[] = data.recordings ?? [];
+    if (filter === "exit") list = list.filter((r) => r.exit_intent_shown);
+    return { list, hasNext: Boolean(data.has_next) };
+  }, [filter, pathFilter]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const params = new URLSearchParams({ limit: "25" });
-      if (pathFilter) params.set("path", pathFilter);
-      if (filter === "convertidos") params.set("convertidos", "1");
-      const res = await fetch(`/api/admin/posthog/recordings?${params}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Error");
-      let list: Recording[] = data.recordings ?? [];
-      if (filter === "exit") list = list.filter((r) => r.exit_intent_shown);
+      const { list, hasNext } = await fetchPage(0);
+      nextOffsetRef.current = PAGE;
       setRecordings(list);
+      setHasNext(hasNext);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Error");
       setRecordings([]);
+      setHasNext(false);
     } finally {
       setLoading(false);
     }
-  }, [filter, pathFilter]);
+  }, [fetchPage]);
+
+  async function cargarMas() {
+    setLoadingMore(true);
+    setError("");
+    try {
+      const { list, hasNext } = await fetchPage(nextOffsetRef.current);
+      nextOffsetRef.current += PAGE;
+      setRecordings((prev) => {
+        const vistos = new Set((prev ?? []).map((r) => r.session_id));
+        return [...(prev ?? []), ...list.filter((r) => !vistos.has(r.session_id))];
+      });
+      setHasNext(hasNext);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   useEffect(() => { load(); }, [load]);
 
@@ -1041,6 +1074,17 @@ function RecordingsBlock() {
               ))}
             </tbody>
           </table>
+        )}
+        {recordings && recordings.length > 0 && hasNext && (
+          <div style={{ padding: 14, textAlign: "center", borderTop: "1px solid #f3f4f6" }}>
+            <button
+              onClick={cargarMas}
+              disabled={loadingMore}
+              style={{ padding: "8px 20px", border: "1px solid #ddd", background: "#fff", borderRadius: 6, cursor: loadingMore ? "wait" : "pointer", fontSize: 12, fontWeight: 500 }}
+            >
+              {loadingMore ? "Cargando…" : "Cargar más"}
+            </button>
+          </div>
         )}
       </div>
 
