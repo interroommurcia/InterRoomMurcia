@@ -32,6 +32,49 @@ export default function ContratoAcciones({ contratoId, estado, signingLink }: Pr
     }
   }
 
+  async function descargarPdf(borrador: boolean) {
+    setError("");
+    setCargando(true);
+    try {
+      const url = `/api/admin/contratos/${contratoId}/pdf${borrador ? "?borrador=1" : ""}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "" }));
+        throw new Error(data?.error || `Error ${res.status}`);
+      }
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      a.download = `contrato-${borrador ? "borrador" : "firmado"}-${contratoId.slice(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objUrl);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo descargar el PDF");
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function eliminarContrato() {
+    if (!confirm("¿Eliminar este contrato de forma permanente? Esta acción no se puede deshacer.")) return;
+    setError("");
+    setCargando(true);
+    try {
+      const res = await fetch(`/api/admin/contratos/${contratoId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "" }));
+        throw new Error(data?.error || `Error ${res.status}`);
+      }
+      router.push("/admin/documentos/contratos");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo eliminar el contrato");
+      setCargando(false);
+    }
+  }
+
   async function copiarLink() {
     if (!signingLink) return;
     try {
@@ -76,6 +119,26 @@ export default function ContratoAcciones({ contratoId, estado, signingLink }: Pr
           >
             {cargando ? "Generando…" : "🔗 Generar enlace de firma"}
           </button>
+          <button
+            onClick={() => descargarPdf(true)}
+            disabled={cargando}
+            style={{
+              marginLeft: 10,
+              padding: "10px 22px",
+              background: "#fff",
+              color: "var(--ink)",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              fontWeight: 500,
+              cursor: cargando ? "wait" : "pointer",
+              opacity: cargando ? 0.6 : 1,
+            }}
+          >
+            📄 Descargar PDF (borrador)
+          </button>
+          <p style={{ fontSize: "0.82rem", opacity: 0.65, margin: "10px 0 0" }}>
+            El PDF del borrador es para enviarlo por WhatsApp y revisarlo. Para que lo firmen, genera el enlace.
+          </p>
         </>
       )}
 
@@ -123,6 +186,13 @@ export default function ContratoAcciones({ contratoId, estado, signingLink }: Pr
             >
               Enviar por WhatsApp
             </a>
+            <button
+              onClick={() => descargarPdf(true)}
+              disabled={cargando}
+              style={{ padding: "10px 18px", border: "1px solid #ddd", background: "#fff", borderRadius: 8, cursor: cargando ? "wait" : "pointer" }}
+            >
+              📄 Descargar PDF
+            </button>
           </div>
         </>
       )}
@@ -166,30 +236,7 @@ export default function ContratoAcciones({ contratoId, estado, signingLink }: Pr
           </p>
           <button
             type="button"
-            onClick={async () => {
-              setError("");
-              setCargando(true);
-              try {
-                const res = await fetch(`/api/admin/contratos/${contratoId}/pdf`);
-                if (!res.ok) {
-                  const data = await res.json().catch(() => ({ error: "" }));
-                  throw new Error(data?.error || `Error ${res.status}`);
-                }
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `contrato-exclusiva-${contratoId.slice(0, 8)}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                URL.revokeObjectURL(url);
-              } catch (e: unknown) {
-                setError(e instanceof Error ? e.message : "No se pudo descargar el PDF");
-              } finally {
-                setCargando(false);
-              }
-            }}
+            onClick={() => descargarPdf(false)}
             disabled={cargando}
             style={{
               display: "inline-block",
@@ -222,6 +269,27 @@ export default function ContratoAcciones({ contratoId, estado, signingLink }: Pr
           {error}
         </div>
       )}
+
+      <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid #eee" }}>
+        <button
+          type="button"
+          onClick={eliminarContrato}
+          disabled={cargando}
+          style={{
+            padding: "9px 18px",
+            background: "#fff",
+            color: "#dc2626",
+            border: "1px solid #fca5a5",
+            borderRadius: 8,
+            fontWeight: 500,
+            fontSize: "0.88rem",
+            cursor: cargando ? "wait" : "pointer",
+            opacity: cargando ? 0.6 : 1,
+          }}
+        >
+          🗑 Eliminar contrato
+        </button>
+      </div>
     </div>
   );
 }
