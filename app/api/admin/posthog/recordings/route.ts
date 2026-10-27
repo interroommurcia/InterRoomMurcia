@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     const params = new URLSearchParams({
       limit: String(limit),
       offset: "0",
-      order: "-start_time",
+      order: "start_time",
     });
     // Filtro opcional por path visitado
     if (pathFilter) {
