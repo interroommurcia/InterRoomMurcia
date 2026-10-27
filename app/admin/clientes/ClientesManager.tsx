@@ -85,6 +85,7 @@ const NUEVO_CLIENTE = {
   telefonoPrefijo: "+34",
   telefonoNumero: "",
   email: "",
+  nif: "",
   tipo: "propietario" as Cliente["tipo"],
   tipo_secundario: "" as "" | Cliente["tipo"],
   zona_interes: "",
@@ -142,6 +143,7 @@ export default function ClientesManager() {
         apellidos: nuevoCliente.apellidos,
         telefono,
         email: nuevoCliente.email,
+        nif: nuevoCliente.nif.trim() || null,
         tipo: nuevoCliente.tipo,
         tipo_secundario: nuevoCliente.tipo_secundario || null,
         zona_interes: nuevoCliente.zona_interes,
@@ -413,6 +415,10 @@ export default function ClientesManager() {
               <label>
                 Email
                 <input type="email" value={nuevoCliente.email} onChange={(e) => setNuevoCliente({ ...nuevoCliente, email: e.target.value })} />
+              </label>
+              <label>
+                DNI / NIF / CIF
+                <input value={nuevoCliente.nif} onChange={(e) => setNuevoCliente({ ...nuevoCliente, nif: e.target.value })} placeholder="12345678A" />
               </label>
             </div>
             <div className="lead-form-row">

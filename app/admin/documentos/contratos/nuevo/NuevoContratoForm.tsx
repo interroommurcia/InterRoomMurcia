@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Cliente } from "../../../../../lib/contabilidad";
+import type { Propiedad } from "../../../../../lib/propiedades";
 import type { DatosContratoExclusiva } from "../../../../../lib/contratos";
 
 const DEFAULT_DATOS: DatosContratoExclusiva = {
@@ -21,9 +22,9 @@ const DEFAULT_DATOS: DatosContratoExclusiva = {
   penalizacion_pct: 75,
   agencia: {
     nombre: "InterRoom Murcia",
-    cif: "",
-    direccion: "",
-    representante: "",
+    cif: "48742897D",
+    direccion: "Calle Poeta Andrés Bolarín",
+    representante: "José Enrique Saura Gutiérrez",
   },
 };
 
@@ -32,6 +33,7 @@ const STORAGE_KEY = "ir_nuevo_contrato_draft_v1";
 export default function NuevoContratoForm() {
   const router = useRouter();
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [propiedades, setPropiedades] = useState<Propiedad[]>([]);
   const [clienteId, setClienteId] = useState<string>("");
   const [datos, setDatos] = useState<DatosContratoExclusiva>(DEFAULT_DATOS);
   const [guardando, setGuardando] = useState(false);
@@ -64,6 +66,10 @@ export default function NuevoContratoForm() {
       .then((r) => r.json())
       .then((d) => Array.isArray(d) && setClientes(d))
       .catch(() => {});
+    fetch("/api/admin/propiedades")
+      .then((r) => r.json())
+      .then((d) => Array.isArray(d) && setPropiedades(d))
+      .catch(() => {});
   }, []);
 
   function cargarCliente(id: string) {
@@ -72,15 +78,19 @@ export default function NuevoContratoForm() {
     const c = clientes.find((x) => x.id === id);
     if (!c) return;
     const nombreCompleto = `${c.nombre} ${c.apellidos ?? ""}`.trim();
+    const casa = propiedades.find((p) => p.propietario_id === id);
     setDatos((prev) => ({
       ...prev,
       propietario: {
         nombre: nombreCompleto,
-        dni: c.nif ?? prev.propietario.dni,
+        dni: c.nif || prev.propietario.dni,
         direccion: [c.direccion, c.cp_ciudad].filter(Boolean).join(", ") || prev.propietario.direccion,
         telefono: c.telefono ?? prev.propietario.telefono,
         email: c.email ?? prev.propietario.email,
       },
+      inmueble: casa
+        ? { ...prev.inmueble, direccion: casa.direccion || prev.inmueble.direccion }
+        : prev.inmueble,
     }));
   }
 
