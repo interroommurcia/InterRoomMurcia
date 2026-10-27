@@ -44,10 +44,37 @@ export const viewport = {
   viewportFit: "cover" as const,
 };
 
+const businessJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "RealEstateAgent",
+  "@id": `${SITE_URL}#business`,
+  name: "InterRoom Murcia",
+  url: SITE_URL,
+  email: "interroommurcia@gmail.com",
+  telephone: "+34613096518",
+  image: `${SITE_URL}/icon.svg`,
+  logo: `${SITE_URL}/icon.svg`,
+  description:
+    "Alquiler de habitaciones para estudiantes y gestión integral del alquiler en Murcia y Cartagena, cerca de la UCAM, la UMU y la UPCT. Inquilinos verificados, contrato, cobro y gestión de incidencias.",
+  areaServed: [
+    { "@type": "City", name: "Murcia" },
+    { "@type": "City", name: "Cartagena" },
+  ],
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Murcia",
+    addressRegion: "Región de Murcia",
+    addressCountry: "ES",
+  },
+  knowsLanguage: ["es"],
+  sameAs: ["https://wa.me/34613096518"],
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
       <body className={montserrat.variable}>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(businessJsonLd) }} />
         <PostHogProvider>
           <header>
             <nav>
