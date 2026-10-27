@@ -6,6 +6,7 @@ import { ClienteBuscador } from "./ClienteBuscador";
 import { EstadisticasPropietario } from "./EstadisticasPropietario";
 import { MediaGrid, UploadRow } from "./MediaGrid";
 import { PublicarBloque } from "./PublicarBloque";
+import { CompartirRedes } from "./CompartirRedes";
 
 export function PropiedadCard({
   p,
@@ -243,6 +244,7 @@ export function PropiedadCard({
               numBanos={propView.num_banos}
             />
           )}
+          {p.media.length > 0 && <CompartirRedes p={propView} />}
 
           <div style={{ marginTop: 24 }}>
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: "#111827" }}>Habitaciones</div>
