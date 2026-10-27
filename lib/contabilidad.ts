@@ -7,7 +7,7 @@ function calcularComision(base: number, pct: number) {
 }
 
 export type TipoCliente = "propietario" | "estudiante" | "comprador" | "creditos";
-export type OperacionCliente = "alquiler" | "venta" | null;
+export type OperacionCliente = "alquiler" | "venta" | "vendedor" | null;
 export type OrigenCliente = "manual" | "lead" | "autocompletado";
 
 export type Cliente = {

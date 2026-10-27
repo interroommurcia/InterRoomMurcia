@@ -12,7 +12,7 @@ type Cliente = {
   tipo: "propietario" | "estudiante" | "comprador" | "creditos";
   tipo_secundario: "propietario" | "estudiante" | "comprador" | "creditos" | null;
   zona_interes: string | null;
-  operacion: "alquiler" | "venta" | null;
+  operacion: "alquiler" | "venta" | "vendedor" | null;
   origen: "manual" | "lead" | "autocompletado";
   datos_completados: boolean;
   nif: string | null;
@@ -69,6 +69,16 @@ function labelTipo(tipo: Cliente["tipo"]) {
   return TIPOS.find((t) => t.value === tipo)?.label ?? tipo;
 }
 
+const OPERACIONES: { value: NonNullable<Cliente["operacion"]>; label: string }[] = [
+  { value: "alquiler", label: "Alquiler" },
+  { value: "venta", label: "Compraventa" },
+  { value: "vendedor", label: "Vendedor" },
+];
+
+function labelOperacion(op: Cliente["operacion"]) {
+  return OPERACIONES.find((o) => o.value === op)?.label ?? "—";
+}
+
 const NUEVO_CLIENTE = {
   nombre: "",
   apellidos: "",
@@ -93,6 +103,7 @@ export default function ClientesManager() {
   const [editando, setEditando] = useState<string | null>(null);
   const [edicion, setEdicion] = useState<{ nombre: string; apellidos: string; telefonoPrefijo: string; telefonoNumero: string; email: string; nif: string; direccion: string; tipo_secundario: "" | Cliente["tipo"]; notas: string }>({ nombre: "", apellidos: "", telefonoPrefijo: "+34", telefonoNumero: "", email: "", nif: "", direccion: "", tipo_secundario: "", notas: "" });
   const [filtroEstado, setFiltroEstado] = useState<"todos" | "activo" | "inactivo">("todos");
+  const [filtroOperacion, setFiltroOperacion] = useState<"" | NonNullable<Cliente["operacion"]>>("");
   const [filtroAnio, setFiltroAnio] = useState<string>("");
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
 
@@ -226,7 +237,7 @@ export default function ClientesManager() {
     const rows = clientes.map((c) => [
       c.nombre, c.apellidos ?? "", c.telefono ?? "", c.email ?? "",
       labelTipo(c.tipo), c.tipo_secundario ? labelTipo(c.tipo_secundario) : "",
-      c.zona_interes ?? "", c.operacion ?? "", c.origen,
+      c.zona_interes ?? "", c.operacion ? labelOperacion(c.operacion) : "", c.origen,
       c.datos_completados ? "sí" : "no", c.notas ?? "",
       new Date(c.created_at).toLocaleDateString("es-ES"),
     ].map(escape).join(";"));
@@ -249,6 +260,7 @@ export default function ClientesManager() {
   }
 
   const isEstudianteTab = tab === "estudiante";
+  const isPropietarioTab = tab === "propietario";
 
   const clientesDelTab = clientes.filter((c) => c.tipo === tab || c.tipo_secundario === tab);
   const clientesFiltrados = clientesDelTab.filter((c) => {
@@ -267,6 +279,9 @@ export default function ClientesManager() {
       const activo = !!c.habitacionAsignada;
       if (filtroEstado === "activo" && !activo) return false;
       if (filtroEstado === "inactivo" && activo) return false;
+    }
+    if (isPropietarioTab && filtroOperacion) {
+      if (c.operacion !== filtroOperacion) return false;
     }
     if (filtroAnio) {
       const anio = new Date(c.created_at).getFullYear();
@@ -292,6 +307,7 @@ export default function ClientesManager() {
               setTab(t.value);
               setMostrarNuevoCliente(false);
               setFiltroEstado("todos");
+              setFiltroOperacion("");
               setFiltroAnio("");
               setSeleccionados(new Set());
             }}
@@ -328,6 +344,19 @@ export default function ClientesManager() {
                 <option value="todos">Todos ({clientesDelTab.length})</option>
                 <option value="activo">Activos ({countActivos})</option>
                 <option value="inactivo">Inactivos ({countInactivos})</option>
+              </select>
+            </label>
+          )}
+          {isPropietarioTab && (
+            <label>
+              Operación
+              <select value={filtroOperacion} onChange={(e) => setFiltroOperacion(e.target.value as "" | NonNullable<Cliente["operacion"]>)} style={{ minWidth: 150 }}>
+                <option value="">Todas ({clientesDelTab.length})</option>
+                {OPERACIONES.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label} ({clientesDelTab.filter((c) => c.operacion === o.value).length})
+                  </option>
+                ))}
               </select>
             </label>
           )}
@@ -404,8 +433,9 @@ export default function ClientesManager() {
               <label>
                 Operación
                 <select value={nuevoCliente.operacion} onChange={(e) => setNuevoCliente({ ...nuevoCliente, operacion: e.target.value as NonNullable<Cliente["operacion"]> })}>
-                  <option value="alquiler">Alquiler</option>
-                  <option value="venta">Compraventa</option>
+                  {OPERACIONES.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
                 </select>
               </label>
               <label>
@@ -479,7 +509,7 @@ export default function ClientesManager() {
                       {!cliente.datos_completados && cliente.origen !== "manual" && <span className="editor-badge-hidden"> · pendiente de rellenar</span>}
                     </h4>
                     <div className="loc">
-                      {cliente.telefono || "sin teléfono"} · {cliente.email || "sin email"} · {cliente.nif ? `NIF: ${cliente.nif}` : "sin NIF"} · {cliente.zona_interes || "sin zona"} · {cliente.operacion || "—"}
+                      {cliente.telefono || "sin teléfono"} · {cliente.email || "sin email"} · {cliente.nif ? `NIF: ${cliente.nif}` : "sin NIF"} · {cliente.zona_interes || "sin zona"} · {labelOperacion(cliente.operacion)}
                       <span style={{ marginLeft: 6, opacity: 0.5, fontSize: 12 }}>
                         Alta: {new Date(cliente.created_at).toLocaleDateString("es-ES", { month: "short", year: "numeric" })}
                       </span>

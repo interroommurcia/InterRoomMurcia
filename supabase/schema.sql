@@ -139,7 +139,7 @@ create table if not exists public.clientes (
   email text,
   tipo text not null check (tipo in ('propietario', 'estudiante', 'comprador')),
   zona_interes text,
-  operacion text check (operacion in ('alquiler', 'venta')),
+  operacion text check (operacion in ('alquiler', 'venta', 'vendedor')),
   origen text not null default 'manual' check (origen in ('manual', 'lead', 'autocompletado')),
   lead_id integer,
   notas text,
