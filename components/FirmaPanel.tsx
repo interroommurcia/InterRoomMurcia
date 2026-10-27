@@ -142,7 +142,7 @@ export default function FirmaPanel({ rolLabel, defaultName, defaultDni, onSubmit
   }
 
   return (
-    <div style={{ border: "1px solid #e5e5e5", borderRadius: 10, padding: 16, background: "#fff", maxWidth: 560 }}>
+    <div style={{ border: "1px solid #e5e5e5", borderRadius: 10, padding: 16, background: "#fff", maxWidth: 560, width: "100%", minWidth: 0, boxSizing: "border-box" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
         <div style={{ fontSize: "0.8rem", fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase" }}>
           {rolLabel}
@@ -206,7 +206,7 @@ export default function FirmaPanel({ rolLabel, defaultName, defaultDni, onSubmit
             value={eName}
             onChange={(e) => setEName(e.target.value)}
             placeholder="Nombre tal como figura en tu DNI"
-            style={{ width: "100%", padding: "10px 12px", border: "1px solid #ddd", borderRadius: 8, fontSize: "0.95rem", marginBottom: 10 }}
+            style={{ width: "100%", padding: "10px 12px", border: "1px solid #ddd", borderRadius: 8, fontSize: "0.95rem", marginBottom: 10, boxSizing: "border-box" }}
           />
           <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: "0.82rem", color: "#555", lineHeight: 1.5, cursor: "pointer" }}>
             <input type="checkbox" checked={eAck} onChange={(e) => setEAck(e.target.checked)} style={{ marginTop: 3, accentColor: "#ea6a12" }} />
@@ -215,20 +215,20 @@ export default function FirmaPanel({ rolLabel, defaultName, defaultDni, onSubmit
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginTop: 14 }}>
         <input
           type="text"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           placeholder="Nombre completo"
-          style={{ padding: "10px 12px", border: "1px solid #ddd", borderRadius: 8, fontSize: "0.95rem" }}
+          style={{ padding: "10px 12px", border: "1px solid #ddd", borderRadius: 8, fontSize: "0.95rem", minWidth: 0, boxSizing: "border-box" }}
         />
         <input
           type="text"
           value={dni}
           onChange={(e) => setDni(e.target.value)}
           placeholder="DNI / CIF"
-          style={{ padding: "10px 12px", border: "1px solid #ddd", borderRadius: 8, fontSize: "0.95rem" }}
+          style={{ padding: "10px 12px", border: "1px solid #ddd", borderRadius: 8, fontSize: "0.95rem", minWidth: 0, boxSizing: "border-box" }}
         />
       </div>
 
