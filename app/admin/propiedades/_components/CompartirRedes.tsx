@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FONT, Propiedad, totalConGaraje } from "./shared";
+import { FONT, Media, Propiedad, totalConGaraje } from "./shared";
+import { retocarFoto } from "../../../../lib/retoqueFoto";
 
 const TIPO_LABEL: Record<string, string> = {
   piso: "Piso",
@@ -52,15 +53,27 @@ function construirCaption(p: Propiedad): string {
   return lineas.join("\n");
 }
 
+// Estado de retoque por foto: su blob retocado y qué versión usar.
+type EstadoFoto = { blob?: Blob; objUrl?: string; usar: "orig" | "retoque" };
+
 export function CompartirRedes({ p }: { p: Propiedad }) {
   const [abierto, setAbierto] = useState(false);
   const [caption, setCaption] = useState(() => construirCaption(p));
   const [copiado, setCopiado] = useState(false);
   const [compartiendo, setCompartiendo] = useState(false);
   const [aviso, setAviso] = useState("");
+  const [estados, setEstados] = useState<Record<string, EstadoFoto>>({});
+  const [preview, setPreview] = useState<Media | null>(null);
+  const [retocando, setRetocando] = useState(false);
 
   const fotos = useMemo(() => p.media.filter((m) => m.tipo === "foto"), [p.media]);
   const videos = useMemo(() => p.media.filter((m) => m.tipo === "video"), [p.media]);
+
+  // URL a usar para una foto según la versión elegida.
+  function urlDe(m: Media): string {
+    const e = estados[m.id];
+    return e && e.usar === "retoque" && e.objUrl ? e.objUrl : m.url;
+  }
 
   async function copiar() {
     try {
@@ -72,17 +85,57 @@ export function CompartirRedes({ p }: { p: Propiedad }) {
     }
   }
 
-  async function compartir(items: typeof fotos, nombreBase: string) {
+  async function retocar(m: Media) {
+    setRetocando(true);
+    setAviso("");
+    try {
+      const blob = await retocarFoto(m.url);
+      const objUrl = URL.createObjectURL(blob);
+      setEstados((prev) => {
+        const anterior = prev[m.id];
+        if (anterior?.objUrl) URL.revokeObjectURL(anterior.objUrl);
+        return { ...prev, [m.id]: { blob, objUrl, usar: "retoque" } };
+      });
+    } catch {
+      setAviso("No se pudo retocar esta foto. Prueba con otra o compártela sin retocar.");
+    } finally {
+      setRetocando(false);
+    }
+  }
+
+  function elegir(m: Media, usar: "orig" | "retoque") {
+    setEstados((prev) => ({ ...prev, [m.id]: { ...prev[m.id], usar } }));
+  }
+
+  function descargar(m: Media) {
+    const e = estados[m.id];
+    const href = urlDe(m);
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = `${p.nombre || "foto"}-${e && e.usar === "retoque" ? "retocada" : "original"}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  async function compartir(items: Media[], nombreBase: string) {
     setAviso("");
     setCompartiendo(true);
     try {
       const files: File[] = [];
       for (let i = 0; i < items.length; i++) {
         try {
-          const r = await fetch(items[i].url);
-          const b = await r.blob();
-          const ext = (b.type.split("/")[1] || (nombreBase === "video" ? "mp4" : "jpg")).split(";")[0];
-          files.push(new File([b], `${nombreBase}-${i + 1}.${ext}`, { type: b.type || "image/jpeg" }));
+          const m = items[i];
+          const e = estados[m.id];
+          let blob: Blob;
+          if (nombreBase === "foto" && e && e.usar === "retoque" && e.blob) {
+            blob = e.blob;
+          } else {
+            const r = await fetch(m.url);
+            blob = await r.blob();
+          }
+          const ext = (blob.type.split("/")[1] || (nombreBase === "video" ? "mp4" : "jpg")).split(";")[0];
+          files.push(new File([blob], `${nombreBase}-${i + 1}.${ext}`, { type: blob.type || "image/jpeg" }));
         } catch {
           /* salta el que falle */
         }
@@ -92,7 +145,7 @@ export function CompartirRedes({ p }: { p: Propiedad }) {
         await nav.share({ files, text: caption } as ShareData);
       } else {
         setAviso(
-          "Tu navegador no permite compartir directo. Ábrelo desde el móvil para enviar a Instagram/TikTok, o descarga las fotos tocándolas.",
+          "Tu navegador no permite compartir directo. Ábrelo desde el móvil para enviar a Instagram/TikTok, o descarga las fotos una a una.",
         );
       }
     } catch {
@@ -132,6 +185,34 @@ export function CompartirRedes({ p }: { p: Propiedad }) {
         <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>Compartir en redes</div>
         <button type="button" onClick={() => setAbierto(false)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 18 }}>×</button>
       </div>
+
+      {/* Galería: toca una foto para retocarla o descargarla */}
+      {fotos.length > 0 && (
+        <>
+          <label style={{ fontSize: 12, color: "#6b7280", fontWeight: 500 }}>Fotos — toca una para retocarla (gratis) o descargarla</label>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))", gap: 8, marginTop: 6, marginBottom: 14 }}>
+            {fotos.map((m) => {
+              const e = estados[m.id];
+              const esRetoque = e?.usar === "retoque" && e.objUrl;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setPreview(m)}
+                  style={{ position: "relative", padding: 0, border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden", cursor: "pointer", aspectRatio: "1 / 1", background: "#f3f4f6" }}
+                  title="Ver / retocar"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={urlDe(m)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  {esRetoque && (
+                    <span style={{ position: "absolute", top: 4, right: 4, background: "#16a34a", color: "#fff", fontSize: 10, fontWeight: 600, padding: "1px 5px", borderRadius: 4 }}>✨ retocada</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       <label style={{ fontSize: 12, color: "#6b7280", fontWeight: 500 }}>Descripción (edítala si quieres)</label>
       <textarea
@@ -182,10 +263,78 @@ export function CompartirRedes({ p }: { p: Propiedad }) {
       </div>
 
       <p style={{ fontSize: 12, color: "#6b7280", marginTop: 12, lineHeight: 1.5 }}>
-        Desde el <b>móvil</b>: toca «Compartir fotos», elige <b>Instagram</b> o <b>TikTok</b>, añade el audio en tendencia y pega la descripción (ya copiada). Las fotos puedes mejorarlas antes con ChatGPT.
+        Desde el <b>móvil</b>: retoca las fotos que quieras, toca «Compartir fotos», elige <b>Instagram</b> o <b>TikTok</b>, añade el audio en tendencia y pega la descripción (ya copiada). Se comparte la versión elegida de cada foto.
       </p>
 
       {aviso && <p style={{ fontSize: 12, color: "#b45309", background: "#fffbeb", padding: 8, borderRadius: 6, marginTop: 8 }}>{aviso}</p>}
+
+      {/* Preview de una foto con retoque antes/después */}
+      {preview && (() => {
+        const e = estados[preview.id];
+        const tieneRetoque = Boolean(e?.objUrl);
+        const mostrando: "orig" | "retoque" = e?.usar === "retoque" && e.objUrl ? "retoque" : "orig";
+        return (
+          <div
+            onClick={() => setPreview(null)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          >
+            <div onClick={(ev) => ev.stopPropagation()} style={{ background: "#fff", borderRadius: 12, maxWidth: 520, width: "100%", maxHeight: "92vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <div style={{ position: "relative", background: "#111", flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={mostrando === "retoque" && e?.objUrl ? e.objUrl : preview.url} alt="" style={{ maxWidth: "100%", maxHeight: "60vh", objectFit: "contain", display: "block" }} />
+                <span style={{ position: "absolute", top: 8, left: 8, background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 11, padding: "2px 8px", borderRadius: 4 }}>
+                  {mostrando === "retoque" ? "✨ Retocada" : "Original"}
+                </span>
+              </div>
+              <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                {!tieneRetoque ? (
+                  <button
+                    type="button"
+                    onClick={() => retocar(preview)}
+                    disabled={retocando}
+                    style={{ padding: "10px 16px", borderRadius: 8, border: "none", background: "var(--orange)", color: "#fff", cursor: retocando ? "wait" : "pointer", fontSize: 14, fontWeight: 600 }}
+                  >
+                    {retocando ? "Retocando…" : "✨ Retocar (auto, gratis)"}
+                  </button>
+                ) : (
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => elegir(preview, "orig")}
+                      style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: `1px solid ${mostrando === "orig" ? "#111827" : "#d1d5db"}`, background: mostrando === "orig" ? "#111827" : "#fff", color: mostrando === "orig" ? "#fff" : "#333", cursor: "pointer", fontSize: 13, fontWeight: 500 }}
+                    >
+                      Original
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => elegir(preview, "retoque")}
+                      style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: `1px solid ${mostrando === "retoque" ? "#16a34a" : "#d1d5db"}`, background: mostrando === "retoque" ? "#16a34a" : "#fff", color: mostrando === "retoque" ? "#fff" : "#333", cursor: "pointer", fontSize: 13, fontWeight: 500 }}
+                    >
+                      ✨ Retocada
+                    </button>
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => descargar(preview)}
+                    style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 500 }}
+                  >
+                    ⬇️ Descargar esta
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreview(null)}
+                    style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", cursor: "pointer", fontSize: 13 }}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
