@@ -16,7 +16,10 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 type Recording = {
-  session_id: string;
+  // La API de PostHog devuelve el identificador de la grabación en `id`
+  // (antes se asumía `session_id`, que no existe en la respuesta).
+  id: string;
+  session_id?: string;
   start_time: string;
   end_time: string;
   recording_duration: number;
@@ -84,7 +87,7 @@ export async function GET(req: NextRequest) {
 
     // 2. Cruzar con eventos custom: para cada sesión miramos si convirtió
     //    o vio el exit intent en el período que cubren.
-    const ids = rec.map((r) => r.session_id).filter(Boolean);
+    const ids = rec.map((r) => r.id ?? r.session_id).filter(Boolean);
     const conversionsBySid = new Map<string, { converted: boolean; exitShown: boolean; exitAction?: string }>();
     if (ids.length) {
       const idList = ids.map((id) => `'${id.replace(/'/g, "")}'`).join(",");
@@ -121,10 +124,11 @@ export async function GET(req: NextRequest) {
 
     // 3. Enriquecer y filtrar
     let enriched = rec.map((r) => {
-      const conv = conversionsBySid.get(r.session_id) ?? { converted: false, exitShown: false };
+      const sid = r.id ?? r.session_id ?? "";
+      const conv = conversionsBySid.get(sid) ?? { converted: false, exitShown: false };
       const props = (r.person?.properties ?? {}) as Record<string, unknown>;
       return {
-        session_id: r.session_id,
+        session_id: sid,
         start_time: r.start_time,
         end_time: r.end_time,
         duration_sec: Math.round(Number(r.recording_duration) || 0),
@@ -141,7 +145,7 @@ export async function GET(req: NextRequest) {
         converted: conv.converted,
         exit_intent_shown: conv.exitShown,
         exit_intent_action: conv.exitAction || "",
-        player_url: fmtPlayerUrl(r.session_id),
+        player_url: fmtPlayerUrl(sid),
       };
     });
 

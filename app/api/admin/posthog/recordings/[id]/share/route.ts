@@ -33,11 +33,11 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     );
     if (!res.ok) {
       const txt = await res.text();
-      if (res.status === 403 && /session_recording/i.test(txt)) {
+      if (res.status === 403 && /scope|permission|sharing_configuration|session_recording/i.test(txt)) {
         return NextResponse.json(
           {
             error:
-              "La API key de PostHog no tiene permiso para compartir grabaciones. En PostHog → Personal API keys, añade los scopes 'session_recording:read' y 'session_recording:write'.",
+              "La API key de PostHog no tiene permiso para compartir grabaciones. En PostHog → Personal API keys, añade el scope 'sharing_configuration:write' (y 'sharing_configuration:read').",
             fallback_url: `${PH_API}/project/${PH_PROJ}/replay/${id}`,
           },
           { status: 403 },

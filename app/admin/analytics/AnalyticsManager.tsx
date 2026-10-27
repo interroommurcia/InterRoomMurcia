@@ -1033,7 +1033,7 @@ function RecordingsBlock() {
             <div style={{ padding: "12px 16px", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <strong>Grabación de sesión</strong>
-                <span style={{ fontSize: 12, color: "#666", marginLeft: 10 }}>{playing.sessionId.slice(0, 12)}…</span>
+                <span style={{ fontSize: 12, color: "#666", marginLeft: 10 }}>{(playing.sessionId || "").slice(0, 12)}…</span>
               </div>
               <button onClick={() => setPlaying(null)} style={{ padding: "6px 14px", border: "1px solid #ddd", background: "#fff", borderRadius: 6, cursor: "pointer" }}>
                 Cerrar ✕
