@@ -3,41 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import type { Piso } from "../lib/pisos";
-
-const PREFIJOS = [
-  { code: "+34", label: "🇪🇸 +34", minDigits: 9, maxDigits: 9, mobileHint: /^[67]/ },
-  { code: "+351", label: "🇵🇹 +351", minDigits: 9, maxDigits: 9 },
-  { code: "+33", label: "🇫🇷 +33", minDigits: 9, maxDigits: 9 },
-  { code: "+39", label: "🇮🇹 +39", minDigits: 9, maxDigits: 11 },
-  { code: "+44", label: "🇬🇧 +44", minDigits: 10, maxDigits: 10 },
-  { code: "+49", label: "🇩🇪 +49", minDigits: 10, maxDigits: 11 },
-  { code: "+212", label: "🇲🇦 +212", minDigits: 9, maxDigits: 9 },
-  { code: "+40", label: "🇷🇴 +40", minDigits: 9, maxDigits: 9 },
-  { code: "+380", label: "🇺🇦 +380", minDigits: 9, maxDigits: 9 },
-  { code: "+1", label: "🇺🇸 +1", minDigits: 10, maxDigits: 10 },
-  { code: "+52", label: "🇲🇽 +52", minDigits: 10, maxDigits: 10 },
-  { code: "+54", label: "🇦🇷 +54", minDigits: 10, maxDigits: 11 },
-  { code: "+57", label: "🇨🇴 +57", minDigits: 10, maxDigits: 10 },
-  { code: "+58", label: "🇻🇪 +58", minDigits: 10, maxDigits: 10 },
-  { code: "+51", label: "🇵🇪 +51", minDigits: 9, maxDigits: 9 },
-  { code: "+593", label: "🇪🇨 +593", minDigits: 9, maxDigits: 9 },
-];
-
-function validarTelefono(prefijo: string, digitos: string): string | null {
-  const p = PREFIJOS.find((x) => x.code === prefijo);
-  if (!p) return "Prefijo no válido.";
-  if (!/^\d+$/.test(digitos)) return "El teléfono solo puede contener números.";
-  if (digitos.length < p.minDigits || digitos.length > p.maxDigits) {
-    return p.minDigits === p.maxDigits
-      ? `El teléfono debe tener ${p.minDigits} dígitos.`
-      : `El teléfono debe tener entre ${p.minDigits} y ${p.maxDigits} dígitos.`;
-  }
-  if (/^(\d)\1+$/.test(digitos)) return "Introduce un número real.";
-  if (p.mobileHint && !p.mobileHint.test(digitos)) {
-    return "Para España, el número debe empezar por 6, 7, 8 o 9.";
-  }
-  return null;
-}
+import { PREFIJOS, validarTelefono } from "../lib/telefono";
 
 export default function ProximamenteCard({ piso }: { piso: Piso }) {
   const [mostrarForm, setMostrarForm] = useState(false);

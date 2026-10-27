@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { crearLeadProximamente } from "../../../lib/leadsProximamente";
 import { esBot } from "../../../lib/antispam";
+import { separarPrefijo, validarTelefono } from "../../../lib/telefono";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,6 +21,17 @@ export async function POST(req: NextRequest) {
   if (!telefono || !piso_id) {
     console.warn(`[leads-proximamente/POST] rechazado: faltan datos (telefono=${!!telefono}, piso_id=${!!piso_id})`);
     return NextResponse.json({ error: "Faltan teléfono o piso_id" }, { status: 400 });
+  }
+
+  // Validación del teléfono según el prefijo: evita que se guarde un número
+  // con dígitos de menos (o de más) aunque se salte la comprobación del navegador.
+  const partes = separarPrefijo(telefono);
+  const errorTel = partes
+    ? validarTelefono(partes.prefijo, partes.digitos)
+    : "El teléfono debe incluir un prefijo de país válido (ej. +34).";
+  if (errorTel) {
+    console.warn(`[leads-proximamente/POST] rechazado: teléfono inválido tel=${telefono} (${errorTel})`);
+    return NextResponse.json({ error: errorTel }, { status: 400 });
   }
 
   if (esBot({ nombre, telefono })) {
