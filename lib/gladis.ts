@@ -14,7 +14,7 @@ import {
   descargarDocumento,
   type OperacionCompraventa,
 } from "./contabilidad";
-import { getCliente } from "./contabilidad";
+import { getCliente, actualizarCliente, crearCliente, type TipoCliente, type OperacionCliente } from "./contabilidad";
 import { listarPagosFacturables } from "./factura/pendientes";
 import { sugerirNumero } from "./factura/numeracion";
 import { crearFactura, descargarFacturaPdf } from "./factura/facturas";
@@ -62,6 +62,7 @@ Guía de uso de herramientas:
 - Si te piden generar/hacer una factura de un cliente, usa primero listar_pagos_facturables para ver sus pagos pendientes. Si hay varios, muéstralos y pregunta cuál. Si falta el NIF u otros datos fiscales del cliente, avísalo. ANTES de llamar a generar_factura, SIEMPRE muestra el número de factura sugerido y pregunta explícitamente al usuario si lo usa tal cual o quiere otro número (puede haber facturas emitidas manualmente que rompen la secuencia). No llames a generar_factura hasta que el usuario te confirme el número a usar; pásalo explícitamente en el argumento "numero".
 - Si alguien del equipo pide "el enlace de la calculadora de rentabilidad" (o similar: "la calculadora", "el link para propietarios", "la herramienta de simular rentabilidad"), responde directamente con la URL ${CALCULADORA_URL}. Es una página privada (no indexada ni enlazada desde el menú público) para enviar a propietarios potenciales. No necesitas herramienta: dale el enlace y, si lo pide, una frase corta explicando qué hace ("simula qué le rentaría su piso con nuestra gestión").
 - Si piden preparar/generar/hacer un contrato de encargo de venta en exclusiva (o "el contrato para X", "el papel de exclusiva de Fulanito"), usa crear_contrato_exclusiva. Para los datos del propietario puedes buscar en el CRM con buscar_contacto si el usuario te da un nombre. Para los datos del inmueble (dirección obligatoria; opcional: referencia catastral, superficie, cargas, estado arrendaticio) y el precio de venta DEBES pedirlos en el chat si no te los dan desde el principio. Valores por defecto que puedes asumir sin preguntar salvo que el usuario los cambie: duración 4 meses, comisión 1,5 %, penalización por incumplimiento 75 %. Es herramienta de escritura: antes de llamarla resume en una frase lo que vas a crear (nombre del propietario, inmueble, precio, duración/comisión/penalización) y pide confirmación "¿Lo creo?". Al ejecutarla, Gladis devuelve el enlace privado de firma listo para enviar al propietario por WhatsApp (incluye un mensaje redactado).
+- Si te piden añadir, completar o corregir datos de la ficha de un cliente ("añade el NIF de X", "ponle el teléfono a Y", "apunta que es empresa"), usa actualizar_cliente. Busca por nombre; si hay varias coincidencias, muéstralas y pregunta cuál. Pasa SOLO los campos que te den. Si te piden dar de alta un cliente nuevo que no existe, usa crear_cliente. Ambas son herramientas de escritura (confirma antes). IMPORTANTE: solo funcionan si quien te escribe es el dueño; si no lo es, la herramienta devolverá un aviso y debes decirle que no tienes permiso para modificar fichas.
 - Si ninguna herramienta resuelve la pregunta, dilo con claridad en vez de inventar una respuesta.
 
 REGLA CRÍTICA — confirmación antes de modificar:
@@ -290,6 +291,58 @@ const TOOLS: Anthropic.Tool[] = [
       required: ["inmueble_direccion", "precio_venta"],
     },
   },
+  {
+    name: "actualizar_cliente",
+    description:
+      "Añade o corrige datos en la ficha de un cliente YA existente (lo busca por nombre). HERRAMIENTA DE ESCRITURA: confirma antes. Pasa SOLO los campos a cambiar. SOLO disponible para el dueño. Si hay varias coincidencias de nombre, no se modifica nada: devuelve la lista para que el usuario elija.",
+    input_schema: {
+      type: "object",
+      properties: {
+        nombre: { type: "string", description: "Nombre (o parte) del cliente a modificar" },
+        telefono: { type: "string", description: "Teléfono" },
+        email: { type: "string", description: "Email" },
+        nif: { type: "string", description: "NIF/CIF" },
+        direccion: { type: "string", description: "Dirección fiscal" },
+        cp_ciudad: { type: "string", description: "Código postal y ciudad" },
+        es_empresa: { type: "boolean", description: "true si factura como empresa (IRPF 15%)" },
+        zona_interes: { type: "string", description: "Zona o comunidad de interés" },
+        tipo: { type: "string", enum: ["propietario", "estudiante", "comprador", "creditos"], description: "Tipo de cliente" },
+        operacion: { type: "string", enum: ["alquiler", "venta", "vendedor"], description: "Tipo de operación" },
+        notas: { type: "string", description: "Notas libres" },
+        mensualidad: { type: "number", description: "Mensualidad del alquiler en euros" },
+        comision_pct_alquiler: { type: "number", description: "% de comisión de alquiler" },
+        comision_fija_alquiler: { type: "number", description: "Comisión fija de alquiler en euros (en vez de %)" },
+        alquiler_fecha_inicio: { type: "string", description: 'Inicio del alquiler "YYYY-MM-DD"' },
+        alquiler_fecha_fin: { type: "string", description: 'Fin del alquiler "YYYY-MM-DD"' },
+      },
+      required: ["nombre"],
+    },
+  },
+  {
+    name: "crear_cliente",
+    description:
+      "Da de alta un cliente NUEVO en Contabilidad. HERRAMIENTA DE ESCRITURA: confirma antes. SOLO disponible para el dueño. Úsala solo cuando el cliente no existe ya (compruébalo antes con buscar_contacto).",
+    input_schema: {
+      type: "object",
+      properties: {
+        nombre: { type: "string", description: "Nombre (obligatorio)" },
+        apellidos: { type: "string", description: "Apellidos" },
+        telefono: { type: "string", description: "Teléfono" },
+        email: { type: "string", description: "Email" },
+        tipo: { type: "string", enum: ["propietario", "estudiante", "comprador", "creditos"], description: "Tipo de cliente (obligatorio)" },
+        operacion: { type: "string", enum: ["alquiler", "venta", "vendedor"], description: "Tipo de operación" },
+        zona_interes: { type: "string", description: "Zona o comunidad de interés" },
+        nif: { type: "string", description: "NIF/CIF" },
+        direccion: { type: "string", description: "Dirección fiscal" },
+        cp_ciudad: { type: "string", description: "Código postal y ciudad" },
+        es_empresa: { type: "boolean", description: "true si factura como empresa (IRPF 15%)" },
+        notas: { type: "string", description: "Notas libres" },
+        mensualidad: { type: "number", description: "Mensualidad del alquiler en euros" },
+        comision_pct_alquiler: { type: "number", description: "% de comisión de alquiler" },
+      },
+      required: ["nombre", "tipo"],
+    },
+  },
 ];
 
 function telefonoDigits(s: string) {
@@ -327,7 +380,18 @@ async function formatearOperacion(op: OperacionCompraventa, clienteNombre: strin
   return lineas.join("\n");
 }
 
-async function ejecutarHerramienta(nombre: string, input: Record<string, unknown>, chatId: string): Promise<string> {
+const CAMPOS_CLIENTE = [
+  "telefono", "email", "nif", "direccion", "cp_ciudad", "es_empresa", "zona_interes",
+  "tipo", "operacion", "notas", "mensualidad", "comision_pct_alquiler",
+  "comision_fija_alquiler", "alquiler_fecha_inicio", "alquiler_fecha_fin",
+] as const;
+
+async function ejecutarHerramienta(
+  nombre: string,
+  input: Record<string, unknown>,
+  chatId: string,
+  esDueño: boolean
+): Promise<string> {
   if (nombre === "buscar_contacto") {
     const query = String(input.query ?? "").trim();
     if (!query) return "Búsqueda vacía.";
@@ -709,10 +773,57 @@ ${mensajeWA}
 
 Panel admin: ${panelAdmin}`;
   }
+  if (nombre === "actualizar_cliente") {
+    if (!esDueño) return "Sin permiso: solo el dueño puede modificar fichas de clientes desde Telegram.";
+    const query = String(input.nombre ?? "").toLowerCase().trim();
+    if (!query) return "Falta el nombre del cliente.";
+    const clientes = await listarClientes();
+    const encontrados = clientes.filter((c) => `${c.nombre} ${c.apellidos ?? ""}`.toLowerCase().includes(query));
+    if (!encontrados.length) return "Cliente no encontrado. Si quieres darlo de alta, usa crear_cliente.";
+    if (encontrados.length > 1) {
+      return `Hay ${encontrados.length} coincidencias, no he modificado nada. ¿Cuál?\n${encontrados
+        .map((c) => `- ${c.nombre} ${c.apellidos ?? ""} · ${c.tipo} · ${c.telefono ?? "sin tel"}`)
+        .join("\n")}`;
+    }
+    const patch: Record<string, unknown> = {};
+    for (const campo of CAMPOS_CLIENTE) {
+      if (input[campo] !== undefined && input[campo] !== null && String(input[campo]).trim() !== "") {
+        patch[campo] = input[campo];
+      }
+    }
+    if (!Object.keys(patch).length) return "No me has indicado ningún dato que cambiar.";
+    const c = encontrados[0];
+    await actualizarCliente(c.id, patch);
+    return `Ficha actualizada: ${c.nombre} ${c.apellidos ?? ""} · ${Object.keys(patch).join(", ")}.`;
+  }
+  if (nombre === "crear_cliente") {
+    if (!esDueño) return "Sin permiso: solo el dueño puede crear clientes desde Telegram.";
+    const nombreCliente = String(input.nombre ?? "").trim();
+    if (!nombreCliente) return "Falta el nombre del cliente.";
+    const tipo = String(input.tipo ?? "").trim() as TipoCliente;
+    if (!["propietario", "estudiante", "comprador", "creditos"].includes(tipo)) return "Falta el tipo de cliente (propietario, estudiante, comprador o creditos).";
+    const nuevo = await crearCliente({
+      nombre: nombreCliente,
+      apellidos: input.apellidos ? String(input.apellidos) : undefined,
+      telefono: input.telefono ? String(input.telefono) : undefined,
+      email: input.email ? String(input.email) : undefined,
+      tipo,
+      operacion: input.operacion ? (String(input.operacion) as OperacionCliente) : undefined,
+      zona_interes: input.zona_interes ? String(input.zona_interes) : undefined,
+      nif: input.nif ? String(input.nif) : undefined,
+      direccion: input.direccion ? String(input.direccion) : undefined,
+      cp_ciudad: input.cp_ciudad ? String(input.cp_ciudad) : undefined,
+      es_empresa: input.es_empresa === true,
+      notas: input.notas ? String(input.notas) : undefined,
+      mensualidad: input.mensualidad !== undefined ? Number(input.mensualidad) : undefined,
+      comision_pct_alquiler: input.comision_pct_alquiler !== undefined ? Number(input.comision_pct_alquiler) : undefined,
+    });
+    return `Cliente creado: ${nuevo.nombre} ${nuevo.apellidos ?? ""} (${nuevo.tipo}).`;
+  }
   return "Herramienta desconocida.";
 }
 
-export async function responderGladis(chatId: string, mensajeUsuario: string): Promise<string> {
+export async function responderGladis(chatId: string, mensajeUsuario: string, esDueño = false): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return "Falta configurar ANTHROPIC_API_KEY.";
   const anthropic = new Anthropic({ apiKey });
@@ -746,7 +857,7 @@ export async function responderGladis(chatId: string, mensajeUsuario: string): P
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
     for (const block of res.content) {
       if (block.type === "tool_use") {
-        const resultado = await ejecutarHerramienta(block.name, block.input as Record<string, unknown>, chatId);
+        const resultado = await ejecutarHerramienta(block.name, block.input as Record<string, unknown>, chatId, esDueño);
         toolResults.push({ type: "tool_result", tool_use_id: block.id, content: resultado });
       }
     }

@@ -23,8 +23,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  // Dueño: el chat autorizado para escribir en fichas de clientes. Si no se
+  // configura TELEGRAM_OWNER_CHAT_ID, se asume el primero de TELEGRAM_CHAT_ID.
+  const dueño = (process.env.TELEGRAM_OWNER_CHAT_ID ?? chatsAutorizados[0] ?? "").trim();
+  const esDueño = String(chatId) === dueño;
+
   try {
-    const respuesta = await responderGladis(String(chatId), text);
+    const respuesta = await responderGladis(String(chatId), text, esDueño);
     await telegramSendMessage(chatId, respuesta);
   } catch (e: unknown) {
     await telegramSendMessage(chatId, `Error: ${e instanceof Error ? e.message : "desconocido"}`);
