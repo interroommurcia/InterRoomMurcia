@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { FONT, Media, Propiedad, totalConGaraje } from "./shared";
 import { retocarFoto } from "../../../../lib/retoqueFoto";
+import { GenerarReel } from "./GenerarReel";
 
 const TIPO_LABEL: Record<string, string> = {
   piso: "Piso",
@@ -265,6 +266,8 @@ export function CompartirRedes({ p }: { p: Propiedad }) {
       <p style={{ fontSize: 12, color: "#6b7280", marginTop: 12, lineHeight: 1.5 }}>
         Desde el <b>móvil</b>: retoca las fotos que quieras, toca «Compartir fotos», elige <b>Instagram</b> o <b>TikTok</b>, añade el audio en tendencia y pega la descripción (ya copiada). Se comparte la versión elegida de cada foto.
       </p>
+
+      <GenerarReel p={p} />
 
       {aviso && <p style={{ fontSize: 12, color: "#b45309", background: "#fffbeb", padding: 8, borderRadius: 6, marginTop: 8 }}>{aviso}</p>}
 
