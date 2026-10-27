@@ -142,6 +142,8 @@ export async function GET(req: NextRequest) {
         keypresses: Number(r.keypress_count) || 0,
         start_url: r.first_url || r.start_url || "",
         country: (props.$geoip_country_name as string) || "",
+        country_code: (props.$geoip_country_code as string) || "",
+        region: (props.$geoip_subdivision_1_name as string) || "",
         city: (props.$geoip_city_name as string) || "",
         device: (props.$device_type as string) || "",
         browser: (props.$browser as string) || "",

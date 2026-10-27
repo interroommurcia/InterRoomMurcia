@@ -841,6 +841,8 @@ type Recording = {
   keypresses: number;
   start_url: string;
   country: string;
+  country_code: string;
+  region: string;
   city: string;
   device: string;
   browser: string;
@@ -850,6 +852,14 @@ type Recording = {
   exit_intent_action: string;
   player_url: string;
 };
+
+// Convierte un código de país ISO-3166 alpha-2 (ES, FR…) en su bandera emoji.
+function banderaDe(code: string): string {
+  if (!code || code.length !== 2) return "";
+  const cc = code.toUpperCase();
+  if (!/^[A-Z]{2}$/.test(cc)) return "";
+  return String.fromCodePoint(...[...cc].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
+}
 
 function RecordingsBlock() {
   const [recordings, setRecordings] = useState<Recording[] | null>(null);
@@ -967,6 +977,7 @@ function RecordingsBlock() {
                 <th style={{ textAlign: "right", padding: "10px 14px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666", fontWeight: 500 }}>Duración</th>
                 <th style={{ textAlign: "right", padding: "10px 14px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666", fontWeight: 500 }}>Clicks</th>
                 <th style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666", fontWeight: 500 }}>Device</th>
+                <th style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666", fontWeight: 500 }}>Ubicación</th>
                 <th style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666", fontWeight: 500 }}>Origen</th>
                 <th style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666", fontWeight: 500 }}>Marcas</th>
                 <th style={{ padding: "10px 14px" }} />
@@ -986,8 +997,22 @@ function RecordingsBlock() {
                     {r.browser ? <span style={{ opacity: 0.5 }}> · {r.browser}</span> : null}
                   </td>
                   <td style={{ padding: "10px 14px" }}>
-                    {r.city || r.country || "—"}
-                    {r.referrer_domain ? <div style={{ fontSize: 10, opacity: 0.6 }}>{r.referrer_domain}</div> : null}
+                    {r.country || r.region || r.city ? (
+                      <>
+                        <div>
+                          {banderaDe(r.country_code) && <span style={{ marginRight: 4 }}>{banderaDe(r.country_code)}</span>}
+                          {r.country || "—"}
+                        </div>
+                        {(r.region || r.city) && (
+                          <div style={{ fontSize: 10, opacity: 0.6 }}>
+                            {[r.region, r.city].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" · ")}
+                          </div>
+                        )}
+                      </>
+                    ) : "—"}
+                  </td>
+                  <td style={{ padding: "10px 14px" }}>
+                    {r.referrer_domain || "—"}
                   </td>
                   <td style={{ padding: "10px 14px" }}>
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
