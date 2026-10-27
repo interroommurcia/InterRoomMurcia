@@ -197,7 +197,20 @@ export async function copiarMediaAPiso(mediaId: string): Promise<string | null> 
   if (!reg?.storage_path) return null;
   const { data: blob } = await admin.storage.from(BUCKET).download(reg.storage_path);
   if (!blob) return null;
-  const ext = reg.storage_path.split(".").pop() || (reg.tipo === "video" ? "mp4" : "jpg");
+
+  // Las fotos se auto-retocan al publicar (niveles, luz, color, nitidez).
+  // Los vídeos se copian tal cual.
+  if (reg.tipo !== "video") {
+    const { retocarBufferServer } = await import("./retoqueFotoServer");
+    const original = Buffer.from(await blob.arrayBuffer());
+    const { buffer, contentType, ext } = await retocarBufferServer(original);
+    const destino = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await admin.storage.from("pisos").upload(destino, buffer, { contentType, upsert: false });
+    if (error) return null;
+    return admin.storage.from("pisos").getPublicUrl(destino).data.publicUrl;
+  }
+
+  const ext = reg.storage_path.split(".").pop() || "mp4";
   const destino = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await admin.storage.from("pisos").upload(destino, blob, { contentType: blob.type, upsert: false });
   if (error) return null;

@@ -37,14 +37,34 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return q;
   };
 
-  let fotos: { id: string }[] | null;
+  // Fotos base: selección manual, o las de la habitación, o las generales.
+  let baseFotos: { id: string }[] | null;
   if (Array.isArray(foto_ids) && foto_ids.length > 0) {
     const { data } = await admin.from("propiedad_media").select("id").eq("propiedad_id", params.id).eq("tipo", "foto").in("id", foto_ids as string[]).order("orden");
-    fotos = data;
+    baseFotos = data;
   } else {
     const { data } = await baseQ().eq("tipo", "foto").order("orden");
-    fotos = data;
+    baseFotos = data;
   }
+
+  // Fotos complementarias: al publicar una habitación se añaden las generales;
+  // al publicar el piso completo se añaden las de todas las habitaciones.
+  let extraFotos: { id: string }[] | null = null;
+  if (habitacion_id || (Array.isArray(foto_ids) && foto_ids.length > 0)) {
+    const { data } = await admin.from("propiedad_media").select("id").eq("propiedad_id", params.id).eq("tipo", "foto").is("habitacion_id", null).order("orden");
+    extraFotos = data;
+  } else {
+    const { data } = await admin.from("propiedad_media").select("id").eq("propiedad_id", params.id).eq("tipo", "foto").not("habitacion_id", "is", null).order("orden");
+    extraFotos = data;
+  }
+
+  // Combina sin duplicados, conservando el orden (las base primero → portada).
+  const vistas = new Set<string>();
+  const fotos: { id: string }[] = [];
+  for (const f of [...(baseFotos ?? []), ...(extraFotos ?? [])]) {
+    if (!vistas.has(f.id)) { vistas.add(f.id); fotos.push(f); }
+  }
+
   const { data: videos } = await baseQ().eq("tipo", "video").order("orden");
 
   const gallery: string[] = [];

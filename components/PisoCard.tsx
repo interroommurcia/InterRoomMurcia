@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Piso } from "../lib/pisos";
+import QuieroAlquilar from "./QuieroAlquilar";
 
 const ESTADO_LABEL: Record<string, string> = {
   disponible: "Disponible",
@@ -60,6 +61,15 @@ export default function PisoCard({ piso }: { piso: Piso }) {
           </div>
           <div className="piso-arrow">-&gt;</div>
         </div>
+        {estado === "disponible" && !esCompraventa && (
+          <QuieroAlquilar
+            pisoId={piso.id}
+            pisoTitulo={piso.titulo}
+            pisoCategoria={piso.categoria}
+            numHabitaciones={piso.numHabitaciones}
+            variant="card"
+          />
+        )}
       </div>
     </Link>
   );
