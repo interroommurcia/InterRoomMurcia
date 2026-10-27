@@ -448,7 +448,7 @@ export default function FacturasManager() {
 
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, marginBottom: 12 }}>
               <label style={label}>Cliente — nombre<input style={input} value={cNombre} onChange={(e) => setCNombre(e.target.value)} /></label>
-              <label style={label}>DNI / NIF / CIF<input style={input} value={cNif} onChange={(e) => setCNif(e.target.value)} /></label>
+              <label style={label}>DNI / NIE / NIF / CIF<input style={input} value={cNif} onChange={(e) => setCNif(e.target.value)} /></label>
               <label style={label}>Dirección<input style={input} value={cDir} onChange={(e) => setCDir(e.target.value)} /></label>
               <label style={label}>CP y ciudad<input style={input} value={cCiudad} onChange={(e) => setCCiudad(e.target.value)} /></label>
               <label style={label}>Teléfono<input style={input} value={cTel} onChange={(e) => setCTel(e.target.value)} /></label>

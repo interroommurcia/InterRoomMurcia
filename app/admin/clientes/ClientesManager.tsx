@@ -417,8 +417,8 @@ export default function ClientesManager() {
                 <input type="email" value={nuevoCliente.email} onChange={(e) => setNuevoCliente({ ...nuevoCliente, email: e.target.value })} />
               </label>
               <label>
-                DNI / NIF / CIF
-                <input value={nuevoCliente.nif} onChange={(e) => setNuevoCliente({ ...nuevoCliente, nif: e.target.value })} placeholder="12345678A" />
+                DNI / NIE / NIF / CIF
+                <input value={nuevoCliente.nif} onChange={(e) => setNuevoCliente({ ...nuevoCliente, nif: e.target.value })} placeholder="12345678A / X1234567L" />
               </label>
             </div>
             <div className="lead-form-row">
@@ -562,8 +562,8 @@ export default function ClientesManager() {
                       <div className="cliente-edit-section-title">Datos fiscales</div>
                       <div className="cliente-edit-grid">
                         <label className="cliente-edit-field">
-                          <span>DNI / NIF / CIF</span>
-                          <input value={edicion.nif} onChange={(e) => setEdicion({ ...edicion, nif: e.target.value })} placeholder="12345678A" />
+                          <span>DNI / NIE / NIF / CIF</span>
+                          <input value={edicion.nif} onChange={(e) => setEdicion({ ...edicion, nif: e.target.value })} placeholder="12345678A / X1234567L" />
                         </label>
                         <label className="cliente-edit-field">
                           <span>Dirección fiscal</span>

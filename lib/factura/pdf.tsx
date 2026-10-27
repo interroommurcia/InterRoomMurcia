@@ -117,7 +117,7 @@ function FacturaDoc({ f, qrDataUrl }: { f: Factura; qrDataUrl: string | null }) 
             <View style={s.party}>
               <Text style={s.partyTag}>CLIENTE</Text>
               <Text style={s.partyName}>{f.cliente_nombre}</Text>
-              {f.cliente_nif ? <Text style={s.partyLine}>DNI/NIF/CIF: {f.cliente_nif}</Text> : null}
+              {f.cliente_nif ? <Text style={s.partyLine}>DNI/NIE/NIF/CIF: {f.cliente_nif}</Text> : null}
               {f.cliente_direccion ? <Text style={s.partyLine}>{f.cliente_direccion}</Text> : null}
               {f.cliente_cp_ciudad ? <Text style={s.partyLine}>{f.cliente_cp_ciudad}</Text> : null}
               {f.cliente_telefono ? <Text style={s.partyLine}>Tel. {f.cliente_telefono}</Text> : null}

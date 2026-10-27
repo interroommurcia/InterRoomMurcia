@@ -165,7 +165,7 @@ export default function NuevoContratoForm() {
         <h3>El Propietario</h3>
         <Grid>
           <Input label="Nombre completo" value={datos.propietario.nombre} onChange={(v) => updProp("nombre", v)} required />
-          <Input label="DNI / NIF" value={datos.propietario.dni} onChange={(v) => updProp("dni", v)} required />
+          <Input label="DNI / NIE / NIF / CIF" value={datos.propietario.dni} onChange={(v) => updProp("dni", v)} required />
           <Input label="Domicilio" value={datos.propietario.direccion} onChange={(v) => updProp("direccion", v)} wide />
           <Input label="Teléfono" value={datos.propietario.telefono ?? ""} onChange={(v) => updProp("telefono", v)} />
           <Input label="Email" value={datos.propietario.email ?? ""} onChange={(v) => updProp("email", v)} type="email" />
