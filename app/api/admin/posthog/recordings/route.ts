@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
     // Filtro opcional por path visitado
     if (pathFilter) {
       params.set(
-        "session_recording_properties",
+        "properties",
         JSON.stringify([{ key: "$current_url", value: pathFilter, operator: "icontains", type: "event" }]),
       );
     }
