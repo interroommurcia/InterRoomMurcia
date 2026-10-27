@@ -47,12 +47,28 @@ function getClientIp(req: NextRequest): string | null {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || null;
 }
 
+// IPs locales: es el propio desarrollo/servidor, no un externo. No las tratamos como amenaza.
+function esLocal(ip: string | null): boolean {
+  return ip === "::1" || ip === "127.0.0.1" || ip === "localhost" || ip === null;
+}
+
+// Geolocalización del visitante a partir de las cabeceras edge de Vercel.
+function getGeo(req: NextRequest) {
+  const dec = (v: string | null) => (v ? decodeURIComponent(v) : null);
+  return {
+    pais: req.headers.get("x-vercel-ip-country"),
+    region: dec(req.headers.get("x-vercel-ip-country-region")),
+    ciudad: dec(req.headers.get("x-vercel-ip-city")),
+    userAgent: req.headers.get("user-agent"),
+  };
+}
+
 async function logAuthorized(req: NextRequest) {
   const ip = getClientIp(req);
   const path = req.nextUrl.pathname;
   try {
     const { logSecurityEvent } = await import("./lib/security");
-    await logSecurityEvent({ type: "admin_access", ip, path, details: "ok" });
+    await logSecurityEvent({ type: "admin_access", ip, path, details: "ok", ...getGeo(req) });
   } catch {
     // silencioso
   }
@@ -61,13 +77,24 @@ async function logAuthorized(req: NextRequest) {
 async function logUnauthorized(req: NextRequest, reason: string) {
   const ip = getClientIp(req);
   const path = req.nextUrl.pathname;
+
+  // "Soy yo": acceso local sin sesión (dev/servidor). No se registra como incidencia.
+  if (reason === "no_token" && esLocal(ip)) return;
+
   try {
     const { logSecurityEvent } = await import("./lib/security");
+    const esTampered = reason === "jwt_tampered";
+    // Un no_token es un bot/anónimo llamando a una puerta cerrada: se registra pero
+    // en "low" y sin aviso. Rol insuficiente (usuario logueado) y JWT manipulado sí avisan.
+    const severity = esTampered ? "critical" : reason === "no_token" ? "low" : "high";
     await logSecurityEvent({
-      type: reason === "jwt_tampered" ? "jwt_tampered" : "unauthorized_access",
+      type: esTampered ? "jwt_tampered" : "unauthorized_access",
       ip,
       path,
       details: reason,
+      severity,
+      notify: severity !== "low",
+      ...getGeo(req),
     });
   } catch {
     console.error(`[security] ${reason} — IP: ${ip} — ${path}`);

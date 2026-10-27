@@ -9,8 +9,28 @@ type SecurityEvent = {
   ip: string | null;
   path: string | null;
   details: string | null;
+  pais: string | null;
+  region: string | null;
+  ciudad: string | null;
+  user_agent: string | null;
   created_at: string;
 };
+
+// Código ISO de país (alpha-2) → emoji de bandera.
+function banderaDe(code: string | null): string {
+  if (!code || code.length !== 2) return "";
+  return String.fromCodePoint(...[...code.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
+}
+
+// Clasifica el origen a partir del User-Agent: navegador real vs bot/herramienta.
+function quienEs(ua: string | null): { etiqueta: string; esBot: boolean } {
+  if (!ua) return { etiqueta: "Sin navegador (bot)", esBot: true };
+  const u = ua.toLowerCase();
+  if (/bot|crawl|spider|curl|wget|python|scan|http|scrapy|go-http|java\//.test(u)) return { etiqueta: "Bot / herramienta", esBot: true };
+  if (/mobile|iphone|android/.test(u)) return { etiqueta: "Visitante (móvil)", esBot: false };
+  if (/mozilla|chrome|safari|firefox|edg/.test(u)) return { etiqueta: "Visitante (navegador)", esBot: false };
+  return { etiqueta: "Desconocido", esBot: true };
+}
 
 type Stats = {
   totalToday: number;
@@ -119,6 +139,8 @@ export function SeguridadManager() {
                 <th style={{ padding: "8px 12px" }}>Severidad</th>
                 <th style={{ padding: "8px 12px" }}>Tipo</th>
                 <th style={{ padding: "8px 12px" }}>IP</th>
+                <th style={{ padding: "8px 12px" }}>Ubicación</th>
+                <th style={{ padding: "8px 12px" }}>Quién</th>
                 <th style={{ padding: "8px 12px" }}>Ruta</th>
                 <th style={{ padding: "8px 12px" }}>Detalle</th>
               </tr>
@@ -146,6 +168,17 @@ export function SeguridadManager() {
                   </td>
                   <td style={{ padding: "8px 12px" }}>{EVENT_LABELS[ev.event_type] || ev.event_type}</td>
                   <td style={{ padding: "8px 12px", fontFamily: "monospace", fontSize: 12 }}>{ev.ip || "—"}</td>
+                  <td style={{ padding: "8px 12px", fontSize: 13, whiteSpace: "nowrap" }}>
+                    {[ev.ciudad, ev.region, ev.pais].filter(Boolean).length
+                      ? `${banderaDe(ev.pais)} ${[ev.ciudad, ev.region].filter(Boolean).join(", ") || ev.pais}`.trim()
+                      : "—"}
+                  </td>
+                  <td style={{ padding: "8px 12px", fontSize: 12 }} title={ev.user_agent || ""}>
+                    {(() => {
+                      const q = quienEs(ev.user_agent);
+                      return <span style={{ color: q.esBot ? "#64748b" : "#16a34a", fontWeight: 500 }}>{q.etiqueta}</span>;
+                    })()}
+                  </td>
                   <td style={{ padding: "8px 12px", fontFamily: "monospace", fontSize: 12 }}>{ev.path || "—"}</td>
                   <td style={{ padding: "8px 12px", maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis" }}>
                     {ev.details || "—"}

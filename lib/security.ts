@@ -39,13 +39,24 @@ async function ensureTable() {
   tableChecked = true;
 }
 
+export type GeoInfo = {
+  pais?: string | null;
+  region?: string | null;
+  ciudad?: string | null;
+  userAgent?: string | null;
+};
+
 export async function logSecurityEvent(params: {
   type: SecurityEventType;
   ip?: string | null;
   path?: string;
   details?: string;
-}) {
-  const severity = SEVERITY_MAP[params.type];
+  // Override de severidad (p. ej. un no_token anónimo baja a "low" para no saturar).
+  severity?: SecuritySeverity;
+  // Fuerza o silencia el aviso por Telegram; por defecto avisa en high/critical.
+  notify?: boolean;
+} & GeoInfo) {
+  const severity = params.severity ?? SEVERITY_MAP[params.type];
 
   try {
     await ensureTable();
@@ -56,18 +67,23 @@ export async function logSecurityEvent(params: {
       ip: params.ip || null,
       path: params.path || null,
       details: params.details?.slice(0, 500) || null,
+      pais: params.pais || null,
+      region: params.region || null,
+      ciudad: params.ciudad || null,
+      user_agent: params.userAgent?.slice(0, 500) || null,
     });
   } catch (e) {
     console.error("[security] Error guardando evento:", e);
   }
 
-  if (
-    (severity === "high" || severity === "critical") &&
-    TELEGRAM_CHAT_ID
-  ) {
-    sendTelegramAlert(params.type, severity, params.ip, params.path, params.details).catch((e) =>
-      console.error("[security] Error enviando alerta Telegram:", e)
-    );
+  const notify = params.notify ?? (severity === "high" || severity === "critical");
+  if (notify && TELEGRAM_CHAT_ID) {
+    sendTelegramAlert(params.type, severity, params.ip, params.path, params.details, {
+      pais: params.pais,
+      region: params.region,
+      ciudad: params.ciudad,
+      userAgent: params.userAgent,
+    }).catch((e) => console.error("[security] Error enviando alerta Telegram:", e));
   }
 }
 
@@ -76,13 +92,17 @@ async function sendTelegramAlert(
   severity: SecuritySeverity,
   ip?: string | null,
   path?: string,
-  details?: string
+  details?: string,
+  geo?: GeoInfo
 ) {
   const icon = severity === "critical" ? "🚨" : "⚠️";
+  const ubicacion = [geo?.ciudad, geo?.region, geo?.pais].filter(Boolean).join(", ");
   const text = [
     `${icon} ALERTA SEGURIDAD — ${severity.toUpperCase()}`,
     `Tipo: ${type}`,
     ip ? `IP: ${ip}` : null,
+    ubicacion ? `Ubicación: ${ubicacion}` : null,
+    geo?.userAgent ? `Dispositivo: ${geo.userAgent.slice(0, 120)}` : null,
     path ? `Ruta: ${path}` : null,
     details ? `Detalle: ${details}` : null,
     `Hora: ${new Date().toISOString()}`,
