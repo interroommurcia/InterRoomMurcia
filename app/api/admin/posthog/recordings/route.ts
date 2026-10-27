@@ -89,13 +89,16 @@ export async function GET(req: NextRequest) {
     //    o vio el exit intent en el período que cubren.
     const ids = rec.map((r) => r.id ?? r.session_id).filter(Boolean);
     const conversionsBySid = new Map<string, { converted: boolean; exitShown: boolean; exitAction?: string }>();
+    // Sesiones de visitantes marcados como internos (yo): se ocultan del listado.
+    const internosSids = new Set<string>();
     if (ids.length) {
       const idList = ids.map((id) => `'${id.replace(/'/g, "")}'`).join(",");
       const q = `
         SELECT properties.$session_id AS sid,
           countIf(event = 'venta_form_submit' OR event = 'venta_exit_intent_submit') AS converted,
           countIf(event = 'venta_exit_intent_shown') AS exit_shown,
-          anyIf(event, event IN ('venta_exit_intent_closed','venta_exit_intent_submit','venta_exit_intent_abandoned','venta_exit_intent_dwell_10s')) AS exit_action
+          anyIf(event, event IN ('venta_exit_intent_closed','venta_exit_intent_submit','venta_exit_intent_abandoned','venta_exit_intent_dwell_10s')) AS exit_action,
+          max(if(person.properties.es_interno = 'true', 1, 0)) AS interno
         FROM events
         WHERE properties.$session_id IN (${idList})
         GROUP BY sid
@@ -110,11 +113,13 @@ export async function GET(req: NextRequest) {
         if (hRes.ok) {
           const h = (await hRes.json()) as { results?: unknown[][] };
           for (const row of h.results ?? []) {
-            conversionsBySid.set(String(row[0]), {
+            const sid = String(row[0]);
+            conversionsBySid.set(sid, {
               converted: Number(row[1]) > 0,
               exitShown: Number(row[2]) > 0,
               exitAction: row[3] ? String(row[3]) : undefined,
             });
+            if (Number(row[4]) > 0) internosSids.add(sid);
           }
         }
       } catch {
@@ -148,6 +153,9 @@ export async function GET(req: NextRequest) {
         player_url: fmtPlayerUrl(sid),
       };
     });
+
+    // Oculta las sesiones de visitantes internos (marcadas con "No grabar mis visitas").
+    enriched = enriched.filter((r) => !internosSids.has(r.session_id));
 
     if (soloConvertidos) enriched = enriched.filter((r) => r.converted);
 

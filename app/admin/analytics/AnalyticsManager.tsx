@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
+import BotonInterno from "../../../components/BotonInterno";
 
 type PostHogData = {
   stats: { pageviews: number; visitors: number; sessions: number };
@@ -939,9 +940,12 @@ function RecordingsBlock() {
               </button>
             ))}
           </div>
-          <button onClick={load} disabled={loading} style={{ padding: "6px 12px", border: "1px solid #ddd", background: "#fff", borderRadius: 6, cursor: "pointer", fontSize: 12, marginLeft: "auto" }}>
-            {loading ? "Cargando…" : "↻ Recargar"}
-          </button>
+          <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+            <BotonInterno />
+            <button onClick={load} disabled={loading} style={{ padding: "6px 12px", border: "1px solid #ddd", background: "#fff", borderRadius: 6, cursor: "pointer", fontSize: 12 }}>
+              {loading ? "Cargando…" : "↻ Recargar"}
+            </button>
+          </div>
         </div>
       </div>
 

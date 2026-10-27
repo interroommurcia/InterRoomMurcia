@@ -14,6 +14,13 @@ const EXIT_INTENT_FLAG = "venta_exit_intent_shown_at";
 // como "siguiente página tras exit intent".
 const NEXT_PAGE_WINDOW_MS = 60_000;
 
+// Mismo literal que BotonInterno.INTERNO_FLAG. Si este dispositivo está
+// marcado como interno (yo), no grabamos la sesión.
+const INTERNO_FLAG = "ir_interno";
+function esInterno(): boolean {
+  try { return localStorage.getItem(INTERNO_FLAG) === "1"; } catch { return false; }
+}
+
 function PostHogPageview() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -46,9 +53,9 @@ function PostHogPageview() {
       /* no-op */
     }
 
-    // Pausa el session replay en el panel admin — no interesa grabar
-    // nuestras propias navegaciones ni datos sensibles del backoffice.
-    if (pathname.startsWith("/admin")) {
+    // Pausa el session replay en el panel admin o si este dispositivo está
+    // marcado como interno — no interesa grabar nuestras propias navegaciones.
+    if (pathname.startsWith("/admin") || esInterno()) {
       try { posthog.stopSessionRecording(); } catch {}
     } else {
       try { posthog.startSessionRecording(); } catch {}
@@ -73,9 +80,19 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
       // efecto de PostHogPageview volverá a encender la grabación al
       // salir del backoffice.
       disable_session_recording:
-        typeof window !== "undefined" && window.location.pathname.startsWith("/admin"),
+        typeof window !== "undefined" &&
+        (window.location.pathname.startsWith("/admin") || esInterno()),
       persistence: "localStorage",
     });
+
+    // Reaplica la marca de interno en cada carga (por si se limpió la
+    // persistencia): tagea los eventos y la persona para poder filtrarlos.
+    if (esInterno()) {
+      try {
+        posthog.register({ es_interno: "true" });
+        posthog.setPersonProperties({ es_interno: "true" });
+      } catch {}
+    }
   }, []);
 
   return (

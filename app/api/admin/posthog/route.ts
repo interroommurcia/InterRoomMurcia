@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
   }
 
   const adminFilter = excluirAdmin
-    ? `AND properties.$current_url NOT LIKE '%/admin%'`
+    ? `AND properties.$current_url NOT LIKE '%/admin%' AND coalesce(toString(person.properties.es_interno), '') != 'true'`
     : "";
 
   try {
