@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { PREFIJOS, validarTelefono } from "../lib/telefono";
 
 type Props = {
@@ -23,6 +24,8 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
   const [prefijo, setPrefijo] = useState("+34");
   const [telefono, setTelefono] = useState("");
   const [mensaje, setMensaje] = useState("");
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   function abrir(e: React.MouseEvent) {
     // En las tarjetas el botón va dentro de un <Link>: no navegar al abrir.
@@ -78,7 +81,7 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
     <>
       <button type="button" onClick={abrir} style={botonStyle}>Quiero Alquilar</button>
 
-      {abierto && (
+      {abierto && mounted && createPortal(
         <div
           onClick={cerrar}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
@@ -171,7 +174,8 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
               </form>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
