@@ -82,7 +82,7 @@ export default function FichaMedia({
                 src={url}
                 alt={`${titulo} — foto ${i + 1}`}
                 fill
-                sizes="(max-width: 640px) 48vw, 180px"
+                sizes="(max-width: 640px) 46vw, 200px"
                 style={{ objectFit: 'cover' }}
                 loading="lazy"
                 quality={60}

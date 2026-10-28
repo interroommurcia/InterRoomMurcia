@@ -4,7 +4,7 @@ import { FONT, Media } from "./shared";
 
 export function MediaGrid({ media, onDelete, pequenio }: { media: Media[]; onDelete: (id: string) => void; pequenio?: boolean }) {
   if (media.length === 0) return <div style={{ fontSize: 12, color: "#9ca3af", padding: "8px 0" }}>Sin archivos aún.</div>;
-  const size = pequenio ? 72 : 100;
+  const size = pequenio ? 96 : 128;
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
       {media.map((m) => (
@@ -24,7 +24,7 @@ export function MediaGrid({ media, onDelete, pequenio }: { media: Media[]; onDel
               type="button"
               onClick={() => onDelete(m.id)}
               title="Eliminar"
-              style={{ background: "rgba(255,255,255,0.95)", border: "none", borderRadius: 999, width: 22, height: 22, cursor: "pointer", color: "var(--orange)", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}
+              style={{ background: "#dc2626", border: "none", borderRadius: 999, width: 28, height: 28, cursor: "pointer", color: "#fff", fontSize: 18, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
             >×</button>
           </div>
         </div>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { pisoPorSlug, pisosPorZona, zonaPorSlug } from "../../../../lib/pisos";
-import { whatsappHref } from "../../../../lib/whatsapp";
+import { whatsappHref, WHATSAPP_NUMBER } from "../../../../lib/whatsapp";
 import FichaMedia from "../../../../components/FichaMedia";
 import PisoCard from "../../../../components/PisoCard";
 import QuieroAlquilar from "../../../../components/QuieroAlquilar";
@@ -79,6 +79,18 @@ export default async function PisoPage({ params }: { params: { zona: string; slu
               <div className="ficha-desc">
                 <h2>Descripción</h2>
                 <p>{piso.descripcion}</p>
+              </div>
+
+              {/* Llamada a la acción al final del texto, con teléfono visible */}
+              <div className="ficha-cta-inline">
+                <h2>{esCompraventa ? "¿Te interesa este activo?" : "¿Te interesa esta habitación?"}</h2>
+                <p>Llámanos o escríbenos por WhatsApp: te confirmamos disponibilidad, te enviamos vídeo y concertamos visita.</p>
+                <div className="ficha-cta-inline-actions">
+                  <a href={`tel:+${WHATSAPP_NUMBER}`} className="btn-primary">📞 613 096 518</a>
+                  <a href={whatsappHref(mensaje)} target="_blank" rel="noopener noreferrer" className="btn-whatsapp">
+                    Escribir por WhatsApp
+                  </a>
+                </div>
               </div>
             </div>
 

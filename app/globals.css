@@ -688,17 +688,48 @@ h1 em {
 }
 
 .ficha-gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   gap: 8px;
+  padding-bottom: 6px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ficha-gallery-item {
   position: relative;
-  width: 100%;
+  flex: 0 0 auto;
+  width: 200px;
   aspect-ratio: 4 / 3;
   border-radius: 12px;
   overflow: hidden;
+  scroll-snap-align: start;
+}
+
+.ficha-cta-inline {
+  margin-top: 28px;
+  padding: 22px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: var(--orange-light, #fff7ed);
+}
+.ficha-cta-inline h2 {
+  margin: 0 0 6px;
+}
+.ficha-cta-inline p {
+  margin: 0 0 14px;
+  color: #4b5563;
+}
+.ficha-cta-inline-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ficha-cta-inline-actions a {
+  flex: 1 1 auto;
+  text-align: center;
+  justify-content: center;
 }
 
 .ficha-video {
@@ -4399,8 +4430,10 @@ button {
     height: 260px;
   }
   .ficha-gallery {
-    grid-template-columns: repeat(2, 1fr);
     gap: 6px;
+  }
+  .ficha-gallery-item {
+    width: 46vw;
   }
   .ficha-facts {
     gap: 18px;
