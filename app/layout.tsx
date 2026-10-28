@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Montserrat } from "next/font/google";
 import { PostHogProvider } from "../components/PostHogProvider";
 import ChatWidget from "../components/ChatWidget";
@@ -34,6 +35,7 @@ export const metadata: Metadata = {
   },
   other: {
     "mobile-web-app-capable": "yes",
+    "google-adsense-account": "ca-pub-6067028856246284",
   },
 };
 
@@ -74,6 +76,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body className={montserrat.variable}>
+        <Script
+          id="adsbygoogle-init"
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6067028856246284"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(businessJsonLd) }} />
         <PostHogProvider>
           <header>
