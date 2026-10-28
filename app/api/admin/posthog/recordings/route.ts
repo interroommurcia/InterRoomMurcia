@@ -85,7 +85,10 @@ export async function GET(req: NextRequest) {
     }
     const list = (await listRes.json()) as { results?: Recording[]; has_next?: boolean };
     const rec = list.results ?? [];
-    const hasNext = Boolean(list.has_next);
+    // PostHog no siempre devuelve has_next; además el filtrado posterior (visitas
+    // internas, convertidos) puede dejar la página corta. Si PostHog devolvió una
+    // página llena, asumimos que hay más para que "Cargar más" nunca se bloquee.
+    const hasNext = Boolean(list.has_next) || rec.length >= limit;
 
     // 2. Cruzar con eventos custom: para cada sesión miramos si convirtió
     //    o vio el exit intent en el período que cubren.
