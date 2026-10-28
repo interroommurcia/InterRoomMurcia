@@ -85,7 +85,7 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
         >
           <div
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            style={{ background: "#fff", borderRadius: 14, padding: 20, width: "100%", maxWidth: 420, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
+            style={{ background: "#fff", borderRadius: 14, padding: 20, width: "100%", maxWidth: 420, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
               <strong style={{ fontSize: 16, color: "#111827" }}>Quiero alquilar</strong>
@@ -96,7 +96,9 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
             {enviado ? (
               <p style={{ color: "#16a34a", fontWeight: 600, margin: "12px 0" }}>¡Recibido! Te contactamos enseguida. 🙌</p>
             ) : (
-              <form onSubmit={enviar} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <form onSubmit={enviar} style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: 0, flex: 1 }}>
+                {/* Campos (scrollables si la pantalla es baja) */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, overflowY: "auto", minHeight: 0, flex: "1 1 auto", paddingRight: 2 }}>
                 {/* Individual vs grupo */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <label style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", border: `2px solid ${tipo === "individual" ? "var(--orange)" : "#e5e7eb"}`, borderRadius: 10, cursor: "pointer", fontSize: 14 }}>
@@ -157,11 +159,15 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
                     style={{ width: "100%", marginTop: 4, padding: "10px 12px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 14, resize: "vertical" }}
                   />
                 </div>
+                </div>
 
-                <button type="submit" disabled={enviando} style={{ padding: "12px 16px", borderRadius: 10, border: "none", background: "var(--orange)", color: "#fff", fontSize: 15, fontWeight: 700, cursor: enviando ? "wait" : "pointer" }}>
-                  {enviando ? "Enviando…" : "Enviar"}
-                </button>
-                {errorMsg && <p style={{ color: "#dc2626", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
+                {/* Footer siempre visible con el botón de enviar */}
+                <div style={{ flex: "0 0 auto", paddingTop: 12, marginTop: 4, borderTop: "1px solid #f1f5f9" }}>
+                  <button type="submit" disabled={enviando} style={{ width: "100%", padding: "13px 16px", borderRadius: 10, border: "none", background: "var(--orange)", color: "#fff", fontSize: 16, fontWeight: 700, cursor: enviando ? "wait" : "pointer" }}>
+                    {enviando ? "Enviando…" : "Enviar"}
+                  </button>
+                  {errorMsg && <p style={{ color: "#dc2626", fontSize: 13, margin: "8px 0 0" }}>{errorMsg}</p>}
+                </div>
               </form>
             )}
           </div>
