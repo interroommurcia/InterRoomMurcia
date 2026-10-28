@@ -524,9 +524,15 @@ export default function AnalyticsManager() {
 
           <div className="analytics-card">
             <h3>Dispositivos <HelpTip tip="Tipo de dispositivo usado: móvil, escritorio o tablet" /></h3>
-            {data.devices.map((d) => (
-              <div key={d.device} className="analytics-row"><span>{d.device}</span><span>{d.visits}</span></div>
-            ))}
+            {data.devices.map((d) => {
+              const es: Record<string, string> = {
+                Desktop: "💻 Escritorio", Mobile: "📱 Móvil", Tablet: "📲 Tablet",
+                Console: "🎮 Consola", Unknown: "Desconocido",
+              };
+              return (
+                <div key={d.device} className="analytics-row"><span>{es[d.device] || d.device}</span><span>{d.visits}</span></div>
+              );
+            })}
           </div>
 
           <div className="analytics-card">

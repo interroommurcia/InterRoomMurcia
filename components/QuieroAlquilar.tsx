@@ -154,7 +154,7 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
                   <textarea
                     value={mensaje}
                     onChange={(e) => setMensaje(e.target.value)}
-                    rows={3}
+                    rows={2}
                     placeholder="Soy grupo de Estudiante/Trabajador que viene por un periodo de…"
                     style={{ width: "100%", marginTop: 4, padding: "10px 12px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 14, resize: "vertical" }}
                   />
