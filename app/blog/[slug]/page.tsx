@@ -2,8 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getArticuloPorSlug, getArticulosRelacionados } from "../../../lib/articulos";
-import { linkifyParrafo, detectarZona, ctaZona } from "../../../lib/articuloEnhancer";
+import { linkifyParrafo, detectarZona, ctaZona, ctaIntencion } from "../../../lib/articuloEnhancer";
+import { recursosParaArticulo } from "../../../lib/afiliados";
+import RecursosAfiliados from "../../../components/RecursosAfiliados";
+import AdSlot from "../../../components/AdSlot";
+import Script from "next/script";
 import { ViewTracker, CtaLink } from "../ViewTracker";
+
+const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
+const ADSENSE_SLOT_ARTICULO = process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICULO;
 import { SectionVideo } from "../SectionVideo";
 import Reveal from "../../../components/Reveal";
 import { SITE_URL } from "../../../lib/site";
@@ -32,6 +39,11 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
   if (!art) return notFound();
 
   const relacionados = await getArticulosRelacionados(art.slug, 3);
+
+  // Monetización por intención del artículo (texto base para detectarla).
+  const textoIntencion = `${art.keyword ?? ""} ${art.h1} ${art.intro}`;
+  const ctaFinal = ctaIntencion(textoIntencion);
+  const recursos = recursosParaArticulo(textoIntencion, 4);
 
   const fecha = new Date(art.createdAt).toLocaleDateString("es-ES", {
     day: "numeric",
@@ -88,6 +100,14 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
   return (
     <section className={`section article article-${art.template}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      {ADSENSE_CLIENT && (
+        <Script
+          async
+          strategy="afterInteractive"
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+          crossOrigin="anonymous"
+        />
+      )}
       <ViewTracker slug={art.slug} />
       <div className="wrap article-wrap">
         <nav className="article-breadcrumb" aria-label="Breadcrumb">
@@ -121,31 +141,37 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
           const zonaCta = detectarZona(`${section.h2} ${section.content}`);
           const cta = zonaCta ? ctaZona(zonaCta) : null;
           return (
-            <Block className="article-section" key={i}>
-              <h2>{section.h2}</h2>
-              {section.image && <img className="article-section-img" src={section.image} alt={section.h2} loading="lazy" />}
-              {section.video && <SectionVideo url={section.video} />}
-              {section.highlight && <blockquote className="article-highlight">{section.highlight}</blockquote>}
-              {section.content.split("\n\n").map((para, j) => (
-                <p key={j} dangerouslySetInnerHTML={{ __html: linkifyParrafo(para) }} />
-              ))}
-              {cta && (
-                <Link href={cta.href} className="article-section-cta">
-                  {cta.label}
-                </Link>
-              )}
-            </Block>
+            <div key={i}>
+              <Block className="article-section">
+                <h2>{section.h2}</h2>
+                {section.image && <img className="article-section-img" src={section.image} alt={section.h2} loading="lazy" />}
+                {section.video && <SectionVideo url={section.video} />}
+                {section.highlight && <blockquote className="article-highlight">{section.highlight}</blockquote>}
+                {section.content.split("\n\n").map((para, j) => (
+                  <p key={j} dangerouslySetInnerHTML={{ __html: linkifyParrafo(para) }} />
+                ))}
+                {cta && (
+                  <Link href={cta.href} className="article-section-cta">
+                    {cta.label}
+                  </Link>
+                )}
+              </Block>
+              {/* Anuncio in-content tras la 2ª sección (mejor rendimiento/UX). */}
+              {i === 1 && <AdSlot slot={ADSENSE_SLOT_ARTICULO} />}
+            </div>
           );
         })}
 
         {art.cta && (
           <Block className="article-cta">
             <p>{art.cta}</p>
-            <CtaLink slug={art.slug} href="/contacto" className="btn-primary">
-              Contactar con InterRoom Murcia -&gt;
+            <CtaLink slug={art.slug} href={ctaFinal.href} className="btn-primary">
+              {ctaFinal.label}
             </CtaLink>
           </Block>
         )}
+
+        <RecursosAfiliados recursos={recursos} />
 
         {art.faq.length > 0 && (
           <div className="article-faq">

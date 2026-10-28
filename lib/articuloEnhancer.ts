@@ -41,6 +41,20 @@ export function ctaZona(zona: "ucam" | "umu" | "upct") {
   };
 }
 
+// CTA final según la intención del artículo: los de propietario/inversor van a
+// la calculadora de rentabilidad (lead de más valor); el resto, al catálogo
+// (inquilinos). Es la palanca de conversión principal del blog.
+export type CtaIntencion = { href: string; label: string };
+
+const PROPIETARIO_RE = /propietari|inversor|invertir|rentabilidad|rentar|vender|venta de|plusval|gestion(a|ar)? (tu |el )?alquiler|saca(r|le)? partido|alquilar tu piso/i;
+
+export function ctaIntencion(texto: string): CtaIntencion {
+  if (PROPIETARIO_RE.test(texto)) {
+    return { href: "/rentabilidad", label: "Calcula cuánto renta tu piso con InterRoom Murcia →" };
+  }
+  return { href: "/catalogo", label: "Ver habitaciones disponibles en Murcia →" };
+}
+
 function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
