@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { zonas, getPisos } from "../../lib/pisos";
+import { zonas, getPisos, resumenZona } from "../../lib/pisos";
 import Reveal, { RevealStagger } from "../../components/Reveal";
 import PisoCard from "../../components/PisoCard";
 import ProximamenteCard from "../../components/ProximamenteCard";
@@ -42,15 +42,14 @@ export default async function CatalogoPage() {
           </Reveal>
           <RevealStagger className="zone-row" stagger={100}>
             {zonas.map((zona) => {
-              const enZona = pisos.filter((p) => p.zona === zona.slug);
-              const desde = enZona.length > 0 ? Math.min(...enZona.map((p) => p.precioMes)) : 0;
+              const { totalHabitaciones, desde } = resumenZona(pisos, zona.slug);
               return (
                 <Link href={`/habitaciones/${zona.slug}`} className="zone-card" key={zona.slug}>
                   <div className="zone-pin">{zona.barrio}</div>
                   <h3>{zona.universidad}</h3>
                   <p>{zona.intro}</p>
                   <div className="zone-meta">
-                    <span className="zone-count">{enZona.length} habitaciones</span>
+                    <span className="zone-count">{totalHabitaciones} habitaci{totalHabitaciones === 1 ? "ón" : "ones"}</span>
                     {desde > 0 && <span className="zone-price">desde {desde}€</span>}
                   </div>
                 </Link>

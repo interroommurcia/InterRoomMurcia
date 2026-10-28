@@ -204,6 +204,35 @@ export function zonaPorSlug(slug: string) {
   return zonas.find((z) => z.slug === slug);
 }
 
+// Resumen de una zona para las tarjetas: nº REAL de habitaciones y precio
+// "desde". Un piso publicado completo con N habitaciones cuenta como N y su
+// precio por habitación es precio/N; uno publicado por habitaciones cuenta 1 y
+// su precio ya es por habitación. "desde" = la opción más barata.
+// Total de habitaciones reales de alquiler (completo cuenta sus N habitaciones).
+export function contarHabitaciones(pisos: Piso[]): number {
+  return pisos
+    .filter((p) => p.categoria !== "compraventa")
+    .reduce((s, p) => {
+      const n = p.numHabitaciones && p.numHabitaciones > 0 ? p.numHabitaciones : 1;
+      return s + (p.tipoAlquiler === "completo" ? n : 1);
+    }, 0);
+}
+
+export function resumenZona(pisos: Piso[], zonaSlug: string): { totalHabitaciones: number; desde: number } {
+  const enZona = pisos.filter((p) => p.zona === zonaSlug && p.categoria !== "compraventa");
+  let total = 0;
+  let desde = Infinity;
+  for (const p of enZona) {
+    const n = p.numHabitaciones && p.numHabitaciones > 0 ? p.numHabitaciones : 1;
+    const esCompleto = p.tipoAlquiler === "completo";
+    const habs = esCompleto ? n : 1;
+    const porHab = esCompleto ? p.precioMes / n : p.precioMes;
+    total += habs;
+    if (porHab > 0 && porHab < desde) desde = porHab;
+  }
+  return { totalHabitaciones: total, desde: desde === Infinity ? 0 : Math.round(desde) };
+}
+
 export async function catalogSnapshot(): Promise<string> {
   const pisos = await getPisos();
   return zonas
