@@ -132,6 +132,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
               <div className="wrap site-footer-bottom">
                 <span>© {new Date().getFullYear()} InterRoom Murcia</span>
+                <a href="/privacidad">Privacidad y cookies</a>
                 <span>Habitaciones para estudiantes</span>
               </div>
             </div>
