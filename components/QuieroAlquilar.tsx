@@ -27,12 +27,6 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // El botón Enviar solo se activa con un teléfono válido para el prefijo.
-  const telValido = (() => {
-    const d = telefono.replace(/\D/g, "");
-    return d.length > 0 && !validarTelefono(prefijo, d);
-  })();
-
   function abrir(e: React.MouseEvent) {
     // En las tarjetas el botón va dentro de un <Link>: no navegar al abrir.
     e.preventDefault();
@@ -159,7 +153,7 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
                 </div>
 
                 <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Escríbenos</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Escríbenos <span style={{ fontWeight: 400, color: "#9ca3af" }}>(opcional)</span></label>
                   <textarea
                     value={mensaje}
                     onChange={(e) => setMensaje(e.target.value)}
@@ -174,23 +168,21 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
                 <div style={{ flex: "0 0 auto", paddingTop: 12, marginTop: 4, borderTop: "1px solid #f1f5f9" }}>
                   <button
                     type="submit"
-                    disabled={enviando || !telValido}
-                    title={telValido ? "" : "Introduce un teléfono válido"}
+                    disabled={enviando}
                     style={{
                       width: "100%",
                       padding: "13px 16px",
                       borderRadius: 10,
                       border: "none",
-                      background: telValido ? "var(--orange)" : "#f7c9a6",
-                      color: telValido ? "#fff" : "#fff",
-                      opacity: telValido ? 1 : 0.9,
+                      background: "var(--orange)",
+                      color: "#fff",
                       fontSize: 16,
                       fontWeight: 700,
-                      cursor: enviando ? "wait" : telValido ? "pointer" : "not-allowed",
+                      cursor: enviando ? "wait" : "pointer",
                       transition: "background 0.2s ease",
                     }}
                   >
-                    {enviando ? "Enviando…" : telValido ? "Enviar" : "Introduce tu teléfono"}
+                    {enviando ? "Enviando…" : "Enviar"}
                   </button>
                   {errorMsg && <p style={{ color: "#dc2626", fontSize: 13, margin: "8px 0 0" }}>{errorMsg}</p>}
                 </div>

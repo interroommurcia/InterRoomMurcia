@@ -268,6 +268,34 @@ export async function GET(req: NextRequest) {
       GROUP BY engine ORDER BY visits DESC
     `);
 
+    // Páginas de entrada del tráfico de IA: por qué URL entran los visitantes
+    // de ChatGPT/Perplexity/etc. = lo que la IA está recomendando/citando.
+    // Se calcula por sesión (primera URL del motor) y se agrupa por motor+path.
+    const rAiLandings = await hogql(`
+      SELECT engine, landing, count() AS sessions
+      FROM (
+        SELECT
+          properties.$session_id AS sid,
+          argMin(replaceRegexpOne(replaceRegexpOne(properties.$current_url, 'https?://[^/]+', ''), '\\?.*$', ''), timestamp) AS landing,
+          argMin(
+            multiIf(
+              lower(coalesce(properties.utm_source, '')) LIKE '%chatgpt%' OR lower(coalesce(properties.utm_source, '')) LIKE '%openai%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%chatgpt%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%openai%', 'ChatGPT',
+              lower(coalesce(properties.utm_source, '')) LIKE '%perplexity%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%perplexity%', 'Perplexity',
+              lower(coalesce(properties.utm_source, '')) LIKE '%gemini%' OR lower(coalesce(properties.utm_source, '')) LIKE '%bard%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%gemini%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%bard%', 'Gemini',
+              lower(coalesce(properties.utm_source, '')) LIKE '%claude%' OR lower(coalesce(properties.utm_source, '')) LIKE '%anthropic%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%claude%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%anthropic%', 'Claude',
+              lower(coalesce(properties.utm_source, '')) LIKE '%copilot%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%copilot%', 'Copilot',
+              lower(coalesce(properties.utm_source, '')) LIKE '%grok%' OR lower(coalesce(properties.utm_source, '')) LIKE '%x.ai%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%grok%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%x.ai%', 'Grok',
+              ''
+            ), timestamp
+          ) AS engine
+        FROM events
+        WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
+        GROUP BY sid
+      )
+      WHERE engine != ''
+      GROUP BY engine, landing ORDER BY sessions DESC LIMIT 40
+    `);
+
     // A dónde van después de ver el exit intent (si no convirtieron)
     const rVentaNextPage = await hogql(`
       SELECT properties.next_page AS next_page, count() AS visits
@@ -300,6 +328,7 @@ export async function GET(req: NextRequest) {
         const pageviews = Number(s[0]) || 0;
         return { engines, totalVisits, pct: pageviews > 0 ? Math.round((totalVisits / pageviews) * 100) : 0 };
       })(),
+      aiLandings: (rAiLandings.results ?? []).map((r: unknown[]) => ({ engine: String(r[0]), path: String(r[1] || "/"), sessions: Number(r[2]) })),
       countries: (rCountries.results ?? []).map((r: unknown[]) => ({ country: String(r[0]), visits: Number(r[1]), visitors: Number(r[2]) })),
       realtime: (rRealtime.results ?? []).map((r: unknown[]) => ({ path: String(r[0] || "/"), active: Number(r[1]) })),
       clicks: (rClicks.results ?? []).map((r: unknown[]) => ({ element: String(r[0]), clicks: Number(r[1]), users: Number(r[2]) })),

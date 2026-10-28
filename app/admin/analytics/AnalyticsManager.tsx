@@ -15,6 +15,7 @@ type PostHogData = {
   entryPages: { path: string; sessions: number }[];
   utmSources: { source: string; medium: string; visits: number; visitors: number }[];
   aiTraffic?: { engines: { engine: string; visits: number; visitors: number }[]; totalVisits: number; pct: number };
+  aiLandings?: { engine: string; path: string; sessions: number }[];
   countries: { country: string; visits: number; visitors: number }[];
   realtime: { path: string; active: number }[];
   clicks: { element: string; clicks: number; users: number }[];
@@ -573,6 +574,39 @@ export default function AnalyticsManager() {
                   <span>{u.medium ? `${u.source} / ${u.medium}` : u.source}</span><span>{u.visits}</span>
                 </div>
               ))
+            )}
+          </div>
+          <div className="analytics-card">
+            <h3>Páginas que recomienda la IA <HelpTip tip="Las URLs por las que entran los visitantes que llegan desde ChatGPT, Perplexity, etc. Es lo más cercano a saber qué está recomendando la IA: no se puede ver la conversación, pero sí a qué página te enlaza" /></h3>
+            <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 8px" }}>Por dónde entran los que vienen de ChatGPT, Perplexity…</p>
+            {!data.aiLandings || data.aiLandings.length === 0 ? (
+              <p className="admin-empty">Sin tráfico de IA en el periodo.</p>
+            ) : (
+              (() => {
+                const porMotor = new Map<string, { path: string; sessions: number }[]>();
+                for (const l of data.aiLandings) {
+                  const arr = porMotor.get(l.engine) ?? [];
+                  arr.push({ path: l.path, sessions: l.sessions });
+                  porMotor.set(l.engine, arr);
+                }
+                const prettify = (raw: string) => {
+                  const clean = (raw || "/").split("?")[0] || "/";
+                  return clean === "/" ? "Inicio"
+                    : clean.startsWith("/habitaciones/") ? clean.replace("/habitaciones/", "Zona: ").replace(/\//g, " → ")
+                    : clean.startsWith("/blog/") ? clean.replace("/blog/", "Blog: ")
+                    : clean.replace(/^\//, "").replace(/\//g, " → ") || clean;
+                };
+                return Array.from(porMotor.entries()).map(([motor, paths]) => (
+                  <div key={motor} style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", margin: "4px 0 2px" }}>
+                      {motor} <span style={{ fontWeight: 400, color: "#9ca3af" }}>({paths.reduce((s, p) => s + p.sessions, 0)})</span>
+                    </div>
+                    {paths.map((p) => (
+                      <div key={p.path} className="analytics-row"><span title={p.path}>{prettify(p.path)}</span><span>{p.sessions}</span></div>
+                    ))}
+                  </div>
+                ));
+              })()
             )}
           </div>
         </div>
