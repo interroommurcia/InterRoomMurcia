@@ -27,6 +27,12 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  // El botón Enviar solo se activa con un teléfono válido para el prefijo.
+  const telValido = (() => {
+    const d = telefono.replace(/\D/g, "");
+    return d.length > 0 && !validarTelefono(prefijo, d);
+  })();
+
   function abrir(e: React.MouseEvent) {
     // En las tarjetas el botón va dentro de un <Link>: no navegar al abrir.
     e.preventDefault();
@@ -166,8 +172,25 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
 
                 {/* Footer siempre visible con el botón de enviar */}
                 <div style={{ flex: "0 0 auto", paddingTop: 12, marginTop: 4, borderTop: "1px solid #f1f5f9" }}>
-                  <button type="submit" disabled={enviando} style={{ width: "100%", padding: "13px 16px", borderRadius: 10, border: "none", background: "var(--orange)", color: "#fff", fontSize: 16, fontWeight: 700, cursor: enviando ? "wait" : "pointer" }}>
-                    {enviando ? "Enviando…" : "Enviar"}
+                  <button
+                    type="submit"
+                    disabled={enviando || !telValido}
+                    title={telValido ? "" : "Introduce un teléfono válido"}
+                    style={{
+                      width: "100%",
+                      padding: "13px 16px",
+                      borderRadius: 10,
+                      border: "none",
+                      background: telValido ? "var(--orange)" : "#f7c9a6",
+                      color: telValido ? "#fff" : "#fff",
+                      opacity: telValido ? 1 : 0.9,
+                      fontSize: 16,
+                      fontWeight: 700,
+                      cursor: enviando ? "wait" : telValido ? "pointer" : "not-allowed",
+                      transition: "background 0.2s ease",
+                    }}
+                  >
+                    {enviando ? "Enviando…" : telValido ? "Enviar" : "Introduce tu teléfono"}
                   </button>
                   {errorMsg && <p style={{ color: "#dc2626", fontSize: 13, margin: "8px 0 0" }}>{errorMsg}</p>}
                 </div>
