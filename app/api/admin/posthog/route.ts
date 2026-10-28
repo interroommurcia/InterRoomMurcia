@@ -276,7 +276,7 @@ export async function GET(req: NextRequest) {
       FROM (
         SELECT
           properties.$session_id AS sid,
-          argMin(replaceRegexpOne(replaceRegexpOne(properties.$current_url, 'https?://[^/]+', ''), '\\?.*$', ''), timestamp) AS landing,
+          argMin(replaceRegexpOne(replaceRegexpOne(properties.$current_url, 'https?://[^/]+', ''), '[?].*$', ''), timestamp) AS landing,
           argMin(
             multiIf(
               lower(coalesce(properties.utm_source, '')) LIKE '%chatgpt%' OR lower(coalesce(properties.utm_source, '')) LIKE '%openai%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%chatgpt%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%openai%', 'ChatGPT',
