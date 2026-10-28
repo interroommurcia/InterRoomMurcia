@@ -16,9 +16,10 @@ export default function PrivacidadPage() {
 
         <h2>1. Responsable del tratamiento</h2>
         <p>
-          El responsable del tratamiento de tus datos es <strong>InterRoom Murcia</strong>, con
-          actividad de gestión y alquiler de habitaciones y viviendas en Murcia y Cartagena (España).
-          Puedes contactar con nosotros en{" "}
+          El responsable del tratamiento de tus datos es <strong>InterRoom Murcia</strong> (NIF
+          48742897D), con domicilio en Calle Poeta Andrés Bolarín 4, 06 P2 D, Murcia (España), con
+          actividad de gestión y alquiler de habitaciones y viviendas en Murcia y Cartagena. Puedes
+          contactar con nosotros en{" "}
           <a href="mailto:interroommurcia@gmail.com">interroommurcia@gmail.com</a> o en el teléfono
           +34&nbsp;613&nbsp;096&nbsp;518.
         </p>
