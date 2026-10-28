@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Montserrat } from "next/font/google";
 import { PostHogProvider } from "../components/PostHogProvider";
 import ChatWidget from "../components/ChatWidget";
@@ -75,6 +76,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body className={montserrat.variable}>
+        {/* Loader de AdSense en todas las páginas: necesario para verificar el
+            dominio y activar la cuenta. NO muestra anuncios por sí solo; estos
+            solo aparecen donde hay un <AdSlot> (artículos del blog), salvo que
+            actives "Anuncios automáticos" en el panel de AdSense. */}
+        <Script
+          id="adsbygoogle-init"
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6067028856246284"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(businessJsonLd) }} />
         <PostHogProvider>
           <header>

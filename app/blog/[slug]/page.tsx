@@ -6,10 +6,8 @@ import { linkifyParrafo, detectarZona, ctaZona, ctaIntencion } from "../../../li
 import { recursosParaArticulo } from "../../../lib/afiliados";
 import RecursosAfiliados from "../../../components/RecursosAfiliados";
 import AdSlot from "../../../components/AdSlot";
-import Script from "next/script";
 import { ViewTracker, CtaLink } from "../ViewTracker";
 
-const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 const ADSENSE_SLOT_ARTICULO = process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICULO;
 import { SectionVideo } from "../SectionVideo";
 import Reveal from "../../../components/Reveal";
@@ -100,14 +98,6 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
   return (
     <section className={`section article article-${art.template}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      {ADSENSE_CLIENT && (
-        <Script
-          async
-          strategy="afterInteractive"
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
-          crossOrigin="anonymous"
-        />
-      )}
       <ViewTracker slug={art.slug} />
       <div className="wrap article-wrap">
         <nav className="article-breadcrumb" aria-label="Breadcrumb">
