@@ -41,6 +41,7 @@ export function PublicarBloque({
   const [barrio, setBarrio] = useState(sugerencias.direccion);
   const [descripcion, setDescripcion] = useState(sugerencias.descripcion || "");
   const [esProximamente, setEsProximamente] = useState(false);
+  const [incluirFotosHab, setIncluirFotosHab] = useState(true);
   const [publicando, setPublicando] = useState(false);
   const [resultado, setResultado] = useState<{ url: string } | { urls: string[] } | null>(null);
 
@@ -55,6 +56,7 @@ export function PublicarBloque({
 
   const fotosGenerales = (media ?? []).filter((m) => m.tipo === "foto" && !m.habitacion_id);
   const todasFotos = (media ?? []).filter((m) => m.tipo === "foto");
+  const fotosHabitaciones = (media ?? []).filter((m) => m.tipo === "foto" && m.habitacion_id);
 
   function updateHab(idx: number, patch: Partial<HabForm>) {
     setHabForms((prev) => prev.map((h, i) => (i === idx ? { ...h, ...patch } : h)));
@@ -130,7 +132,7 @@ export function PublicarBloque({
     const res = await fetch(`/api/admin/propiedades/${propiedadId}/publicar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ habitacion_id: habitacionId, zona, titulo, barrio, precio_mes: precio, descripcion, categoria, estado: esProximamente ? "proximamente" : "disponible", num_habitaciones: numHabitaciones ?? null, num_banos: numBanos ?? null }),
+      body: JSON.stringify({ habitacion_id: habitacionId, zona, titulo, barrio, precio_mes: precio, descripcion, categoria, estado: esProximamente ? "proximamente" : "disponible", num_habitaciones: numHabitaciones ?? null, num_banos: numBanos ?? null, incluir_complementarias: incluirFotosHab }),
     });
     const data = await res.json();
     setPublicando(false);
@@ -282,6 +284,13 @@ export function PublicarBloque({
                 Total: {habForms.reduce((s, h) => s + (h.precio || 0), 0)} €/mes
               </div>
             </div>
+          )}
+
+          {!(categoria === "alquiler" && modoAlquiler === "habitaciones" && showModoAlquiler) && fotosHabitaciones.length > 0 && (
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#374151", cursor: "pointer", marginTop: 12, padding: "8px 10px", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8 }}>
+              <input type="checkbox" checked={incluirFotosHab} onChange={(e) => setIncluirFotosHab(e.target.checked)} />
+              Incluir también las <b>fotos de las habitaciones</b> ({fotosHabitaciones.length}) en el anuncio
+            </label>
           )}
 
           <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>

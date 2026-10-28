@@ -23,7 +23,10 @@ function slugify(s: string) {
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
-  const { habitacion_id, zona, slug, titulo, barrio, precio_mes, metros, descripcion, categoria: catRaw, foto_ids, tipo_alquiler, num_habitaciones, num_banos, estado: estadoRaw } = body as Record<string, unknown>;
+  const { habitacion_id, zona, slug, titulo, barrio, precio_mes, metros, descripcion, categoria: catRaw, foto_ids, tipo_alquiler, num_habitaciones, num_banos, estado: estadoRaw, incluir_complementarias } = body as Record<string, unknown>;
+  // Por defecto sí se añaden las fotos complementarias (habitaciones al publicar
+  // el piso completo, o generales al publicar una habitación). Se puede desactivar.
+  const incluirExtra = incluir_complementarias !== false;
   const categoria = catRaw === "compraventa" ? "compraventa" : "alquiler";
   const tipoAlquiler = tipo_alquiler === "habitacion" ? "habitacion" : "completo";
   const zonaStr = String(zona || "") || slugify(String(barrio || "general")).slice(0, 40) || "general";
@@ -50,10 +53,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Fotos complementarias: al publicar una habitación se añaden las generales;
   // al publicar el piso completo se añaden las de todas las habitaciones.
   let extraFotos: { id: string }[] | null = null;
-  if (habitacion_id || (Array.isArray(foto_ids) && foto_ids.length > 0)) {
+  if (incluirExtra && (habitacion_id || (Array.isArray(foto_ids) && foto_ids.length > 0))) {
     const { data } = await admin.from("propiedad_media").select("id").eq("propiedad_id", params.id).eq("tipo", "foto").is("habitacion_id", null).order("orden");
     extraFotos = data;
-  } else {
+  } else if (incluirExtra) {
     const { data } = await admin.from("propiedad_media").select("id").eq("propiedad_id", params.id).eq("tipo", "foto").not("habitacion_id", "is", null).order("orden");
     extraFotos = data;
   }
