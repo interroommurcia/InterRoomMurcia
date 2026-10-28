@@ -13,7 +13,7 @@ const ITEMS: NavItem[] = [
   { href: "/admin", label: "Home", roles: ["admin", "comercial"] },
   { href: "/admin/propiedades", label: "Propiedades", roles: ["admin", "comercial"] },
   { href: "/admin/leads", label: "Leads", roles: ["admin", "comercial"] },
-  { href: "/admin/leads-alquiler", label: "Leads Alquiler", roles: ["admin", "comercial"] },
+  { href: "/admin/leads-alquiler", label: "Leads casas", roles: ["admin", "comercial"] },
   { href: "/admin/pisos", label: "Catálogo", roles: ["admin", "comercial"] },
   { href: "/admin/clientes", label: "Clientes", roles: ["admin", "comercial"] },
   { href: "/admin/mesa-trabajo", label: "Mesa de trabajo", roles: ["admin", "comercial"] },

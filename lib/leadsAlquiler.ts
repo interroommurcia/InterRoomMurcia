@@ -16,6 +16,7 @@ export type LeadAlquiler = {
   created_at: string;
   contactado?: boolean;
   contactado_at?: string | null;
+  piso_eliminado_at?: string | null;
 };
 
 async function ensureTable() {
@@ -35,6 +36,8 @@ async function ensureTable() {
       contactado_at TIMESTAMPTZ
     );
   `;
+  // Marca de cuándo se eliminó el piso del catálogo (para borrar el lead a los 10 días).
+  await sql`ALTER TABLE leads_alquiler ADD COLUMN IF NOT EXISTS piso_eliminado_at TIMESTAMPTZ;`;
 }
 
 export async function crearLeadAlquiler(data: {
@@ -78,7 +81,7 @@ export async function listarLeadsAlquiler(): Promise<LeadAlquiler[]> {
   await ensureTable();
   const { rows } = await sql<LeadAlquiler>`
     SELECT id, piso_id, piso_titulo, piso_categoria, nombre, telefono, tipo_interes, grupo_tam, mensaje,
-           created_at, contactado, contactado_at
+           created_at, contactado, contactado_at, piso_eliminado_at
     FROM leads_alquiler
     ORDER BY contactado ASC, (tipo_interes = 'grupo') DESC, created_at DESC;
   `;

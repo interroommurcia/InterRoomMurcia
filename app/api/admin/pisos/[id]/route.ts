@@ -93,6 +93,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const affected = await borrarPiso(params.id);
+    if (affected > 0) {
+      // Marca los leads de esta casa para borrarse a los 10 días (no se pierden de golpe).
+      const { marcarLeadsPisoEliminado } = await import("../../../../../lib/leadsCasas");
+      marcarLeadsPisoEliminado(params.id).catch(() => {});
+    }
     if (affected === 0) {
       return NextResponse.json(
         { error: "El servidor devolvió 0 filas borradas. Revisa RLS o el SUPABASE_SERVICE_ROLE_KEY en Vercel — probablemente el service role no está aplicándose." },

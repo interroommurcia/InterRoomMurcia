@@ -13,6 +13,7 @@ export type LeadProximamente = {
   migrated_lead_id?: number | null;
   contactado?: boolean;
   contactado_at?: string | null;
+  piso_eliminado_at?: string | null;
 };
 
 async function ensureTable() {
@@ -33,6 +34,8 @@ async function ensureTable() {
   // Gestión manual: marcar un lead como ya contactado por el equipo comercial.
   await sql`ALTER TABLE leads_proximamente ADD COLUMN IF NOT EXISTS contactado BOOLEAN NOT NULL DEFAULT false;`;
   await sql`ALTER TABLE leads_proximamente ADD COLUMN IF NOT EXISTS contactado_at TIMESTAMPTZ;`;
+  // Marca de cuándo se eliminó el piso del catálogo (para borrar el lead a los 10 días).
+  await sql`ALTER TABLE leads_proximamente ADD COLUMN IF NOT EXISTS piso_eliminado_at TIMESTAMPTZ;`;
 }
 
 export async function crearLeadProximamente(data: {
@@ -71,7 +74,7 @@ export async function listarLeadsProximamente(): Promise<LeadProximamente[]> {
   await ensureTable();
   const { rows } = await sql<LeadProximamente>`
     SELECT id, piso_id, piso_titulo, piso_categoria, nombre, telefono, created_at,
-           migrated_at, migrated_lead_id, contactado, contactado_at
+           migrated_at, migrated_lead_id, contactado, contactado_at, piso_eliminado_at
     FROM leads_proximamente
     ORDER BY contactado ASC, piso_titulo, created_at DESC;
   `;
