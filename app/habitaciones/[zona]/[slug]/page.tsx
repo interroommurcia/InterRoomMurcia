@@ -8,6 +8,10 @@ import PisoCard from "../../../../components/PisoCard";
 import QuieroAlquilar from "../../../../components/QuieroAlquilar";
 import DescripcionPlegable from "../../../../components/DescripcionPlegable";
 
+// Siempre fresco: un anuncio recién publicado se ve al instante y nunca se
+// cachea un 404 de cuando el dato aún no estaba disponible.
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({
   params,
 }: {
