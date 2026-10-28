@@ -245,6 +245,29 @@ export async function GET(req: NextRequest) {
       `),
       ]);
 
+    // Tráfico de IA generativa (ChatGPT, Perplexity, etc.). Clasifica por
+    // utm_source Y por referring_domain, porque la IA suele llegar SIN referrer
+    // y solo con utm_source=chatgpt.com — si miras solo el referrer, cuentas 0%.
+    const rAi = await hogql(`
+      SELECT engine, count() AS visits, uniqExact(distinct_id) AS visitors
+      FROM (
+        SELECT distinct_id,
+          multiIf(
+            lower(coalesce(properties.utm_source, '')) LIKE '%chatgpt%' OR lower(coalesce(properties.utm_source, '')) LIKE '%openai%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%chatgpt%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%openai%', 'ChatGPT',
+            lower(coalesce(properties.utm_source, '')) LIKE '%perplexity%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%perplexity%', 'Perplexity',
+            lower(coalesce(properties.utm_source, '')) LIKE '%gemini%' OR lower(coalesce(properties.utm_source, '')) LIKE '%bard%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%gemini%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%bard%', 'Gemini',
+            lower(coalesce(properties.utm_source, '')) LIKE '%claude%' OR lower(coalesce(properties.utm_source, '')) LIKE '%anthropic%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%claude%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%anthropic%', 'Claude',
+            lower(coalesce(properties.utm_source, '')) LIKE '%copilot%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%copilot%', 'Copilot',
+            lower(coalesce(properties.utm_source, '')) LIKE '%grok%' OR lower(coalesce(properties.utm_source, '')) LIKE '%x.ai%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%grok%' OR lower(coalesce(properties.$referring_domain, '')) LIKE '%x.ai%', 'Grok',
+            ''
+          ) AS engine
+        FROM events
+        WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
+      )
+      WHERE engine != ''
+      GROUP BY engine ORDER BY visits DESC
+    `);
+
     // A dónde van después de ver el exit intent (si no convirtieron)
     const rVentaNextPage = await hogql(`
       SELECT properties.next_page AS next_page, count() AS visits
@@ -271,6 +294,12 @@ export async function GET(req: NextRequest) {
       devices: (rDevices.results ?? []).map((r: unknown[]) => ({ device: String(r[0]), visits: Number(r[1]), visitors: Number(r[2]) })),
       entryPages: (rEntry.results ?? []).map((r: unknown[]) => ({ path: String(r[0] || "/"), sessions: Number(r[1]) })),
       utmSources: (rUtm.results ?? []).map((r: unknown[]) => ({ source: String(r[0]), medium: String(r[1]), visits: Number(r[2]), visitors: Number(r[3]) })),
+      aiTraffic: (() => {
+        const engines = (rAi.results ?? []).map((r: unknown[]) => ({ engine: String(r[0]), visits: Number(r[1]), visitors: Number(r[2]) }));
+        const totalVisits = engines.reduce((sum: number, e: { visits: number }) => sum + e.visits, 0);
+        const pageviews = Number(s[0]) || 0;
+        return { engines, totalVisits, pct: pageviews > 0 ? Math.round((totalVisits / pageviews) * 100) : 0 };
+      })(),
       countries: (rCountries.results ?? []).map((r: unknown[]) => ({ country: String(r[0]), visits: Number(r[1]), visitors: Number(r[2]) })),
       realtime: (rRealtime.results ?? []).map((r: unknown[]) => ({ path: String(r[0] || "/"), active: Number(r[1]) })),
       clicks: (rClicks.results ?? []).map((r: unknown[]) => ({ element: String(r[0]), clicks: Number(r[1]), users: Number(r[2]) })),

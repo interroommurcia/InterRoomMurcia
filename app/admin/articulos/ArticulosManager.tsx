@@ -124,6 +124,7 @@ type ArticleStats = {
   newVisitors: number;
   bots: number;
   sources: Bucket[];
+  aiTraffic?: { total: number; pct: number; byEngine: Bucket[] };
   devices: Bucket[];
   countries: Bucket[];
   cities: Bucket[];
@@ -669,6 +670,7 @@ function ArticleStatsPanel({ stats, views, ctaClicks }: { stats?: ArticleStats; 
         <StatKpi label="Nuevos" value={stats.newVisitors.toLocaleString("es-ES")} />
         <StatKpi label="Recurrentes" value={stats.returning.toLocaleString("es-ES")} />
         <StatKpi label="Clicks CTA" value={`${ctaClicks} · ${ctr}%`} />
+        {stats.aiTraffic && <StatKpi label="Tráfico de IA" value={`${stats.aiTraffic.total} · ${stats.aiTraffic.pct}%`} />}
         {stats.bots > 0 && <StatKpi label="Bots / IA crawlers" value={stats.bots.toLocaleString("es-ES")} tone="muted" />}
       </div>
 
@@ -694,6 +696,9 @@ function ArticleStatsPanel({ stats, views, ctaClicks }: { stats?: ArticleStats; 
 
       <div className="articulos-stats-grid">
         <StatBlock title="De dónde vienen" rows={stats.sources} empty="Sin datos" />
+        {stats.aiTraffic && stats.aiTraffic.byEngine.length > 0 && (
+          <StatBlock title="Motores de IA" rows={stats.aiTraffic.byEngine} empty="Sin tráfico de IA" />
+        )}
         <StatBlock title="Dispositivo" rows={stats.devices} empty="Sin datos" />
         <StatBlock title="País" rows={stats.countries} empty="Sin datos" />
         <StatBlock title="Ciudad" rows={stats.cities} empty="Sin datos" />

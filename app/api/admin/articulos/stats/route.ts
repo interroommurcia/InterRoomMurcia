@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "../../../../../lib/supabaseAdmin";
+import { clasificarFuente, esFuenteIA } from "../../../../../lib/fuenteTrafico";
 
 const SOURCE_LABELS: Record<string, string> = {
   chatgpt: "ChatGPT",
@@ -144,7 +145,20 @@ export async function GET(req: NextRequest) {
     if (r.visitor_hash && !firstSeen.has(r.visitor_hash)) firstSeen.set(r.visitor_hash, r.created_at);
   }
 
-  const sources = topBy(humanRows, "source", SOURCE_LABELS, 15);
+  // Reclasifica la fuente usando utm_source (la IA llega sin referrer, así que
+  // el `source` guardado antiguo la metía en "directo"). Esto corrige también el
+  // histórico porque utm_source sí se guardó.
+  const rowsSrc = humanRows.map((r) => ({ ...r, source: clasificarFuente(r.referrer, r.utm_source) }));
+
+  const sources = topBy(rowsSrc, "source", SOURCE_LABELS, 15);
+
+  // Desglose de tráfico de IA (ChatGPT, Perplexity, etc.).
+  const iaRows = rowsSrc.filter((r) => esFuenteIA(r.source));
+  const aiTraffic = {
+    total: iaRows.length,
+    pct: humanRows.length > 0 ? Math.round((iaRows.length / humanRows.length) * 100) : 0,
+    byEngine: topBy(iaRows, "source", SOURCE_LABELS, 8),
+  };
   const devices = topBy(humanRows, "device", DEVICE_LABELS, 4);
   const countries = topBy(humanRows, "country", COUNTRY_LABELS, 10);
   const cities = topBy(humanRows, "city", {}, 10);
@@ -183,6 +197,7 @@ export async function GET(req: NextRequest) {
     newVisitors: uniqueVisitors - returning,
     bots: botCount,
     sources,
+    aiTraffic,
     devices,
     countries,
     cities,

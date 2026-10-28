@@ -14,6 +14,7 @@ type PostHogData = {
   devices: { device: string; visits: number; visitors: number }[];
   entryPages: { path: string; sessions: number }[];
   utmSources: { source: string; medium: string; visits: number; visitors: number }[];
+  aiTraffic?: { engines: { engine: string; visits: number; visitors: number }[]; totalVisits: number; pct: number };
   countries: { country: string; visits: number; visitors: number }[];
   realtime: { path: string; active: number }[];
   clicks: { element: string; clicks: number; users: number }[];
@@ -625,6 +626,7 @@ export default function AnalyticsManager() {
           sources={data.sources}
           referrers={data.referrers}
           utmSources={data.utmSources}
+          aiTraffic={data.aiTraffic}
           totalVisitors={data.stats.visitors}
           totalVisits={data.stats.sessions}
           leads30d={leads?.total30d ?? null}
@@ -1192,6 +1194,7 @@ function EstrategiaBlock({
   sources,
   referrers,
   utmSources,
+  aiTraffic,
   totalVisitors,
   totalVisits,
   leads30d,
@@ -1199,6 +1202,7 @@ function EstrategiaBlock({
   sources: { source: string; visits: number; visitors: number }[];
   referrers: { url: string; visits: number; visitors: number }[];
   utmSources: { source: string; medium: string; visits: number; visitors: number }[];
+  aiTraffic?: { engines: { engine: string; visits: number; visitors: number }[]; totalVisits: number; pct: number };
   totalVisitors: number;
   totalVisits: number;
   leads30d: number | null;
@@ -1233,9 +1237,23 @@ function EstrategiaBlock({
       const canal = clasificarSource(u.source, u.medium);
       if (canal === "sem") hayPaid = true;
     }
-    const iaBreakdown = Array.from(iaMap.entries()).sort((a, b) => b[1] - a[1]);
+    let iaBreakdown = Array.from(iaMap.entries()).sort((a, b) => b[1] - a[1]);
+
+    // GEO autoritativo: el desglose de IA de la API cuenta por utm_source (así
+    // llega ChatGPT, sin referrer). Reemplaza el cálculo por referrer, que daba 0%.
+    if (aiTraffic && aiTraffic.engines.length) {
+      iaBreakdown = aiTraffic.engines.map((e) => [e.engine, e.visits] as [string, number]);
+      const prevGeo = porCanal.geo.visits;
+      porCanal.geo.visits = aiTraffic.totalVisits;
+      porCanal.geo.visitors = aiTraffic.engines.reduce((s, e) => s + e.visitors, 0);
+      porCanal.geo.items = aiTraffic.engines.map((e) => ({ label: e.engine, visits: e.visits }));
+      // Esas visitas de IA (utm_source sin referrer) caían en "directo": réstalas
+      // para que el reparto no las cuente dos veces.
+      const mover = Math.max(0, aiTraffic.totalVisits - prevGeo);
+      porCanal.direct.visits = Math.max(0, porCanal.direct.visits - mover);
+    }
     return { porCanal, iaBreakdown, hayPaid };
-  }, [sources, referrers, utmSources]);
+  }, [sources, referrers, utmSources, aiTraffic]);
 
   const canalesOrdenados = (Object.entries(porCanal) as [CanalKey, (typeof porCanal)[CanalKey]][])
     .sort((a, b) => b[1].visits - a[1].visits);

@@ -2,32 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { getSupabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { getClientIp } from "../../../../lib/security";
+import { clasificarFuente } from "../../../../lib/fuenteTrafico";
 
 const trackRateMap = new Map<string, { count: number; resetAt: number }>();
 const TRACK_LIMIT = 100;
 const TRACK_WINDOW = 60 * 60 * 1000;
-
-function detectSource(referrer: string | null): string {
-  if (!referrer) return "direct";
-  const r = referrer.toLowerCase();
-  if (r.includes("chatgpt.com") || r.includes("chat.openai.com") || r.includes("openai.com")) return "chatgpt";
-  if (r.includes("claude.ai") || r.includes("anthropic.com")) return "claude";
-  if (r.includes("grok.") || r.includes("x.ai")) return "grok";
-  if (r.includes("gemini.google.com") || r.includes("bard.google.com")) return "gemini";
-  if (r.includes("perplexity.ai")) return "perplexity";
-  if (r.includes("copilot.microsoft.com") || r.includes("bing.com")) return "copilot";
-  if (r.includes("duckduckgo.com")) return "duckduckgo";
-  if (r.includes("google.")) return "google";
-  if (r.includes("instagram.com")) return "instagram";
-  if (r.includes("linkedin.com")) return "linkedin";
-  if (r.includes("twitter.com") || r.includes("t.co") || r.includes("x.com")) return "x";
-  if (r.includes("facebook.com") || r.includes("fb.")) return "facebook";
-  if (r.includes("whatsapp.com") || r.includes("wa.me")) return "whatsapp";
-  if (r.includes("tiktok.com")) return "tiktok";
-  if (r.includes("youtube.com") || r.includes("youtu.be")) return "youtube";
-  if (r.includes("reddit.com")) return "reddit";
-  return "other";
-}
 
 function detectDevice(ua: string | null): "mobile" | "tablet" | "desktop" | "bot" {
   if (!ua) return "desktop";
@@ -94,8 +73,9 @@ export async function POST(req: NextRequest) {
     const ua = req.headers.get("user-agent");
     const device = detectDevice(ua);
     // Ignorar bots en el conteo visible pero guardarlos marcados por si queremos verlos.
-    const source = detectSource(referrer ?? null);
     const { path, utm_source, utm_medium, utm_campaign } = parseUrl(url ?? null);
+    // Clasifica por utm_source primero (la IA llega sin referrer) y luego referrer.
+    const source = clasificarFuente(referrer ?? null, utm_source);
     const country = req.headers.get("x-vercel-ip-country") || null;
     const city = req.headers.get("x-vercel-ip-city")
       ? decodeURIComponent(req.headers.get("x-vercel-ip-city") as string)
