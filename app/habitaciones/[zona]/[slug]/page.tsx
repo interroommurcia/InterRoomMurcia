@@ -6,6 +6,7 @@ import { whatsappHref, WHATSAPP_NUMBER } from "../../../../lib/whatsapp";
 import FichaMedia from "../../../../components/FichaMedia";
 import PisoCard from "../../../../components/PisoCard";
 import QuieroAlquilar from "../../../../components/QuieroAlquilar";
+import DescripcionPlegable from "../../../../components/DescripcionPlegable";
 
 export async function generateMetadata({
   params,
@@ -78,7 +79,7 @@ export default async function PisoPage({ params }: { params: { zona: string; slu
 
               <div className="ficha-desc">
                 <h2>Descripción</h2>
-                <p>{piso.descripcion}</p>
+                <DescripcionPlegable texto={piso.descripcion} />
               </div>
 
               {/* Llamada a la acción al final del texto, con teléfono visible */}
