@@ -43,6 +43,7 @@ export function PublicarBloque({
   const [esProximamente, setEsProximamente] = useState(false);
   const [incluirFotosHab, setIncluirFotosHab] = useState(true);
   const [publicando, setPublicando] = useState(false);
+  const [generandoDesc, setGenerandoDesc] = useState(false);
   const [resultado, setResultado] = useState<{ url: string } | { urls: string[] } | null>(null);
 
   const [habForms, setHabForms] = useState<HabForm[]>(() =>
@@ -70,6 +71,31 @@ export function PublicarBloque({
         return { ...h, fotoIds: has ? h.fotoIds.filter((id) => id !== fotoId) : [...h.fotoIds, fotoId] };
       })
     );
+  }
+
+  async function generarDescripcion() {
+    setGenerandoDesc(true);
+    try {
+      const res = await fetch(`/api/admin/propiedades/${propiedadId}/descripcion-ia`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo,
+          barrio,
+          precio,
+          categoria,
+          tipo_alquiler: modoAlquiler === "habitaciones" ? "habitacion" : "completo",
+          habitacion_id: habitacionId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || "No se pudo generar la descripción"); return; }
+      setDescripcion(data.descripcion);
+    } catch (e) {
+      alert("Error generando: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setGenerandoDesc(false);
+    }
   }
 
   async function publicar() {
@@ -219,9 +245,18 @@ export function PublicarBloque({
             )}
           </div>
           <div style={{ marginTop: 10 }}>
-            <Field label="Descripción">
-              <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={4} style={{ ...inputStyle, resize: "vertical", minHeight: 80 }} placeholder="Describe la propiedad para el anuncio…" />
-            </Field>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <label style={{ fontSize: 12, color: "#6b7280", fontWeight: 500 }}>Descripción</label>
+              <button
+                type="button"
+                onClick={generarDescripcion}
+                disabled={generandoDesc}
+                style={{ padding: "5px 12px", borderRadius: 6, border: "1px solid var(--orange)", background: generandoDesc ? "#fff7ed" : "#fff", color: "var(--orange)", cursor: generandoDesc ? "wait" : "pointer", fontSize: 12, fontWeight: 600, fontFamily: FONT }}
+              >
+                {generandoDesc ? "Generando…" : (descripcion.trim() ? "✨ Regenerar con IA" : "✨ Generar con IA")}
+              </button>
+            </div>
+            <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical", minHeight: 120 }} placeholder="Escribe la descripción o pulsa 'Generar con IA'…" />
           </div>
 
           {categoria === "alquiler" && modoAlquiler === "habitaciones" && showModoAlquiler && (
