@@ -9,6 +9,7 @@ import { getSupabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { clasificarFuente } from "../../../../lib/fuenteTrafico";
 
 const PRENSA_PREFIX = "__prensa__";
+const LINK_PREFIX = "__link__";
 
 const SOURCE_LABELS: Record<string, string> = {
   chatgpt: "ChatGPT", claude: "Claude", grok: "Grok", gemini: "Gemini",
@@ -38,7 +39,22 @@ type Row = {
   utm_source: string | null;
   visitor_hash: string | null;
   created_at: string;
+  path: string | null;
 };
+
+/** Acorta una URL a algo legible: dominio + inicio de la ruta. */
+function hrefCorto(href: string): string {
+  try {
+    const u = new URL(href);
+    const host = u.hostname.replace(/^www\./, "");
+    const p = (u.pathname + u.search).replace(/\/$/, "");
+    const esPropio = host.includes("interroommurcia") || host.includes("inter-room-murcia");
+    const base = esPropio ? (p || "/") : host + p;
+    return base.length > 48 ? base.slice(0, 47) + "…" : base;
+  } catch {
+    return href.length > 48 ? href.slice(0, 47) + "…" : href;
+  }
+}
 
 function esDominioPropio(host: string): boolean {
   const h = host.replace(/^www\./, "");
@@ -93,7 +109,7 @@ export async function GET() {
   const [viewsRes, artsRes] = await Promise.all([
     supabaseAdmin
       .from("articulos_views")
-      .select("slug, source, device, country, referrer, utm_source, visitor_hash, created_at")
+      .select("slug, source, device, country, referrer, utm_source, visitor_hash, created_at, path")
       .order("created_at", { ascending: false })
       .limit(20000),
     supabaseAdmin
@@ -106,10 +122,34 @@ export async function GET() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const arts = (artsRes.data ?? []) as any[];
 
-  // Separa clics de notas de prensa (slug sintético) del resto.
+  // Separa los slugs sintéticos (notas de prensa y clics de enlace) del resto.
   const prensaRows = allRows.filter((r) => r.slug.startsWith(PRENSA_PREFIX));
-  const viewRows = allRows.filter((r) => !r.slug.startsWith(PRENSA_PREFIX));
+  const linkRows = allRows.filter((r) => r.slug.startsWith(LINK_PREFIX));
+  const viewRows = allRows.filter((r) => !r.slug.startsWith(PRENSA_PREFIX) && !r.slug.startsWith(LINK_PREFIX));
   const humanRows = viewRows.filter((r) => r.device !== "bot");
+
+  // Desglose de clics por enlace, agrupado por artículo y destino.
+  const linksByArticle: Record<string, { href: string; label: string; text: string; clicks: number }[]> = {};
+  {
+    const porArt = new Map<string, Map<string, { text: string; clicks: number }>>();
+    for (const r of linkRows) {
+      const artSlug = r.slug.slice(LINK_PREFIX.length);
+      const href = r.path || "";
+      if (!href) continue;
+      let dest = porArt.get(artSlug);
+      if (!dest) { dest = new Map(); porArt.set(artSlug, dest); }
+      const cur = dest.get(href) ?? { text: r.referrer || "", clicks: 0 };
+      cur.clicks++;
+      if (!cur.text && r.referrer) cur.text = r.referrer;
+      dest.set(href, cur);
+    }
+    for (const [artSlug, dest] of porArt) {
+      linksByArticle[artSlug] = Array.from(dest.entries())
+        .map(([href, v]) => ({ href, label: hrefCorto(href), text: v.text, clicks: v.clicks }))
+        .sort((a, b) => b.clicks - a.clicks);
+    }
+  }
+  const linkClicksTotal = linkRows.length;
 
   // Únicos / recurrentes por visitor_hash.
   const hashCounts = new Map<string, number>();
@@ -164,9 +204,14 @@ export async function GET() {
       newVisitors: unique - returning,
       bots: viewRows.length - humanRows.length,
       ctaClicks: ctaClicksTotal,
+      linkClicks: linkClicksTotal,
       articles: topArticles.length,
     },
-    topArticles,
+    topArticles: topArticles.map((a) => ({
+      ...a,
+      linkClicks: (linksByArticle[a.slug] ?? []).reduce((s, l) => s + l.clicks, 0),
+    })),
+    linksByArticle,
     entradas: topBy(entradasMap, {}, 12),
     devices: topBy(devicesMap, DEVICE_LABELS, 5),
     countries: topBy(countriesMap, COUNTRY_LABELS, 10),

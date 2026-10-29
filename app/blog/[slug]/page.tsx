@@ -7,6 +7,7 @@ import { recursosParaArticulo } from "../../../lib/afiliados";
 import RecursosAfiliados from "../../../components/RecursosAfiliados";
 import AdSlot from "../../../components/AdSlot";
 import { ViewTracker, CtaLink } from "../ViewTracker";
+import ArticleLinkTracker from "../ArticleLinkTracker";
 
 const ADSENSE_SLOT_ARTICULO = process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICULO;
 import { SectionVideo } from "../SectionVideo";
@@ -99,6 +100,7 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
     <section className={`section article article-${art.template}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <ViewTracker slug={art.slug} />
+      <ArticleLinkTracker slug={art.slug} />
       <div className="wrap article-wrap">
         <nav className="article-breadcrumb" aria-label="Breadcrumb">
           <Link href="/">Inicio</Link> · <Link href="/blog">Blog</Link> · <span>{art.h1}</span>

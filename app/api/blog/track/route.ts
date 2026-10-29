@@ -57,17 +57,39 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { slug, event, referrer, url } = body as {
+  const { slug, event, referrer, url, href, text } = body as {
     slug?: string;
     event?: string;
     referrer?: string | null;
     url?: string | null;
+    href?: string | null;
+    text?: string | null;
   };
-  if (!slug || !event || !["view", "cta_click", "prensa_click"].includes(event)) {
+  if (!slug || !event || !["view", "cta_click", "prensa_click", "link_click"].includes(event)) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
   const supabaseAdmin = getSupabaseAdmin();
+
+  // Clic en un enlace concreto del artículo: se guarda con slug sintético
+  // (__link__<slug>), el destino en `path` y el texto del enlace en `referrer`.
+  // No toca el contador agregado del artículo.
+  if (event === "link_click") {
+    if (!href) return NextResponse.json({ ok: false }, { status: 400 });
+    const ua = req.headers.get("user-agent");
+    const device = detectDevice(ua);
+    if (device === "bot") return NextResponse.json({ ok: true });
+    await supabaseAdmin.from("articulos_views").insert({
+      slug: `__link__${slug}`,
+      source: "link",
+      referrer: (text || "").slice(0, 120) || null,
+      device,
+      country: req.headers.get("x-vercel-ip-country") || null,
+      path: href.slice(0, 400),
+      visitor_hash: visitorHash(ip, ua),
+    });
+    return NextResponse.json({ ok: true });
+  }
 
   if (event === "view" || event === "prensa_click") {
     const ua = req.headers.get("user-agent");

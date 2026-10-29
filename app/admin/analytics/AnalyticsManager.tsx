@@ -888,8 +888,9 @@ function FunnelStep({ label, count, base, highlight }: { label: string; count: n
 // ─────────────────────────────────────────────────────────────────
 
 type BlogStats = {
-  totals: { views: number; unique: number; returning: number; newVisitors: number; bots: number; ctaClicks: number; articles: number };
-  topArticles: { slug: string; title: string; views: number; ctaClicks: number; ctr: number }[];
+  totals: { views: number; unique: number; returning: number; newVisitors: number; bots: number; ctaClicks: number; linkClicks: number; articles: number };
+  topArticles: { slug: string; title: string; views: number; ctaClicks: number; ctr: number; linkClicks: number }[];
+  linksByArticle: Record<string, { href: string; label: string; text: string; clicks: number }[]>;
   entradas: { key: string; label: string; count: number; pct: number }[];
   devices: { key: string; label: string; count: number; pct: number }[];
   countries: { key: string; label: string; count: number; pct: number }[];
@@ -900,6 +901,7 @@ type BlogStats = {
 function BlogBlock() {
   const [stats, setStats] = useState<BlogStats | null>(null);
   const [error, setError] = useState("");
+  const [openArt, setOpenArt] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/blog-stats")
@@ -930,7 +932,7 @@ function BlogBlock() {
           { value: t.views.toLocaleString(), label: "Visitas a artículos", tip: "Total de lecturas de artículos (sin bots) en el histórico registrado" },
           { value: t.unique.toLocaleString(), label: "Lectores únicos", tip: "Personas distintas que han leído algún artículo" },
           { value: t.returning.toLocaleString(), label: "Lectores que vuelven", tip: "Lectores que han visitado el blog más de una vez" },
-          { value: t.ctaClicks.toLocaleString(), label: "Clics en enlaces", tip: "Veces que han pulsado los enlaces/CTA mencionados dentro de los artículos" },
+          { value: t.linkClicks.toLocaleString(), label: "Clics en enlaces", tip: "Veces que han pulsado los enlaces mencionados dentro de los artículos. Pulsa un artículo en el ranking para ver el desglose por enlace. Se cuenta desde que se activó este seguimiento" },
           { value: String(t.articles), label: "Artículos con visitas", tip: "Número de artículos que han recibido al menos una visita" },
           { value: prensaTotal.toLocaleString(), label: "Clics notas de prensa", tip: "Clics en las tarjetas de 'Nos han visto en' (prensa/TV) del blog" },
         ].map((s) => (
@@ -944,26 +946,52 @@ function BlogBlock() {
       <div className="analytics-grid">
         {/* Artículos más leídos */}
         <div className="analytics-card">
-          <h3>Artículos más leídos <HelpTip tip="Ranking por número de visitas. 'Clics' = enlaces pulsados dentro del artículo; CTR = clics ÷ visitas" /></h3>
+          <h3>Artículos más leídos <HelpTip tip="Ranking por número de visitas. 👁 visitas · 🔗 clics en enlaces del artículo. Pulsa un artículo para ver qué enlaces concretos han pulsado" /></h3>
           {stats.topArticles.length === 0 ? (
             <p className="admin-empty">Sin datos.</p>
           ) : (
-            stats.topArticles.map((a) => (
-              <div key={a.slug} style={{ margin: "8px 0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, gap: 8 }}>
-                  <a href={`/blog/${a.slug}`} target="_blank" rel="noopener noreferrer" title={a.title}
-                     style={{ color: "#111827", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {a.title}
-                  </a>
-                  <span style={{ flex: "0 0 auto", color: "#6b7280", fontVariantNumeric: "tabular-nums" }}>
-                    {a.views} 👁 · {a.ctaClicks} 🔗 {a.views > 0 && `· ${a.ctr}%`}
-                  </span>
+            stats.topArticles.map((a) => {
+              const links = stats.linksByArticle[a.slug] ?? [];
+              const abierto = openArt === a.slug;
+              const maxLink = Math.max(1, ...links.map((l) => l.clicks));
+              return (
+                <div key={a.slug} style={{ margin: "8px 0" }}>
+                  <div
+                    onClick={() => links.length > 0 && setOpenArt(abierto ? null : a.slug)}
+                    style={{ display: "flex", justifyContent: "space-between", fontSize: 13, gap: 8, cursor: links.length > 0 ? "pointer" : "default" }}
+                  >
+                    <span title={a.title} style={{ color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {links.length > 0 && <span style={{ marginRight: 4, fontSize: "0.7rem", color: "#9ca3af" }}>{abierto ? "▼" : "▶"}</span>}
+                      {a.title}
+                    </span>
+                    <span style={{ flex: "0 0 auto", color: "#6b7280", fontVariantNumeric: "tabular-nums" }}>
+                      {a.views} 👁 · {a.linkClicks} 🔗 {a.views > 0 && `· ${a.ctr}%`}
+                    </span>
+                  </div>
+                  <div style={{ height: 5, background: "#f3f4f6", borderRadius: 999, marginTop: 3 }}>
+                    <div style={{ width: `${Math.round((a.views / maxArt) * 100)}%`, height: "100%", background: "var(--orange)", borderRadius: 999 }} />
+                  </div>
+                  {abierto && links.length > 0 && (
+                    <div style={{ margin: "6px 0 10px", paddingLeft: 12, borderLeft: "2px solid #f1f5f9" }}>
+                      {links.map((l) => (
+                        <div key={l.href} style={{ margin: "5px 0" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, gap: 8 }}>
+                            <a href={l.href} target="_blank" rel="noopener noreferrer" title={`${l.text || ""}\n${l.href}`}
+                               style={{ color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {l.text ? `${l.text} — ` : ""}<span style={{ color: "#9ca3af" }}>{l.label}</span>
+                            </a>
+                            <span style={{ flex: "0 0 auto", color: "#6b7280" }}>{l.clicks}</span>
+                          </div>
+                          <div style={{ height: 4, background: "#f3f4f6", borderRadius: 999, marginTop: 2 }}>
+                            <div style={{ width: `${Math.round((l.clicks / maxLink) * 100)}%`, height: "100%", background: "#f59e0b", borderRadius: 999 }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div style={{ height: 5, background: "#f3f4f6", borderRadius: 999, marginTop: 3 }}>
-                  <div style={{ width: `${Math.round((a.views / maxArt) * 100)}%`, height: "100%", background: "var(--orange)", borderRadius: 999 }} />
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
