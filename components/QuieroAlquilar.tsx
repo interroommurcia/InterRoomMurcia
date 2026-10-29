@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { PREFIJOS, validarTelefono } from "../lib/telefono";
+import { validarTelefono } from "../lib/telefono";
+import PrefijoSelect from "./PrefijoSelect";
 
 type Props = {
   pisoId: string;
@@ -87,7 +88,7 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
         >
           <div
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onClick={(e) => { e.stopPropagation(); }}
             style={{ background: "#fff", borderRadius: 14, padding: 20, width: "100%", maxWidth: 420, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -133,14 +134,7 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
                 />
 
                 <div style={{ display: "flex", gap: 6 }}>
-                  <select
-                    value={prefijo}
-                    onChange={(e) => setPrefijo(e.target.value)}
-                    aria-label="Prefijo país"
-                    style={{ flex: "0 0 auto", padding: "8px 6px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", fontSize: 14 }}
-                  >
-                    {PREFIJOS.map((p) => (<option key={p.code} value={p.code}>{p.label}</option>))}
-                  </select>
+                  <PrefijoSelect value={prefijo} onChange={setPrefijo} />
                   <input
                     type="tel"
                     inputMode="numeric"

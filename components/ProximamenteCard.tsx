@@ -3,7 +3,8 @@
 import Image from "next/image";
 import { useState } from "react";
 import type { Piso } from "../lib/pisos";
-import { PREFIJOS, validarTelefono } from "../lib/telefono";
+import { validarTelefono } from "../lib/telefono";
+import PrefijoSelect from "./PrefijoSelect";
 
 export default function ProximamenteCard({ piso }: { piso: Piso }) {
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -104,16 +105,7 @@ export default function ProximamenteCard({ piso }: { piso: Piso }) {
               onChange={(e) => setNombre(e.target.value)}
             />
             <div style={{ display: "flex", gap: 6 }}>
-              <select
-                value={prefijo}
-                onChange={(e) => setPrefijo(e.target.value)}
-                style={{ flex: "0 0 auto", padding: "8px 6px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", fontSize: 14 }}
-                aria-label="Prefijo país"
-              >
-                {PREFIJOS.map((p) => (
-                  <option key={p.code} value={p.code}>{p.label}</option>
-                ))}
-              </select>
+              <PrefijoSelect value={prefijo} onChange={setPrefijo} />
               <input
                 type="tel"
                 inputMode="numeric"

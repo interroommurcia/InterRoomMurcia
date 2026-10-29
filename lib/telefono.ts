@@ -6,28 +6,29 @@
 export type Prefijo = {
   code: string;
   label: string;
+  iso: string; // ISO 3166-1 alpha-2 en minúsculas, para la bandera (flagcdn)
   minDigits: number;
   maxDigits: number;
   mobileHint?: RegExp;
 };
 
 export const PREFIJOS: Prefijo[] = [
-  { code: "+34", label: "🇪🇸 +34", minDigits: 9, maxDigits: 9, mobileHint: /^[6789]/ },
-  { code: "+351", label: "🇵🇹 +351", minDigits: 9, maxDigits: 9 },
-  { code: "+33", label: "🇫🇷 +33", minDigits: 9, maxDigits: 9 },
-  { code: "+39", label: "🇮🇹 +39", minDigits: 9, maxDigits: 11 },
-  { code: "+44", label: "🇬🇧 +44", minDigits: 10, maxDigits: 10 },
-  { code: "+49", label: "🇩🇪 +49", minDigits: 10, maxDigits: 11 },
-  { code: "+212", label: "🇲🇦 +212", minDigits: 9, maxDigits: 9 },
-  { code: "+40", label: "🇷🇴 +40", minDigits: 9, maxDigits: 9 },
-  { code: "+380", label: "🇺🇦 +380", minDigits: 9, maxDigits: 9 },
-  { code: "+1", label: "🇺🇸 +1", minDigits: 10, maxDigits: 10 },
-  { code: "+52", label: "🇲🇽 +52", minDigits: 10, maxDigits: 10 },
-  { code: "+54", label: "🇦🇷 +54", minDigits: 10, maxDigits: 11 },
-  { code: "+57", label: "🇨🇴 +57", minDigits: 10, maxDigits: 10 },
-  { code: "+58", label: "🇻🇪 +58", minDigits: 10, maxDigits: 10 },
-  { code: "+51", label: "🇵🇪 +51", minDigits: 9, maxDigits: 9 },
-  { code: "+593", label: "🇪🇨 +593", minDigits: 9, maxDigits: 9 },
+  { code: "+34", label: "🇪🇸 +34", iso: "es", minDigits: 9, maxDigits: 9, mobileHint: /^[6789]/ },
+  { code: "+351", label: "🇵🇹 +351", iso: "pt", minDigits: 9, maxDigits: 9 },
+  { code: "+33", label: "🇫🇷 +33", iso: "fr", minDigits: 9, maxDigits: 9 },
+  { code: "+39", label: "🇮🇹 +39", iso: "it", minDigits: 9, maxDigits: 11 },
+  { code: "+44", label: "🇬🇧 +44", iso: "gb", minDigits: 10, maxDigits: 10 },
+  { code: "+49", label: "🇩🇪 +49", iso: "de", minDigits: 10, maxDigits: 11 },
+  { code: "+212", label: "🇲🇦 +212", iso: "ma", minDigits: 9, maxDigits: 9 },
+  { code: "+40", label: "🇷🇴 +40", iso: "ro", minDigits: 9, maxDigits: 9 },
+  { code: "+380", label: "🇺🇦 +380", iso: "ua", minDigits: 9, maxDigits: 9 },
+  { code: "+1", label: "🇺🇸 +1", iso: "us", minDigits: 10, maxDigits: 10 },
+  { code: "+52", label: "🇲🇽 +52", iso: "mx", minDigits: 10, maxDigits: 10 },
+  { code: "+54", label: "🇦🇷 +54", iso: "ar", minDigits: 10, maxDigits: 11 },
+  { code: "+57", label: "🇨🇴 +57", iso: "co", minDigits: 10, maxDigits: 10 },
+  { code: "+58", label: "🇻🇪 +58", iso: "ve", minDigits: 10, maxDigits: 10 },
+  { code: "+51", label: "🇵🇪 +51", iso: "pe", minDigits: 9, maxDigits: 9 },
+  { code: "+593", label: "🇪🇨 +593", iso: "ec", minDigits: 9, maxDigits: 9 },
 ];
 
 /** Devuelve un mensaje de error si el número no encaja con el prefijo, o null si es válido. */
