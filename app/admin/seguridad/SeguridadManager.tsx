@@ -118,8 +118,14 @@ export function SeguridadManager() {
             <div className="seg-stat-label">Amenazas graves</div>
           </div>
           <div className="seg-stat">
-            <div className={`seg-stat-value${events.length === 0 ? " is-zero" : ""}`} style={{ color: stats.highToday > 0 ? "var(--seg-red)" : undefined }}>
-              {stats.highToday > 0 ? "ALERTA" : "SEGURO"}
+            <div className={`seg-stat-value${new Set(events.map((e) => e.ip).filter(Boolean)).size === 0 ? " is-zero" : ""}`}>
+              {String(new Set(events.map((e) => e.ip).filter(Boolean)).size).padStart(2, "0")}
+            </div>
+            <div className="seg-stat-label">IPs distintas (vista)</div>
+          </div>
+          <div className={`seg-stat${stats.highToday > 0 ? " seg-stat--alert" : ""}`}>
+            <div className="seg-stat-value" style={{ color: stats.highToday > 0 ? "var(--seg-red)" : "var(--seg-green)", fontSize: 26 }}>
+              {stats.highToday > 0 ? "⚠ ALERTA" : "● SEGURO"}
             </div>
             <div className="seg-stat-label">Estado del sistema</div>
           </div>
@@ -137,7 +143,10 @@ export function SeguridadManager() {
         {loading && events.length === 0 ? (
           <p className="seg-loading">&gt; escaneando registros…</p>
         ) : events.length === 0 ? (
-          <p className="seg-empty">&gt; 0 amenazas detectadas. Perímetro asegurado. ✓</p>
+          <div className="seg-empty">
+            <span className="seg-shield">🛡️</span>
+            {filter ? `Sin eventos de nivel "${filter.toUpperCase()}" en el registro.` : "0 amenazas detectadas. Perímetro asegurado."} ✓
+          </div>
         ) : (
           <div className="seg-table-wrap">
             <table className="seg-table">
@@ -185,6 +194,13 @@ export function SeguridadManager() {
             </table>
           </div>
         )}
+
+        <div className="seg-footer">
+          <span>estado: <b>{stats.highToday > 0 ? "revisar amenazas" : "operativo"}</b></span>
+          <span>registros mostrados: <b>{events.length}</b></span>
+          <span>auto-refresco: <b>30s</b></span>
+          <span>uptime monitor: <b>online</b></span>
+        </div>
       </div>
     </div>
   );
