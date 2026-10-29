@@ -63,13 +63,13 @@ export async function POST(req: NextRequest) {
     referrer?: string | null;
     url?: string | null;
   };
-  if (!slug || !event || !["view", "cta_click"].includes(event)) {
+  if (!slug || !event || !["view", "cta_click", "prensa_click"].includes(event)) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
   const supabaseAdmin = getSupabaseAdmin();
 
-  if (event === "view") {
+  if (event === "view" || event === "prensa_click") {
     const ua = req.headers.get("user-agent");
     const device = detectDevice(ua);
     // Ignorar bots en el conteo visible pero guardarlos marcados por si queremos verlos.
@@ -82,8 +82,12 @@ export async function POST(req: NextRequest) {
       : null;
     const vh = visitorHash(ip, ua);
 
+    // Las notas de prensa se guardan con un slug sintético para separarlas de
+    // los artículos y no inflar el contador de ningún artículo.
+    const storedSlug = event === "prensa_click" ? `__prensa__${slug}` : slug;
+
     const inserted = supabaseAdmin.from("articulos_views").insert({
-      slug,
+      slug: storedSlug,
       source,
       referrer: referrer || null,
       device,
@@ -95,9 +99,9 @@ export async function POST(req: NextRequest) {
       path,
       visitor_hash: vh,
     });
-    // Solo subimos el contador agregado si NO es bot, para que
-    // "vistas" refleje humanos.
-    if (device !== "bot") {
+    // Solo subimos el contador agregado de artículo si NO es bot y es una vista
+    // real de artículo (las notas de prensa no tienen fila en `articulos`).
+    if (device !== "bot" && event === "view") {
       await Promise.all([
         inserted,
         supabaseAdmin.rpc("increment_article_stat", { p_slug: slug, p_column: "views" }),

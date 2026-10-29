@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getArticulosPublicados } from "../../lib/articulos";
+import PrensaCard from "./PrensaCard";
 
 export const dynamic = "force-dynamic";
 
@@ -52,28 +53,7 @@ export default async function BlogPage() {
             </div>
             <div className="prensa-grid">
               {APARICIONES.map((a) => (
-                <a
-                  key={a.url}
-                  href={a.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="prensa-card"
-                >
-                  <div
-                    className="prensa-card-badge"
-                    style={{ backgroundImage: `url(${a.logo})` }}
-                    aria-label={a.medio}
-                  />
-
-                  <div className="prensa-card-body">
-                    <div className="prensa-card-meta">
-                      <span>{a.medio} · {a.fecha}</span>
-                      <span className="prensa-card-tag">{a.tipo}</span>
-                    </div>
-                    <h4>{a.titulo}</h4>
-                    <p>{a.subtitulo}</p>
-                  </div>
-                </a>
+                <PrensaCard key={a.url} a={a} />
               ))}
             </div>
           </div>

@@ -19,6 +19,7 @@ const ADMIN_ONLY_PREFIXES = [
   "/api/admin/facturas",
   "/api/admin/articulos",
   "/api/admin/analytics",
+  "/api/admin/blog-stats",
   "/api/admin/ingresos",
   "/api/admin/cliente-gastos",
   "/api/admin/gastos-fijos",

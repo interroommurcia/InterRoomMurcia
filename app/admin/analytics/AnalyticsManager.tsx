@@ -273,6 +273,7 @@ export default function AnalyticsManager() {
     audiencia: true,
     trafico: true,
     contenido: true,
+    blog: true,
     estrategia: true,
   });
 
@@ -525,15 +526,23 @@ export default function AnalyticsManager() {
 
           <div className="analytics-card">
             <h3>Dispositivos <HelpTip tip="Tipo de dispositivo usado: móvil, escritorio o tablet" /></h3>
-            {data.devices.map((d) => {
+            {(() => {
               const es: Record<string, string> = {
                 Desktop: "💻 Escritorio", Mobile: "📱 Móvil", Tablet: "📲 Tablet",
                 Console: "🎮 Consola", Unknown: "Desconocido",
               };
-              return (
-                <div key={d.device} className="analytics-row"><span>{es[d.device] || d.device}</span><span>{d.visits}</span></div>
-              );
-            })}
+              // Siempre mostrar los 3 principales (aunque sean 0), y añadir el
+              // resto que PostHog devuelva. Ordenado por visitas desc.
+              const byDevice = new Map(data.devices.map((d) => [d.device, d.visits]));
+              const fijos = ["Desktop", "Mobile", "Tablet"];
+              const extras = data.devices.map((d) => d.device).filter((d) => !fijos.includes(d));
+              return [...fijos, ...extras]
+                .map((dev) => ({ dev, visits: byDevice.get(dev) ?? 0 }))
+                .sort((a, b) => b.visits - a.visits)
+                .map(({ dev, visits }) => (
+                  <div key={dev} className="analytics-row"><span>{es[dev] || dev}</span><span>{visits}</span></div>
+                ));
+            })()}
           </div>
 
           <div className="analytics-card">
@@ -658,6 +667,10 @@ export default function AnalyticsManager() {
           </div>
         </div>
       )}
+
+      {/* ── Blog ── */}
+      <SectionHead id="blog" title="Blog" tip="Rendimiento del blog: artículos más leídos, clics en sus enlaces, de dónde entran los lectores (directo, inicio, buscadores, IA) y clics en las notas de prensa" />
+      {openSections.blog && <BlogBlock />}
 
       {/* ── Estrategia: SEO / SEM / GEO ── */}
       <SectionHead id="estrategia" title="Estrategia · SEO · SEM · GEO" tip="Clasifica tu tráfico en canales estratégicos (orgánico, pagado, IA generativa, social, directo) y propone acciones concretas basadas en tus números reales" />
@@ -871,6 +884,150 @@ function FunnelStep({ label, count, base, highlight }: { label: string; count: n
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Bloque: Blog (vistas, enlaces, origen de lectores, notas de prensa)
+// ─────────────────────────────────────────────────────────────────
+
+type BlogStats = {
+  totals: { views: number; unique: number; returning: number; newVisitors: number; bots: number; ctaClicks: number; articles: number };
+  topArticles: { slug: string; title: string; views: number; ctaClicks: number; ctr: number }[];
+  entradas: { key: string; label: string; count: number; pct: number }[];
+  devices: { key: string; label: string; count: number; pct: number }[];
+  countries: { key: string; label: string; count: number; pct: number }[];
+  dailyViews: { date: string; views: number }[];
+  prensa: { medio: string; clicks: number }[];
+};
+
+function BlogBlock() {
+  const [stats, setStats] = useState<BlogStats | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/blog-stats")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Error"))))
+      .then(setStats)
+      .catch(() => setError("No se pudieron cargar las estadísticas del blog."));
+  }, []);
+
+  if (error) return <p className="lead-form-error">{error}</p>;
+  if (!stats) return <p className="admin-empty">Cargando blog…</p>;
+
+  const t = stats.totals;
+  const maxDaily = Math.max(1, ...stats.dailyViews.map((d) => d.views));
+  const maxArt = Math.max(1, ...stats.topArticles.map((a) => a.views));
+  const maxEntr = Math.max(1, ...stats.entradas.map((e) => e.count));
+  const maxCountry = Math.max(1, ...stats.countries.map((c) => c.count));
+  const prensaTotal = stats.prensa.reduce((s, p) => s + p.clicks, 0);
+
+  if (t.views === 0 && t.articles === 0) {
+    return <p className="admin-empty">Sin visitas al blog todavía. En cuanto entren lectores aparecerán aquí.</p>;
+  }
+
+  return (
+    <>
+      {/* Resumen del blog */}
+      <div className="analytics-stat-row" style={{ marginBottom: 16 }}>
+        {[
+          { value: t.views.toLocaleString(), label: "Visitas a artículos", tip: "Total de lecturas de artículos (sin bots) en el histórico registrado" },
+          { value: t.unique.toLocaleString(), label: "Lectores únicos", tip: "Personas distintas que han leído algún artículo" },
+          { value: t.returning.toLocaleString(), label: "Lectores que vuelven", tip: "Lectores que han visitado el blog más de una vez" },
+          { value: t.ctaClicks.toLocaleString(), label: "Clics en enlaces", tip: "Veces que han pulsado los enlaces/CTA mencionados dentro de los artículos" },
+          { value: String(t.articles), label: "Artículos con visitas", tip: "Número de artículos que han recibido al menos una visita" },
+          { value: prensaTotal.toLocaleString(), label: "Clics notas de prensa", tip: "Clics en las tarjetas de 'Nos han visto en' (prensa/TV) del blog" },
+        ].map((s) => (
+          <div className="analytics-stat" key={s.label}>
+            <div className="analytics-stat-value">{s.value}</div>
+            <div className="analytics-stat-label">{s.label}<HelpTip tip={s.tip} /></div>
+          </div>
+        ))}
+      </div>
+
+      <div className="analytics-grid">
+        {/* Artículos más leídos */}
+        <div className="analytics-card">
+          <h3>Artículos más leídos <HelpTip tip="Ranking por número de visitas. 'Clics' = enlaces pulsados dentro del artículo; CTR = clics ÷ visitas" /></h3>
+          {stats.topArticles.length === 0 ? (
+            <p className="admin-empty">Sin datos.</p>
+          ) : (
+            stats.topArticles.map((a) => (
+              <div key={a.slug} style={{ margin: "8px 0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, gap: 8 }}>
+                  <a href={`/blog/${a.slug}`} target="_blank" rel="noopener noreferrer" title={a.title}
+                     style={{ color: "#111827", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {a.title}
+                  </a>
+                  <span style={{ flex: "0 0 auto", color: "#6b7280", fontVariantNumeric: "tabular-nums" }}>
+                    {a.views} 👁 · {a.ctaClicks} 🔗 {a.views > 0 && `· ${a.ctr}%`}
+                  </span>
+                </div>
+                <div style={{ height: 5, background: "#f3f4f6", borderRadius: 999, marginTop: 3 }}>
+                  <div style={{ width: `${Math.round((a.views / maxArt) * 100)}%`, height: "100%", background: "var(--orange)", borderRadius: 999 }} />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* De dónde entran al blog */}
+        <div className="analytics-card">
+          <h3>De dónde entran los lectores <HelpTip tip="Si llegan directos (escriben la URL o la IA sin marcar), desde la portada (inicio), desde el listado del blog, desde Google o desde una web externa" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 8px" }}>Directo · inicio · buscadores · IA · redes…</p>
+          {stats.entradas.length === 0 ? (
+            <p className="admin-empty">Sin datos.</p>
+          ) : (
+            stats.entradas.map((e) => <Bar key={e.key} label={e.label} value={e.count} max={maxEntr} />)
+          )}
+        </div>
+
+        {/* Visitas por día */}
+        <div className="analytics-card">
+          <h3>Visitas al blog por día <HelpTip tip="Lecturas de artículos cada día en los últimos 30 días" /></h3>
+          <div className="analytics-daily-chart analytics-daily-chart--tall">
+            {stats.dailyViews.map((d) => (
+              <div key={d.date} className="analytics-daily-col">
+                <span className="analytics-daily-number">{d.views}</span>
+                <div className="analytics-daily-bar" style={{ height: `${Math.round((d.views / maxDaily) * 100)}%` }} />
+                <span>{d.date.slice(5)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Dispositivos */}
+        <div className="analytics-card">
+          <h3>Dispositivos <HelpTip tip="Con qué dispositivo leen los artículos" /></h3>
+          {stats.devices.map((d) => (
+            <div key={d.key} className="analytics-row"><span>{d.label}</span><span>{d.count}</span></div>
+          ))}
+        </div>
+
+        {/* Países */}
+        <div className="analytics-card">
+          <h3>Países <HelpTip tip="Desde qué país leen el blog" /></h3>
+          {stats.countries.length === 0 ? (
+            <p className="admin-empty">Sin datos.</p>
+          ) : (
+            stats.countries.map((c) => <Bar key={c.key} label={c.label} value={c.count} max={maxCountry} />)
+          )}
+        </div>
+
+        {/* Notas de prensa */}
+        <div className="analytics-card">
+          <h3>Notas de prensa <HelpTip tip="Clics en las tarjetas de 'Nos han visto en' del blog, por medio" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 8px" }}>Clics hacia los medios que te mencionan</p>
+          {stats.prensa.length === 0 ? (
+            <p className="admin-empty">Nadie ha pulsado las notas de prensa todavía.</p>
+          ) : (
+            stats.prensa.map((p) => (
+              <div key={p.medio} className="analytics-row"><span style={{ textTransform: "capitalize" }}>{p.medio.replace(/-/g, " ")}</span><span>{p.clicks}</span></div>
+            ))
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
 // Bloque: Grabaciones de sesión (session replay)
 // ─────────────────────────────────────────────────────────────────
 
@@ -908,7 +1065,7 @@ function RecordingsBlock() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"todos" | "convertidos" | "exit">("todos");
-  const [pathFilter, setPathFilter] = useState("/venta");
+  const [pathFilter, setPathFilter] = useState("");
   const [playing, setPlaying] = useState<{ url: string; sessionId: string } | null>(null);
   const [hasNext, setHasNext] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -1001,7 +1158,7 @@ function RecordingsBlock() {
               type="text"
               value={pathFilter}
               onChange={(e) => setPathFilter(e.target.value)}
-              placeholder="/venta"
+              placeholder="todas (ej: /blog)"
               style={{ padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 12, width: 140 }}
             />
           </label>
