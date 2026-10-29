@@ -3,12 +3,15 @@ import { SeguridadManager } from "./SeguridadManager";
 
 export default function SeguridadPage() {
   return (
-    <main className="admin-page">
-      <AdminNav active="/admin/seguridad" />
-      <div className="admin-content">
-        <h1>Seguridad</h1>
+    <section className="section admin">
+      <div className="wrap">
+        <AdminNav active="/admin/seguridad" />
+        <div className="section-head">
+          <h2>Seguridad</h2>
+          <p>Monitor de accesos y amenazas en tiempo real.</p>
+        </div>
         <SeguridadManager />
       </div>
-    </main>
+    </section>
   );
 }
