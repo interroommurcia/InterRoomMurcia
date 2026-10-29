@@ -411,6 +411,22 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
   );
 }
 
+async function fileADataURL(file: File, maxLado = 1280): Promise<{ data: string; mediaType: string }> {
+  const bitmap = await createImageBitmap(file);
+  const escala = Math.min(1, maxLado / Math.max(bitmap.width, bitmap.height));
+  const w = Math.round(bitmap.width * escala);
+  const h = Math.round(bitmap.height * escala);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No se pudo procesar la imagen");
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close();
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+  return { data: dataUrl.split(",")[1], mediaType: "image/jpeg" };
+}
+
 function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
   const [categoria, setCategoria] = useState<"alquiler" | "compraventa">(piso?.categoria || "alquiler");
   const esCompraventa = categoria === "compraventa";
@@ -418,6 +434,9 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
   const [galleryKeep, setGalleryKeep] = useState<string[]>(piso?.gallery ?? []);
   const [borrarVideo, setBorrarVideo] = useState(false);
   const [galleryReady, setGalleryReady] = useState(false);
+  const descRef = useRef<HTMLTextAreaElement>(null);
+  const [generando, setGenerando] = useState(false);
+  const [iaError, setIaError] = useState("");
 
   useEffect(() => {
     if (isEdit && galleryKeep.length > 0) {
@@ -425,6 +444,59 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
       return () => clearTimeout(t);
     }
   }, [isEdit, galleryKeep.length]);
+
+  async function generarDescripcion() {
+    const form = descRef.current?.form;
+    if (!form) return;
+    setIaError("");
+    setGenerando(true);
+    try {
+      const archivos: File[] = [];
+      const principal = form.querySelector<HTMLInputElement>('input[name="imagen"]');
+      if (principal?.files?.[0]) archivos.push(principal.files[0]);
+      const galeria = form.querySelector<HTMLInputElement>('input[name="galeria"]');
+      if (galeria?.files) archivos.push(...Array.from(galeria.files));
+
+      const images = [];
+      for (const f of archivos.slice(0, 8)) {
+        if (f.type.startsWith("image/")) images.push(await fileADataURL(f));
+      }
+      const imageUrls = images.length === 0 ? galleryKeep.slice(0, 8) : [];
+      if (images.length === 0 && imageUrls.length === 0) {
+        setIaError("Añade al menos una foto antes de generar la descripción.");
+        return;
+      }
+
+      const data = new FormData(form);
+      const res = await fetch("/api/admin/generar-descripcion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          images,
+          imageUrls,
+          titulo: data.get("titulo"),
+          barrio: data.get("barrio"),
+          zona: data.get("zona"),
+          precioMes: data.get("precioMes"),
+          metros: data.get("metros"),
+          categoria: data.get("categoria"),
+          tipoAlquiler: data.get("tipo_alquiler"),
+          habitaciones: data.get("numHabitaciones"),
+          banos: data.get("numBanos"),
+          ascensor: data.get("ascensor"),
+          garaje: data.get("garaje"),
+          terraza: data.get("terraza"),
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+      if (descRef.current) descRef.current.value = json.descripcion || "";
+    } catch (err) {
+      setIaError(err instanceof Error ? err.message : "No se pudo generar la descripción.");
+    } finally {
+      setGenerando(false);
+    }
+  }
 
   return (
     <>
@@ -505,9 +577,50 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
         </div>
       </div>
 
+      <div className="pf-row">
+        <div className="pf-field">
+          <span className="pf-label">Habitaciones</span>
+          <input className="pf-input" name="numHabitaciones" type="number" min={0} defaultValue={piso?.numHabitaciones ?? undefined} placeholder="Nº" />
+        </div>
+        <div className="pf-field">
+          <span className="pf-label">Baños</span>
+          <input className="pf-input" name="numBanos" type="number" min={0} defaultValue={piso?.numBanos ?? undefined} placeholder="Nº" />
+        </div>
+        <div className="pf-field">
+          <span className="pf-label">Ascensor</span>
+          <select className="pf-select" name="ascensor" defaultValue="">
+            <option value="">—</option>
+            <option value="si">Sí</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+        <div className="pf-field">
+          <span className="pf-label">Garaje</span>
+          <select className="pf-select" name="garaje" defaultValue="">
+            <option value="">—</option>
+            <option value="si">Sí</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+        <div className="pf-field">
+          <span className="pf-label">Terraza</span>
+          <select className="pf-select" name="terraza" defaultValue="">
+            <option value="">—</option>
+            <option value="si">Sí</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+      </div>
+
       <div className="pf-field">
-        <span className="pf-label">Descripción</span>
-        <textarea className="pf-textarea" name="descripcion" required rows={3} maxLength={2000} defaultValue={piso?.descripcion} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <span className="pf-label" style={{ margin: 0 }}>Descripción</span>
+          <button type="button" className="btn-ghost" onClick={generarDescripcion} disabled={generando} style={{ fontSize: 13, padding: "4px 12px" }}>
+            {generando ? "Generando…" : "✨ Generar con IA (desde fotos)"}
+          </button>
+        </div>
+        <textarea ref={descRef} className="pf-textarea" name="descripcion" required rows={4} maxLength={2000} defaultValue={piso?.descripcion} />
+        {iaError && <span style={{ color: "#dc2626", fontSize: 13, marginTop: 4 }}>{iaError}</span>}
       </div>
 
       <div className="pf-row">

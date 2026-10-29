@@ -55,6 +55,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const tipoAlquilerVal = form.get("tipo_alquiler");
   if (typeof tipoAlquilerVal === "string" && (tipoAlquilerVal === "completo" || tipoAlquilerVal === "habitacion")) updates.tipoAlquiler = tipoAlquilerVal;
 
+  const habRaw = form.get("numHabitaciones");
+  if (habRaw !== null) updates.numHabitaciones = habRaw === "" ? null : Number(habRaw);
+  const banosRaw = form.get("numBanos");
+  if (banosRaw !== null) updates.numBanos = banosRaw === "" ? null : Number(banosRaw);
+
   try {
     const imagen = form.get("imagen");
     if (imagen instanceof File && imagen.size > 0) {

@@ -28,6 +28,10 @@ export async function POST(req: NextRequest) {
   const metrosRaw = form.get("metros");
   const metros = metrosRaw && metrosRaw !== "" ? Number(metrosRaw) : null;
   const descripcion = String(form.get("descripcion") || "").trim().slice(0, 2000);
+  const habRaw = form.get("numHabitaciones");
+  const numHabitaciones = habRaw && habRaw !== "" ? Number(habRaw) : null;
+  const banosRaw = form.get("numBanos");
+  const numBanos = banosRaw && banosRaw !== "" ? Number(banosRaw) : null;
   const estadoVal = String(form.get("estado") || "disponible");
   const disponible = estadoVal === "disponible" || estadoVal === "reservada";
   const reservada = estadoVal === "reservada";
@@ -74,6 +78,8 @@ export async function POST(req: NextRequest) {
       videoUrl,
       categoria,
       tipoAlquiler: categoria === "alquiler" ? tipoAlquiler : undefined,
+      numHabitaciones,
+      numBanos,
     });
     revalidatePath("/catalogo");
     revalidatePath("/admin/pisos");
