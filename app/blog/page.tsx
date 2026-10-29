@@ -41,7 +41,7 @@ export default async function BlogPage() {
     <section className="section blog-list">
       <div className="wrap">
         <div className="section-head">
-          <h2>Blog de InterRoom Murcia</h2>
+          <h2>Blog de Inter<span style={{ color: "var(--orange)" }}>Room</span> Murcia</h2>
           <p>Guías sobre alquiler, zonas y vida de estudiante en Murcia y Cartagena.</p>
         </div>
 

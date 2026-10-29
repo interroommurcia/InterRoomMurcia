@@ -37,13 +37,6 @@ type Stats = {
   highToday: number;
 };
 
-const SEVERITY_COLORS: Record<string, string> = {
-  low: "#22c55e",
-  medium: "#f59e0b",
-  high: "#ef4444",
-  critical: "#dc2626",
-};
-
 const EVENT_LABELS: Record<string, string> = {
   login_failed: "Login fallido",
   login_rate_limited: "Rate limit alcanzado",
@@ -85,110 +78,114 @@ export function SeguridadManager() {
     return () => clearInterval(interval);
   }, [fetchEvents]);
 
+  const FILTROS: { v: string; label: string }[] = [
+    { v: "", label: "ALL" },
+    { v: "low", label: "LOW" },
+    { v: "medium", label: "MED" },
+    { v: "high", label: "HIGH" },
+    { v: "critical", label: "CRIT" },
+  ];
+
   return (
-    <div>
-      <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
-        <div style={{ background: "#f1f5f9", borderRadius: 8, padding: "16px 24px", minWidth: 180 }}>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{stats.totalToday}</div>
-          <div style={{ fontSize: 13, color: "#64748b" }}>Eventos hoy</div>
-        </div>
-        <div style={{ background: stats.highToday > 0 ? "#fef2f2" : "#f1f5f9", borderRadius: 8, padding: "16px 24px", minWidth: 180 }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: stats.highToday > 0 ? "#dc2626" : "#1e293b" }}>
-            {stats.highToday}
+    <div className="seg-console">
+      <div className="seg-topbar">
+        <span className="seg-dots">
+          <span className="seg-dot seg-dot--r" />
+          <span className="seg-dot seg-dot--y" />
+          <span className="seg-dot seg-dot--g" />
+        </span>
+        <span className="seg-prompt">
+          <b>root@interroom</b>:~/seguridad# tail -f threats.log<span className="seg-cursor" />
+        </span>
+        <span className="seg-live">
+          <span className="seg-live-dot" />
+          Monitoring
+        </span>
+      </div>
+
+      <div className="seg-body">
+        <div className="seg-stats">
+          <div className="seg-stat">
+            <div className={`seg-stat-value${stats.totalToday === 0 ? " is-zero" : ""}`}>
+              {String(stats.totalToday).padStart(2, "0")}
+            </div>
+            <div className="seg-stat-label">Eventos / 24h</div>
           </div>
-          <div style={{ fontSize: 13, color: "#64748b" }}>Alertas graves hoy</div>
+          <div className={`seg-stat${stats.highToday > 0 ? " seg-stat--alert" : ""}`}>
+            <div className={`seg-stat-value${stats.highToday === 0 ? " is-zero" : ""}`}>
+              {String(stats.highToday).padStart(2, "0")}
+            </div>
+            <div className="seg-stat-label">Amenazas graves</div>
+          </div>
+          <div className="seg-stat">
+            <div className={`seg-stat-value${events.length === 0 ? " is-zero" : ""}`} style={{ color: stats.highToday > 0 ? "var(--seg-red)" : undefined }}>
+              {stats.highToday > 0 ? "ALERTA" : "SEGURO"}
+            </div>
+            <div className="seg-stat-label">Estado del sistema</div>
+          </div>
         </div>
-      </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        {["", "low", "medium", "high", "critical"].map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 6,
-              border: filter === s ? "2px solid #ea6a12" : "1px solid #e2e8f0",
-              background: filter === s ? "#fff7ed" : "#fff",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: filter === s ? 600 : 400,
-            }}
-          >
-            {s ? s.charAt(0).toUpperCase() + s.slice(1) : "Todos"}
-          </button>
-        ))}
-        <button
-          onClick={fetchEvents}
-          style={{ marginLeft: "auto", padding: "6px 14px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: 13 }}
-        >
-          Actualizar
-        </button>
-      </div>
+        <div className="seg-filters">
+          {FILTROS.map((f) => (
+            <button key={f.v} onClick={() => setFilter(f.v)} className={`seg-chip${filter === f.v ? " is-active" : ""}`}>
+              {f.label}
+            </button>
+          ))}
+          <button onClick={fetchEvents} className="seg-chip seg-refresh">↻ refresh</button>
+        </div>
 
-      {loading && events.length === 0 ? (
-        <p style={{ color: "#64748b" }}>Cargando...</p>
-      ) : events.length === 0 ? (
-        <p style={{ color: "#22c55e", fontWeight: 500 }}>Sin eventos de seguridad. Todo en orden.</p>
-      ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid #e2e8f0", textAlign: "left" }}>
-                <th style={{ padding: "8px 12px" }}>Fecha</th>
-                <th style={{ padding: "8px 12px" }}>Severidad</th>
-                <th style={{ padding: "8px 12px" }}>Tipo</th>
-                <th style={{ padding: "8px 12px" }}>IP</th>
-                <th style={{ padding: "8px 12px" }}>Ubicación</th>
-                <th style={{ padding: "8px 12px" }}>Quién</th>
-                <th style={{ padding: "8px 12px" }}>Ruta</th>
-                <th style={{ padding: "8px 12px" }}>Detalle</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.map((ev) => (
-                <tr key={ev.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
-                    {new Date(ev.created_at).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                  </td>
-                  <td style={{ padding: "8px 12px" }}>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        padding: "2px 10px",
-                        borderRadius: 12,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: "#fff",
-                        background: SEVERITY_COLORS[ev.severity] || "#94a3b8",
-                      }}
-                    >
-                      {ev.severity}
-                    </span>
-                  </td>
-                  <td style={{ padding: "8px 12px" }}>{EVENT_LABELS[ev.event_type] || ev.event_type}</td>
-                  <td style={{ padding: "8px 12px", fontFamily: "monospace", fontSize: 12 }}>{ev.ip || "—"}</td>
-                  <td style={{ padding: "8px 12px", fontSize: 13, whiteSpace: "nowrap" }}>
-                    {[ev.ciudad, ev.region, ev.pais].filter(Boolean).length
-                      ? `${banderaDe(ev.pais)} ${[ev.ciudad, ev.region].filter(Boolean).join(", ") || ev.pais}`.trim()
-                      : "—"}
-                  </td>
-                  <td style={{ padding: "8px 12px", fontSize: 12 }} title={ev.user_agent || ""}>
-                    {(() => {
-                      const q = quienEs(ev.user_agent);
-                      return <span style={{ color: q.esBot ? "#64748b" : "#16a34a", fontWeight: 500 }}>{q.etiqueta}</span>;
-                    })()}
-                  </td>
-                  <td style={{ padding: "8px 12px", fontFamily: "monospace", fontSize: 12 }}>{ev.path || "—"}</td>
-                  <td style={{ padding: "8px 12px", maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {ev.details || "—"}
-                  </td>
+        {loading && events.length === 0 ? (
+          <p className="seg-loading">&gt; escaneando registros…</p>
+        ) : events.length === 0 ? (
+          <p className="seg-empty">&gt; 0 amenazas detectadas. Perímetro asegurado. ✓</p>
+        ) : (
+          <div className="seg-table-wrap">
+            <table className="seg-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Nivel</th>
+                  <th>Vector</th>
+                  <th>IP origen</th>
+                  <th>Geolocalización</th>
+                  <th>Agente</th>
+                  <th>Ruta</th>
+                  <th>Payload</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {events.map((ev) => {
+                  const q = quienEs(ev.user_agent);
+                  return (
+                    <tr key={ev.id}>
+                      <td className="seg-mono" style={{ whiteSpace: "nowrap" }}>
+                        {new Date(ev.created_at).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                      </td>
+                      <td>
+                        <span className={`seg-badge seg-badge--${ev.severity}`}>{ev.severity}</span>
+                      </td>
+                      <td>{EVENT_LABELS[ev.event_type] || ev.event_type}</td>
+                      <td className="seg-mono">{ev.ip || "—"}</td>
+                      <td className="seg-mono" style={{ whiteSpace: "nowrap" }}>
+                        {[ev.ciudad, ev.region, ev.pais].filter(Boolean).length
+                          ? `${banderaDe(ev.pais)} ${[ev.ciudad, ev.region].filter(Boolean).join(", ") || ev.pais}`.trim()
+                          : "—"}
+                      </td>
+                      <td title={ev.user_agent || ""}>
+                        <span className={q.esBot ? "seg-who-bot" : "seg-who-ok"}>{q.etiqueta}</span>
+                      </td>
+                      <td className="seg-mono seg-dimtext">{ev.path || "—"}</td>
+                      <td style={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis" }} className="seg-dimtext">
+                        {ev.details || "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -6,6 +6,11 @@ import BotonInterno from "../../../components/BotonInterno";
 
 type PostHogData = {
   stats: { pageviews: number; visitors: number; sessions: number };
+  prevStats: { pageviews: number; visitors: number; sessions: number } | null;
+  record: {
+    bestDayPageviews: { day: string; pageviews: number; visitors: number };
+    bestDayVisitors: { day: string; visitors: number } | null;
+  } | null;
   bounceRate: number;
   totalNewUsers: number;
   topPages: { path: string; views: number; uniq: number }[];
@@ -171,6 +176,27 @@ function HelpTip({ tip }: { tip: string }) {
   );
 }
 
+function fmtDiaLargo(day: string): string {
+  try {
+    const [y, m, d] = day.split("-").map(Number);
+    return `${d} ${MESES_NOMBRE[m - 1]} ${y}`;
+  } catch { return day; }
+}
+
+function Delta({ cur, prev }: { cur: number; prev: number }) {
+  if (prev === 0) {
+    return <div className="analytics-delta analytics-delta--up">{cur > 0 ? "nuevo" : "—"}</div>;
+  }
+  const pct = Math.round(((cur - prev) / prev) * 100);
+  const cls = pct > 0 ? "analytics-delta--up" : pct < 0 ? "analytics-delta--down" : "analytics-delta--flat";
+  const arrow = pct > 0 ? "▲" : pct < 0 ? "▼" : "=";
+  return (
+    <div className={`analytics-delta ${cls}`} title={`Antes: ${prev.toLocaleString()}`}>
+      {arrow} {Math.abs(pct)}%
+    </div>
+  );
+}
+
 function Bar({ label, value, max }: { label: string; value: number; max: number }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
@@ -279,9 +305,21 @@ export default function AnalyticsManager() {
 
   const loadData = useCallback(() => {
     setLoading(true);
-    const range = calcRange(periodo, mesVal, anioVal, customDesde, customHasta);
     const qs = new URLSearchParams();
-    if (range) { qs.set("desde", range.desde); qs.set("hasta", range.hasta); }
+    if (periodo === "7d" || periodo === "30d") {
+      // Rango explícito + periodo anterior equivalente, para comparar.
+      const dias = periodo === "7d" ? 7 : 30;
+      const hasta = new Date();
+      const desde = new Date(hasta); desde.setDate(desde.getDate() - dias);
+      const hastaPrev = new Date(desde);
+      const desdePrev = new Date(desde); desdePrev.setDate(desdePrev.getDate() - dias);
+      qs.set("desde", fmtDate(desde)); qs.set("hasta", fmtDate(hasta));
+      qs.set("desdePrev", fmtDate(desdePrev)); qs.set("hastaPrev", fmtDate(hastaPrev));
+    } else {
+      const range = calcRange(periodo, mesVal, anioVal, customDesde, customHasta);
+      if (range) { qs.set("desde", range.desde); qs.set("hasta", range.hasta); }
+      qs.set("full", "1"); // tablas completas + récord histórico
+    }
     if (excluirAdmin) qs.set("excluirAdmin", "1");
     const params = qs.toString() ? `?${qs}` : "";
     fetch(`/api/admin/posthog${params}`)
@@ -401,27 +439,43 @@ export default function AnalyticsManager() {
       {/* ── Resumen ── */}
       <SectionHead id="resumen" title={`Resumen — ${pLabel}`} tip="Métricas clave del rendimiento de tu web en el periodo seleccionado" />
       {openSections.resumen && (
-        <div className="analytics-stat-row">
-          {[
-            { value: data.stats.pageviews.toLocaleString(), label: "Pageviews", tip: "Total de páginas vistas en el periodo seleccionado" },
-            { value: data.stats.visitors.toLocaleString(), label: "Visitantes", tip: "Usuarios únicos que visitaron la web" },
-            { value: data.stats.sessions.toLocaleString(), label: "Sesiones", tip: "Número de sesiones de navegación (un usuario puede tener varias)" },
-            { value: `${data.bounceRate}%`, label: "Tasa de rebote", tip: "Porcentaje de sesiones en las que el usuario solo vio una página y se fue" },
-            { value: data.totalNewUsers.toLocaleString(), label: "Usuarios nuevos", tip: "Usuarios que visitaron la web por primera vez en este periodo" },
-            { value: totalReturning.toLocaleString(), label: "Usuarios recurrentes", tip: "Usuarios que ya habían visitado la web antes de este periodo" },
-            { value: String(peakAll), label: "Pico concurrentes/hora", tip: "Máximo de usuarios únicos activos en la misma hora durante el periodo" },
-            { value: data.avgSessionDuration >= 60 ? `${Math.floor(data.avgSessionDuration / 60)}m ${data.avgSessionDuration % 60}s` : `${data.avgSessionDuration}s`, label: "Tiempo medio visita", tip: "Duración media de las sesiones con más de una página vista" },
-            { value: String(data.avgPagesPerSession), label: "Páginas / sesión", tip: "Media de páginas vistas por sesión (solo sesiones con más de 1 página)" },
-          ].map((s) => (
-            <div className="analytics-stat" key={s.label}>
-              <div className="analytics-stat-value">{s.value}</div>
-              <div className="analytics-stat-label">
-                {s.label}
-                <HelpTip tip={s.tip} />
-              </div>
+        <>
+          {data.prevStats && (
+            <p className="analytics-compare-note">
+              Comparando con los {periodo === "7d" ? "7" : "30"} días anteriores.
+            </p>
+          )}
+          {data.record && (
+            <div className="analytics-record">
+              🏆 <strong>Récord histórico:</strong> {data.record.bestDayPageviews.pageviews.toLocaleString()} pageviews el {fmtDiaLargo(data.record.bestDayPageviews.day)}
+              {data.record.bestDayVisitors && (
+                <> · máximo de visitantes en un día: {data.record.bestDayVisitors.visitors.toLocaleString()} el {fmtDiaLargo(data.record.bestDayVisitors.day)}</>
+              )}
             </div>
-          ))}
-        </div>
+          )}
+          <div className="analytics-stat-row">
+            {[
+              { value: data.stats.pageviews.toLocaleString(), label: "Pageviews", tip: "Total de páginas vistas en el periodo seleccionado", cur: data.stats.pageviews, prev: data.prevStats?.pageviews },
+              { value: data.stats.visitors.toLocaleString(), label: "Visitantes", tip: "Usuarios únicos que visitaron la web", cur: data.stats.visitors, prev: data.prevStats?.visitors },
+              { value: data.stats.sessions.toLocaleString(), label: "Sesiones", tip: "Número de sesiones de navegación (un usuario puede tener varias)", cur: data.stats.sessions, prev: data.prevStats?.sessions },
+              { value: `${data.bounceRate}%`, label: "Tasa de rebote", tip: "Porcentaje de sesiones en las que el usuario solo vio una página y se fue" },
+              { value: data.totalNewUsers.toLocaleString(), label: "Usuarios nuevos", tip: "Usuarios que visitaron la web por primera vez en este periodo" },
+              { value: totalReturning.toLocaleString(), label: "Usuarios recurrentes", tip: "Usuarios que ya habían visitado la web antes de este periodo" },
+              { value: String(peakAll), label: "Pico concurrentes/hora", tip: "Máximo de usuarios únicos activos en la misma hora durante el periodo" },
+              { value: data.avgSessionDuration >= 60 ? `${Math.floor(data.avgSessionDuration / 60)}m ${data.avgSessionDuration % 60}s` : `${data.avgSessionDuration}s`, label: "Tiempo medio visita", tip: "Duración media de las sesiones con más de una página vista" },
+              { value: String(data.avgPagesPerSession), label: "Páginas / sesión", tip: "Media de páginas vistas por sesión (solo sesiones con más de 1 página)" },
+            ].map((s) => (
+              <div className="analytics-stat" key={s.label}>
+                <div className="analytics-stat-value">{s.value}</div>
+                <div className="analytics-stat-label">
+                  {s.label}
+                  <HelpTip tip={s.tip} />
+                </div>
+                {typeof s.prev === "number" && <Delta cur={s.cur as number} prev={s.prev} />}
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* ── Leads ── */}

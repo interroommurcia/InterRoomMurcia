@@ -88,10 +88,15 @@ export default async function PisoPage({ params }: { params: { zona: string; slu
 
               {/* Llamada a la acción al final del texto, con teléfono visible */}
               <div className="ficha-cta-inline">
-                <h2>{esCompraventa ? "¿Te interesa este activo?" : "¿Te interesa esta habitación?"}</h2>
+                <h2>{esCompraventa ? "¿Te interesa este activo? Llámanos" : "¿Te interesa este alquiler? Llámanos"}</h2>
                 <p>Llámanos o escríbenos por WhatsApp: te confirmamos disponibilidad, te enviamos vídeo y concertamos visita.</p>
                 <div className="ficha-cta-inline-actions">
-                  <a href={`tel:+${WHATSAPP_NUMBER}`} className="btn-primary">📞 613 096 518</a>
+                  <a href={`tel:+${WHATSAPP_NUMBER}`} className="btn-primary">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="#fff" style={{ verticalAlign: "-3px", marginRight: 6 }} aria-hidden="true">
+                      <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1H8c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
+                    </svg>
+                    613 096 518
+                  </a>
                   <a href={whatsappHref(mensaje)} target="_blank" rel="noopener noreferrer" className="btn-whatsapp">
                     Escribir por WhatsApp
                   </a>

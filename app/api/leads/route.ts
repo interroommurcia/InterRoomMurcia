@@ -50,7 +50,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  if (!telefono) {
+  // Hace falta al menos un medio de contacto: teléfono o email.
+  if (!telefono && !email) {
     return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
   }
 

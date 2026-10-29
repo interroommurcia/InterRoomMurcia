@@ -41,7 +41,12 @@ export async function GET(req: NextRequest) {
 
   const desde = req.nextUrl.searchParams.get("desde");
   const hasta = req.nextUrl.searchParams.get("hasta");
+  const desdePrev = req.nextUrl.searchParams.get("desdePrev");
+  const hastaPrev = req.nextUrl.searchParams.get("hastaPrev");
   const excluirAdmin = req.nextUrl.searchParams.get("excluirAdmin") === "1";
+  // full=1 → tablas completas (más filas) + récord histórico, para mes/año/custom.
+  const full = req.nextUrl.searchParams.get("full") === "1";
+  const L = (base: number) => (full ? 100 : base);
 
   const dateRe = /^\d{4}-\d{2}-\d{2}$/;
   let dateFilter: string;
@@ -50,6 +55,10 @@ export async function GET(req: NextRequest) {
   } else {
     dateFilter = `timestamp >= now() - INTERVAL 30 DAY`;
   }
+  const hayPrev = Boolean(desdePrev && hastaPrev && dateRe.test(desdePrev) && dateRe.test(hastaPrev));
+  const prevFilter = hayPrev
+    ? `timestamp >= '${desdePrev}' AND timestamp <= '${hastaPrev} 23:59:59'`
+    : "";
 
   const adminFilter = excluirAdmin
     ? `AND properties.$current_url NOT LIKE '%/admin%' AND coalesce(toString(person.properties.es_interno), '') != 'true'`
@@ -66,7 +75,7 @@ export async function GET(req: NextRequest) {
         hogql(`
         SELECT replaceRegexpOne(properties.$current_url, 'https?://[^/]+', '') AS path, count() AS views, uniqExact(distinct_id) AS uniq
         FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
-        GROUP BY path ORDER BY views DESC LIMIT 10
+        GROUP BY path ORDER BY views DESC LIMIT ${L(10)}
       `),
         hogql(`
         SELECT toDate(timestamp) AS day, count() AS pageviews, uniqExact(distinct_id) AS visitors
@@ -85,7 +94,7 @@ export async function GET(req: NextRequest) {
         SELECT if(properties.$referring_domain IS NULL OR properties.$referring_domain = '', '(directo)', properties.$referring_domain) AS source,
           count() AS visits, uniqExact(distinct_id) AS visitors
         FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
-        GROUP BY source ORDER BY visits DESC LIMIT 15
+        GROUP BY source ORDER BY visits DESC LIMIT ${L(15)}
       `),
         hogql(`
         SELECT if(properties.$device_type IS NULL OR properties.$device_type = '', 'Unknown', properties.$device_type) AS device,
@@ -100,14 +109,14 @@ export async function GET(req: NextRequest) {
           FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
           GROUP BY sid
         )
-        GROUP BY entry_path ORDER BY sessions DESC LIMIT 8
+        GROUP BY entry_path ORDER BY sessions DESC LIMIT ${L(8)}
       `),
         hogql(`
         SELECT if(properties.utm_source IS NULL OR properties.utm_source = '', '(sin UTM)', properties.utm_source) AS utm_source,
           if(properties.utm_medium IS NULL OR properties.utm_medium = '', '', properties.utm_medium) AS utm_medium,
           count() AS visits, uniqExact(distinct_id) AS visitors
         FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
-        GROUP BY utm_source, utm_medium ORDER BY visits DESC LIMIT 12
+        GROUP BY utm_source, utm_medium ORDER BY visits DESC LIMIT ${L(12)}
       `),
       ]);
 
@@ -118,7 +127,7 @@ export async function GET(req: NextRequest) {
         SELECT if(properties.$geoip_country_name IS NULL OR properties.$geoip_country_name = '', 'Unknown', properties.$geoip_country_name) AS country,
           count() AS visits, uniqExact(distinct_id) AS visitors
         FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
-        GROUP BY country ORDER BY visits DESC LIMIT 10
+        GROUP BY country ORDER BY visits DESC LIMIT ${L(10)}
       `),
         hogql(`
         SELECT replaceRegexpOne(properties.$current_url, 'https?://[^/]+', '') AS path, uniqExact(distinct_id) AS active_users
@@ -130,7 +139,7 @@ export async function GET(req: NextRequest) {
         FROM events WHERE event = '$autocapture' AND properties.$event_type = 'click'
           AND properties.$current_url NOT LIKE '%/admin%'
           AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
-        GROUP BY element HAVING element != '[sin texto]' ORDER BY clicks DESC LIMIT 15
+        GROUP BY element HAVING element != '[sin texto]' ORDER BY clicks DESC LIMIT ${L(15)}
       `),
         hogql(`
         SELECT toDate(first_seen) AS day, count() AS new_users
@@ -147,7 +156,7 @@ export async function GET(req: NextRequest) {
         SELECT if(properties.$referrer IS NULL OR properties.$referrer = '' OR properties.$referrer = '$direct', '(directo)', properties.$referrer) AS referrer,
           count() AS visits, uniqExact(distinct_id) AS visitors
         FROM events WHERE event = '$pageview' AND ${dateFilter} AND ${DOMAIN_FILTER} ${adminFilter}
-        GROUP BY referrer ORDER BY visits DESC LIMIT 20
+        GROUP BY referrer ORDER BY visits DESC LIMIT ${L(20)}
       `),
         hogql(`
         SELECT day, max(concurrent) AS peak
@@ -305,6 +314,36 @@ export async function GET(req: NextRequest) {
       GROUP BY next_page ORDER BY visits DESC LIMIT 10
     `);
 
+    // Periodo anterior (solo para 7d/30d): mismas métricas de cabecera para comparar.
+    const rPrev = hayPrev
+      ? await hogql(`
+        SELECT count() AS pageviews, uniqExact(distinct_id) AS visitors, uniqExact(properties.$session_id) AS sessions
+        FROM events WHERE event = '$pageview' AND ${prevFilter} AND ${DOMAIN_FILTER} ${adminFilter}
+      `)
+      : null;
+
+    // Récord histórico (solo en full): mejor día de siempre por pageviews y por visitantes.
+    const rRecord = full
+      ? await hogql(`
+        SELECT day, pv, vis FROM (
+          SELECT toDate(timestamp) AS day, count() AS pv, uniqExact(distinct_id) AS vis
+          FROM events WHERE event = '$pageview' AND ${DOMAIN_FILTER} ${adminFilter}
+            AND timestamp >= now() - INTERVAL 2 YEAR
+          GROUP BY day
+        ) ORDER BY pv DESC LIMIT 1
+      `)
+      : null;
+    const rRecordVis = full
+      ? await hogql(`
+        SELECT day, vis FROM (
+          SELECT toDate(timestamp) AS day, uniqExact(distinct_id) AS vis
+          FROM events WHERE event = '$pageview' AND ${DOMAIN_FILTER} ${adminFilter}
+            AND timestamp >= now() - INTERVAL 2 YEAR
+          GROUP BY day
+        ) ORDER BY vis DESC LIMIT 1
+      `)
+      : null;
+
     const s = rStats.results?.[0] ?? [0, 0, 0];
     const sb = rBounce.results?.[0] ?? [0, 1];
     const sd = rSessionDuration.results?.[0] ?? [0, 0];
@@ -312,8 +351,21 @@ export async function GET(req: NextRequest) {
     const newUsersDaily = (rNewUsers.results ?? []).map((r: unknown[]) => ({ day: String(r[0]), newUsers: Number(r[1]) }));
     const totalNewUsers = newUsersDaily.reduce((sum: number, d: { newUsers: number }) => sum + d.newUsers, 0);
 
+    const prevRow = rPrev?.results?.[0] ?? null;
+    const recRow = rRecord?.results?.[0] ?? null;
+    const recVisRow = rRecordVis?.results?.[0] ?? null;
+
     return NextResponse.json({
       stats: { pageviews: Number(s[0]), visitors: Number(s[1]), sessions: Number(s[2]) },
+      prevStats: prevRow
+        ? { pageviews: Number(prevRow[0]), visitors: Number(prevRow[1]), sessions: Number(prevRow[2]) }
+        : null,
+      record: recRow
+        ? {
+            bestDayPageviews: { day: String(recRow[0]), pageviews: Number(recRow[1]), visitors: Number(recRow[2]) },
+            bestDayVisitors: recVisRow ? { day: String(recVisRow[0]), visitors: Number(recVisRow[1]) } : null,
+          }
+        : null,
       bounceRate: sb[1] > 0 ? Math.round((Number(sb[0]) / Number(sb[1])) * 100) : 0,
       totalNewUsers,
       topPages: (rTop.results ?? []).map((r: unknown[]) => ({ path: String(r[0] || "/"), views: Number(r[1]), uniq: Number(r[2]) })),

@@ -1325,6 +1325,137 @@ h1 em {
   max-width: 380px;
 }
 
+.lead-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  color: var(--orange);
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+}
+.lead-phone:hover { text-decoration: underline; }
+
+.lead-form-hint {
+  font-size: 0.82rem;
+  opacity: 0.6;
+  margin: -2px 0 0;
+}
+
+/* ───────── Consola de seguridad (estética SOC / terminal) ───────── */
+.seg-console {
+  --seg-bg: #0a0e14;
+  --seg-panel: #0f1520;
+  --seg-border: #1c2635;
+  --seg-green: #22e39a;
+  --seg-amber: #f5b547;
+  --seg-red: #ff5b6e;
+  --seg-text: #c6d2e0;
+  --seg-dim: #5f7085;
+  background:
+    radial-gradient(1200px 400px at 80% -10%, rgba(34, 227, 154, 0.06), transparent),
+    var(--seg-bg);
+  border: 1px solid var(--seg-border);
+  border-radius: 14px;
+  padding: 0;
+  overflow: hidden;
+  color: var(--seg-text);
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  box-shadow: 0 0 0 1px rgba(34, 227, 154, 0.04), 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.seg-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+  border-bottom: 1px solid var(--seg-border);
+}
+.seg-dots { display: flex; gap: 7px; }
+.seg-dot { width: 11px; height: 11px; border-radius: 50%; }
+.seg-dot--r { background: #ff5f57; }
+.seg-dot--y { background: #febc2e; }
+.seg-dot--g { background: #28c840; }
+.seg-prompt { font-size: 13px; color: var(--seg-dim); letter-spacing: 0.02em; }
+.seg-prompt b { color: var(--seg-green); font-weight: 600; }
+.seg-cursor { display: inline-block; width: 8px; height: 15px; background: var(--seg-green); margin-left: 2px; vertical-align: -2px; animation: seg-blink 1.1s steps(1) infinite; }
+@keyframes seg-blink { 50% { opacity: 0; } }
+.seg-live {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--seg-green);
+}
+.seg-live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--seg-green); box-shadow: 0 0 0 0 rgba(34, 227, 154, 0.7); animation: seg-pulse 1.8s infinite; }
+@keyframes seg-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 227, 154, 0.6); }
+  70% { box-shadow: 0 0 0 8px rgba(34, 227, 154, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 227, 154, 0); }
+}
+
+.seg-body { padding: 18px; }
+
+.seg-stats { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+.seg-stat {
+  flex: 1; min-width: 150px;
+  background: var(--seg-panel);
+  border: 1px solid var(--seg-border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  position: relative;
+}
+.seg-stat--alert { border-color: rgba(255, 91, 110, 0.4); background: linear-gradient(180deg, rgba(255, 91, 110, 0.06), var(--seg-panel)); }
+.seg-stat-value { font-size: 30px; font-weight: 700; line-height: 1; color: var(--seg-green); text-shadow: 0 0 18px rgba(34, 227, 154, 0.35); }
+.seg-stat--alert .seg-stat-value { color: var(--seg-red); text-shadow: 0 0 18px rgba(255, 91, 110, 0.4); }
+.seg-stat-value.is-zero { color: var(--seg-dim); text-shadow: none; }
+.seg-stat-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--seg-dim); margin-top: 8px; }
+
+.seg-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.seg-chip {
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--seg-border);
+  background: var(--seg-panel);
+  color: var(--seg-dim);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.seg-chip:hover { color: var(--seg-text); border-color: #2a3850; }
+.seg-chip.is-active { color: #06110c; background: var(--seg-green); border-color: var(--seg-green); font-weight: 700; box-shadow: 0 0 16px rgba(34, 227, 154, 0.3); }
+.seg-refresh { margin-left: auto; }
+
+.seg-table-wrap { overflow-x: auto; border: 1px solid var(--seg-border); border-radius: 10px; }
+.seg-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.seg-table th {
+  text-align: left; padding: 10px 12px;
+  font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--seg-dim);
+  background: var(--seg-panel); border-bottom: 1px solid var(--seg-border); white-space: nowrap;
+}
+.seg-table td { padding: 9px 12px; border-bottom: 1px solid rgba(28, 38, 53, 0.6); vertical-align: top; }
+.seg-table tbody tr { transition: background 0.1s; }
+.seg-table tbody tr:hover { background: rgba(34, 227, 154, 0.04); }
+.seg-mono { font-family: inherit; color: var(--seg-text); }
+.seg-dimtext { color: var(--seg-dim); }
+.seg-badge {
+  display: inline-block; padding: 2px 9px; border-radius: 6px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  border: 1px solid currentColor;
+}
+.seg-badge--low { color: var(--seg-green); background: rgba(34, 227, 154, 0.1); }
+.seg-badge--medium { color: var(--seg-amber); background: rgba(245, 181, 71, 0.1); }
+.seg-badge--high, .seg-badge--critical { color: var(--seg-red); background: rgba(255, 91, 110, 0.12); }
+.seg-badge--critical { animation: seg-blink 1s steps(1) infinite; }
+.seg-who-ok { color: var(--seg-green); }
+.seg-who-bot { color: var(--seg-dim); }
+.seg-empty { color: var(--seg-green); padding: 20px 4px; }
+.seg-loading { color: var(--seg-dim); padding: 20px 4px; }
+
+
 .lead-form {
   display: flex;
   flex-direction: column;
@@ -3063,6 +3194,32 @@ button {
   border-radius: 14px;
   padding: 18px;
   text-align: center;
+}
+
+.analytics-delta {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.analytics-delta--up { color: #16a34a; }
+.analytics-delta--down { color: #dc2626; }
+.analytics-delta--flat { color: #9ca3af; }
+
+.analytics-compare-note {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0 0 10px;
+}
+
+.analytics-record {
+  background: linear-gradient(90deg, rgba(234, 106, 18, 0.1), rgba(234, 106, 18, 0.02));
+  border: 1px solid rgba(234, 106, 18, 0.25);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 0 0 14px;
+  font-size: 0.9rem;
+  color: #7c2d12;
 }
 
 .analytics-stat-value {
