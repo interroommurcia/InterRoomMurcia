@@ -58,6 +58,32 @@ export default function ContratoAcciones({ contratoId, estado, signingLink }: Pr
     }
   }
 
+  async function descargarWord(borrador: boolean) {
+    setError("");
+    setCargando(true);
+    try {
+      const url = `/api/admin/contratos/${contratoId}/word${borrador ? "?borrador=1" : ""}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "" }));
+        throw new Error(data?.error || `Error ${res.status}`);
+      }
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      a.download = `contrato-${borrador ? "editable" : "firmado"}-${contratoId.slice(0, 8)}.doc`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objUrl);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo descargar el Word");
+    } finally {
+      setCargando(false);
+    }
+  }
+
   async function eliminarContrato() {
     if (!confirm("¿Eliminar este contrato de forma permanente? Esta acción no se puede deshacer.")) return;
     setError("");
@@ -136,8 +162,26 @@ export default function ContratoAcciones({ contratoId, estado, signingLink }: Pr
           >
             📄 Descargar PDF (borrador)
           </button>
+          <button
+            onClick={() => descargarWord(true)}
+            disabled={cargando}
+            style={{
+              marginLeft: 10,
+              padding: "10px 22px",
+              background: "#fff",
+              color: "var(--ink)",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              fontWeight: 500,
+              cursor: cargando ? "wait" : "pointer",
+              opacity: cargando ? 0.6 : 1,
+            }}
+          >
+            📝 Descargar Word (editable)
+          </button>
           <p style={{ fontSize: "0.82rem", opacity: 0.65, margin: "10px 0 0" }}>
-            El PDF del borrador es para enviarlo por WhatsApp y revisarlo. Para que lo firmen, genera el enlace.
+            El PDF del borrador es para enviarlo por WhatsApp y revisarlo. El Word lo abres en Word o LibreOffice
+            para cambiar o añadir cláusulas de un cliente concreto. Para que lo firmen, genera el enlace.
           </p>
         </>
       )}
@@ -192,6 +236,13 @@ export default function ContratoAcciones({ contratoId, estado, signingLink }: Pr
               style={{ padding: "10px 18px", border: "1px solid #ddd", background: "#fff", borderRadius: 8, cursor: cargando ? "wait" : "pointer" }}
             >
               📄 Descargar PDF
+            </button>
+            <button
+              onClick={() => descargarWord(true)}
+              disabled={cargando}
+              style={{ padding: "10px 18px", border: "1px solid #ddd", background: "#fff", borderRadius: 8, cursor: cargando ? "wait" : "pointer" }}
+            >
+              📝 Descargar Word
             </button>
           </div>
         </>
@@ -251,6 +302,25 @@ export default function ContratoAcciones({ contratoId, estado, signingLink }: Pr
             }}
           >
             {cargando ? "Generando PDF…" : "📄 Descargar PDF firmado"}
+          </button>
+          <button
+            type="button"
+            onClick={() => descargarWord(false)}
+            disabled={cargando}
+            style={{
+              marginLeft: 10,
+              display: "inline-block",
+              padding: "10px 22px",
+              background: "#fff",
+              color: "var(--ink)",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              fontWeight: 500,
+              cursor: cargando ? "wait" : "pointer",
+              opacity: cargando ? 0.6 : 1,
+            }}
+          >
+            📝 Descargar Word
           </button>
         </>
       )}
