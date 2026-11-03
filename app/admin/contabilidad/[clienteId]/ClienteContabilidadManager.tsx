@@ -35,6 +35,24 @@ type Factura = {
   origen_id: string | null;
 };
 
+type ClienteDocumento = {
+  id: string;
+  nombre: string;
+  categoria: string;
+  content_type: string | null;
+  created_at: string;
+};
+
+const CATEGORIAS_DOC: { value: string; label: string }[] = [
+  { value: "factura", label: "Factura" },
+  { value: "seguro", label: "Seguro" },
+  { value: "dni", label: "DNI / NIE" },
+  { value: "contrato", label: "Contrato" },
+  { value: "nomina", label: "Nómina / Solvencia" },
+  { value: "otro", label: "Otro" },
+];
+const labelCat = (v: string) => CATEGORIAS_DOC.find((c) => c.value === v)?.label || "Otro";
+
 type Pendiente = {
   cliente: { id: string; nombre: string; nif: string | null; direccion: string | null; cp_ciudad: string | null; telefono: string | null; es_empresa: boolean };
   pagos: { origen: string; origen_id: string; concepto: string; base: number; fecha: string; ya_facturado: boolean }[];
@@ -98,7 +116,7 @@ const EUR = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" 
 const fmt = (n: number) => EUR.format(n || 0);
 const añoActual = (mes: string) => new Date(mes).getUTCFullYear();
 
-type Tab = "pagos" | "partidas" | "resumen" | "config";
+type Tab = "pagos" | "partidas" | "documentos" | "resumen" | "config";
 
 export default function ClienteContabilidadManager({ clienteId }: { clienteId: string }) {
   const router = useRouter();
@@ -120,6 +138,10 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
   const [editAlquilerForm, setEditAlquilerForm] = useState({ mensualidad: "", comision_pct: "", comision_fija: "", fecha_inicio: "", fecha_fin: "" });
 
   const [subiendoFactura, setSubiendoFactura] = useState<string | null>(null);
+  const [documentos, setDocumentos] = useState<ClienteDocumento[]>([]);
+  const [subiendoDoc, setSubiendoDoc] = useState(false);
+  const [catDoc, setCatDoc] = useState("seguro");
+  const [errorDoc, setErrorDoc] = useState("");
   const [mostrarNuevoGasto, setMostrarNuevoGasto] = useState(false);
   const [nuevoGasto, setNuevoGasto] = useState({
     concepto: "",
@@ -155,13 +177,44 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
     setFacturas(Array.isArray(data) ? data : []);
   }, [clienteId]);
 
+  const cargarDocumentos = useCallback(async () => {
+    const data = await fetch(`/api/admin/clientes/${clienteId}/documentos`).then((r) => r.json());
+    setDocumentos(Array.isArray(data) ? data : []);
+  }, [clienteId]);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([cargarCliente(), cargarIngresos(), cargarGastos(), cargarFacturas()]);
+      await Promise.all([cargarCliente(), cargarIngresos(), cargarGastos(), cargarFacturas(), cargarDocumentos()]);
       setLoading(false);
     })();
-  }, [cargarCliente, cargarIngresos, cargarGastos, cargarFacturas]);
+  }, [cargarCliente, cargarIngresos, cargarGastos, cargarFacturas, cargarDocumentos]);
+
+  async function subirDocumento(file: File) {
+    setErrorDoc("");
+    setSubiendoDoc(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("categoria", catDoc);
+      fd.append("nombre", file.name);
+      const res = await fetch(`/api/admin/clientes/${clienteId}/documentos`, { method: "POST", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
+      await cargarDocumentos();
+    } catch (e) {
+      setErrorDoc(e instanceof Error ? e.message : "No se pudo subir el documento");
+    } finally {
+      setSubiendoDoc(false);
+    }
+  }
+
+  async function borrarDocumento(docId: string) {
+    if (!confirm("¿Eliminar este documento? No se puede deshacer.")) return;
+    const res = await fetch(`/api/admin/clientes/${clienteId}/documentos/${docId}`, { method: "DELETE" });
+    if (res.ok) await cargarDocumentos();
+    else setErrorDoc("No se pudo eliminar el documento");
+  }
 
   async function actualizarMensualidad() {
     await fetch(`/api/admin/clientes/${clienteId}`, {
@@ -398,6 +451,7 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
         {([
           { k: "pagos", l: `Pagos mensuales (${ingresos.length})` },
           { k: "partidas", l: `Partidas (${gastos.length})` },
+          { k: "documentos", l: `Documentos (${documentos.length})` },
           { k: "resumen", l: "Resumen P&L" },
           { k: "config", l: "Configuración" },
         ] as { k: Tab; l: string }[]).map((t) => (
@@ -659,6 +713,56 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
             <div className={rentabilidadPiso >= 0 ? "pnl-pos" : "pnl-neg"}><b>{fmt(rentabilidadPiso)}</b><span>Rentabilidad piso {año} <Info text={`Base (sin IVA) − gastos acumulados del casero en ${año}. Es lo que le queda al propietario del piso tras pagar tu comisión y los gastos corrientes. Positivo = el piso le renta.`} /></span></div>
             <div><b>{fmt(rentabilidadPiso / meses)}</b><span>Rentabilidad/mes <Info text={`Rentabilidad del año dividida entre los meses transcurridos (${meses}). Ritmo mensual neto del piso para el propietario.`} /></span></div>
           </div>
+        </div>
+      )}
+
+      {tab === "documentos" && (
+        <div className="articulos-list-section">
+          <div className="lead-form-row" style={{ alignItems: "end", gap: 12 }}>
+            <label>
+              Tipo de documento
+              <select value={catDoc} onChange={(e) => setCatDoc(e.target.value)}>
+                {CATEGORIAS_DOC.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="btn-primary" style={{ cursor: subiendoDoc ? "wait" : "pointer", opacity: subiendoDoc ? 0.6 : 1 }}>
+              {subiendoDoc ? "Subiendo…" : "Subir documento (PDF o imagen)"}
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+                style={{ display: "none" }}
+                disabled={subiendoDoc}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) subirDocumento(f); e.target.value = ""; }}
+              />
+            </label>
+          </div>
+          {errorDoc && <p style={{ color: "#dc2626", fontSize: 13 }}>{errorDoc}</p>}
+
+          {(() => {
+            const facturas = documentos.filter((d) => d.categoria === "factura");
+            const otros = documentos.filter((d) => d.categoria !== "factura");
+            const Item = (d: ClienteDocumento) => (
+              <div key={d.id} className="pisos-list-item" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #eee" }}>
+                <span style={{ padding: "2px 8px", background: "#f3f4f6", color: "#374151", borderRadius: 4, fontSize: 11, whiteSpace: "nowrap" }}>{labelCat(d.categoria)}</span>
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.nombre}</span>
+                <span className="loc" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{new Date(d.created_at).toLocaleDateString("es-ES")}</span>
+                <a href={`/api/admin/clientes/${clienteId}/documentos/${d.id}`} target="_blank" rel="noreferrer" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }}>Abrir</a>
+                <a href={`/api/admin/clientes/${clienteId}/documentos/${d.id}?download=1`} className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }}>Descargar</a>
+                <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px", color: "#dc2626" }} onClick={() => borrarDocumento(d.id)}>Borrar</button>
+              </div>
+            );
+            return (
+              <>
+                <h3 style={{ margin: "20px 0 4px" }}>Facturas</h3>
+                {facturas.length ? facturas.map(Item) : <p className="admin-empty" style={{ marginTop: 4 }}>Sin facturas subidas.</p>}
+
+                <h3 style={{ margin: "24px 0 4px" }}>Otros documentos</h3>
+                {otros.length ? otros.map(Item) : <p className="admin-empty" style={{ marginTop: 4 }}>Sin documentos. Sube el seguro, DNI, contrato, etc.</p>}
+              </>
+            );
+          })()}
         </div>
       )}
 
