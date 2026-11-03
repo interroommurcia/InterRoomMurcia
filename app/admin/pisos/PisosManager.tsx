@@ -212,6 +212,31 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
     }
   }
 
+  async function descargarFotos(piso: Piso) {
+    setError("");
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/pisos/${piso.id}/fotos`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      a.download = `fotos-${piso.slug || piso.id.slice(0, 8)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudieron descargar las fotos.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function handleWhatsapp(piso: Piso) {
     const texto = `Hola, échale un vistazo a esta habitación: ${piso.titulo} (${piso.barrio}) por ${piso.precioMes}€/mes. Info y fotos: ${urlPublica(piso)}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
@@ -393,6 +418,9 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
                   </button>
                   <button type="button" className="btn-ghost" onClick={() => handleWhatsapp(piso)}>
                     WhatsApp
+                  </button>
+                  <button type="button" className="btn-ghost" onClick={() => descargarFotos(piso)} disabled={busy}>
+                    Descargar fotos
                   </button>
                   <button type="button" className="btn-ghost" onClick={() => cargarYEditar(piso)} disabled={busy}>
                     Editar
