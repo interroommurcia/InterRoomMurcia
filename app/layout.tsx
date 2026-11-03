@@ -3,6 +3,7 @@ import { Montserrat } from "next/font/google";
 import { PostHogProvider } from "../components/PostHogProvider";
 import ChatWidget from "../components/ChatWidget";
 import MobileNav from "../components/MobileNav";
+import PisoArrowMotion from "../components/PisoArrowMotion";
 import { SITE_URL } from "../lib/site";
 import "./globals.css";
 
@@ -138,6 +139,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </footer>
           <ChatWidget />
+          <PisoArrowMotion />
         </PostHogProvider>
       </body>
     </html>

@@ -556,6 +556,34 @@ h1 em {
   align-items: center;
   justify-content: center;
   font-size: 0.9rem;
+  will-change: transform;
+}
+
+/* Empujón a la derecha y vuelta al origen; lo dispara PisoArrowMotion
+   en una tarjeta al azar, nunca dos a la vez. */
+.piso-arrow--nudge {
+  animation: piso-arrow-nudge 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes piso-arrow-nudge {
+  0% {
+    transform: translateX(0);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--orange) 55%, transparent);
+  }
+  45% {
+    transform: translateX(8px) scale(1.12);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--orange) 0%, transparent);
+  }
+  100% {
+    transform: translateX(0);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--orange) 0%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .piso-arrow--nudge {
+    animation: none;
+  }
 }
 
 /* Próximamente cards */
