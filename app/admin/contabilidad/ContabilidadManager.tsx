@@ -235,6 +235,241 @@ const NOMBRES_MES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Jul
 
 const EUR = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
 
+function fmtCorto(n: number) {
+  const abs = Math.abs(n);
+  if (abs >= 1000) return `${(n / 1000).toFixed(abs >= 10000 ? 0 : 1)}k€`;
+  return `${Math.round(n)}€`;
+}
+
+function Donut({ data, size = 180, titulo }: { data: { label: string; value: number; color: string }[]; size?: number; titulo?: string }) {
+  const total = data.reduce((s, d) => s + Math.max(0, d.value), 0);
+  const r = size / 2 - 4;
+  const cx = size / 2;
+  const cy = size / 2;
+  const inner = r * 0.6;
+  let acum = 0;
+  const segmentos = data.filter((d) => d.value > 0).map((d) => {
+    const frac = d.value / (total || 1);
+    const a0 = acum * Math.PI * 2 - Math.PI / 2;
+    const a1 = (acum + frac) * Math.PI * 2 - Math.PI / 2;
+    acum += frac;
+    const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const xi0 = cx + inner * Math.cos(a1), yi0 = cy + inner * Math.sin(a1);
+    const xi1 = cx + inner * Math.cos(a0), yi1 = cy + inner * Math.sin(a0);
+    const largeArc = frac > 0.5 ? 1 : 0;
+    const d_ = `M${x0},${y0} A${r},${r} 0 ${largeArc} 1 ${x1},${y1} L${xi0},${yi0} A${inner},${inner} 0 ${largeArc} 0 ${xi1},${yi1} Z`;
+    return { d_, color: d.color, label: d.label, pct: frac * 100, value: d.value };
+  });
+
+  return (
+    <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {total === 0 ? (
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="#eee" strokeWidth={r - inner} />
+        ) : segmentos.map((s, i) => <path key={i} d={s.d_} fill={s.color} />)}
+        <text x={cx} y={cy - 4} textAnchor="middle" fontSize={11} fill="#999">{titulo ?? "Total"}</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" fontSize={14} fontWeight={700} fill="#111">{fmtCorto(total)}</text>
+      </svg>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, minWidth: 180 }}>
+        {data.map((d) => {
+          const pct = total ? (d.value / total) * 100 : 0;
+          return (
+            <div key={d.label} style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+              <span><span style={{ display: "inline-block", width: 10, height: 10, background: d.color, borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />{d.label}</span>
+              <span style={{ color: "#666" }}>{fmtCorto(d.value)} · {pct.toFixed(1)}%</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Waterfall({ items }: { items: { label: string; value: number; tipo: "inicial" | "positivo" | "negativo" | "final" }[] }) {
+  const W = 720, H = 240, PAD_L = 50, PAD_B = 48, PAD_T = 20, PAD_R = 12;
+  const chartW = W - PAD_L - PAD_R, chartH = H - PAD_T - PAD_B;
+  const puntos: { base: number; top: number }[] = [];
+  let acum = 0;
+  items.forEach((it, i) => {
+    if (it.tipo === "inicial" || it.tipo === "final") {
+      puntos.push({ base: 0, top: it.value });
+      acum = it.value;
+    } else if (it.tipo === "positivo") {
+      puntos.push({ base: acum, top: acum + it.value });
+      acum += it.value;
+    } else {
+      puntos.push({ base: acum - it.value, top: acum });
+      acum -= it.value;
+    }
+    void i;
+  });
+  const max = Math.max(1, ...puntos.map((p) => p.top));
+  const barW = chartW / items.length;
+  const pad = 10;
+  const py = (v: number) => PAD_T + chartH * (1 - v / max);
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: "100%", height: "auto", display: "block" }}>
+      {[0.25, 0.5, 0.75, 1].map((f) => (
+        <g key={f}>
+          <line x1={PAD_L} y1={py(max * f)} x2={W - PAD_R} y2={py(max * f)} stroke="#eee" />
+          <text x={PAD_L - 6} y={py(max * f) + 3} fontSize={9} textAnchor="end" fill="#999">{fmtCorto(max * f)}</text>
+        </g>
+      ))}
+      {items.map((it, i) => {
+        const p = puntos[i];
+        const x = PAD_L + i * barW + pad / 2;
+        const w = barW - pad;
+        const y = py(p.top);
+        const h = py(p.base) - py(p.top);
+        const color = it.tipo === "inicial" ? "#3b82f6" : it.tipo === "final" ? "#059669" : it.tipo === "positivo" ? "#10b981" : "#ef4444";
+        const prev = puntos[i - 1];
+        return (
+          <g key={it.label}>
+            {prev && <line x1={PAD_L + (i - 1) * barW + barW - pad / 2} y1={py(prev.top)} x2={x} y2={py(prev.top)} stroke="#bbb" strokeDasharray="3,3" />}
+            <rect x={x} y={y} width={w} height={Math.max(1, h)} fill={color} rx={2} />
+            <text x={x + w / 2} y={y - 4} fontSize={10} textAnchor="middle" fill="#333" fontWeight={600}>{fmtCorto(it.value)}</text>
+            <text x={x + w / 2} y={H - PAD_B + 14} fontSize={10} textAnchor="middle" fill="#666">{it.label}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function LineaAcumulada({ meses, mesesAnterior, anio, campo, color }: { meses: MetricasMes[]; mesesAnterior: MetricasMes[]; anio: number; campo: "bruto" | "neto"; color: string }) {
+  const W = 720, H = 200, PAD_L = 50, PAD_B = 28, PAD_T = 12, PAD_R = 12;
+  const chartW = W - PAD_L - PAD_R, chartH = H - PAD_T - PAD_B;
+  const cum = (arr: MetricasMes[]) => arr.reduce<number[]>((acc, m, i) => { acc.push((acc[i - 1] ?? 0) + m[campo]); return acc; }, []);
+  const actual = cum(meses);
+  const prev = cum(mesesAnterior);
+  const max = Math.max(1, ...actual, ...prev);
+  const px = (i: number) => PAD_L + (i / 11) * chartW;
+  const py = (v: number) => PAD_T + chartH * (1 - v / max);
+  const linea = (vs: number[]) => vs.map((v, i) => `${i === 0 ? "M" : "L"}${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(" ");
+  const area = `${linea(actual)} L${px(11).toFixed(1)},${py(0).toFixed(1)} L${px(0).toFixed(1)},${py(0).toFixed(1)} Z`;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: "100%", height: "auto", display: "block" }}>
+      {[0.25, 0.5, 0.75, 1].map((f) => (
+        <g key={f}>
+          <line x1={PAD_L} y1={py(max * f)} x2={W - PAD_R} y2={py(max * f)} stroke="#eee" />
+          <text x={PAD_L - 6} y={py(max * f) + 3} fontSize={9} textAnchor="end" fill="#999">{fmtCorto(max * f)}</text>
+        </g>
+      ))}
+      {NOMBRES_MES_CORTO.map((n, i) => (
+        <text key={n} x={px(i)} y={H - PAD_B + 14} fontSize={10} textAnchor="middle" fill="#666">{n}</text>
+      ))}
+      <path d={area} fill={color} opacity={0.1} />
+      <path d={linea(prev)} fill="none" stroke="#94a3b8" strokeWidth={2} strokeDasharray="6,4" />
+      <path d={linea(actual)} fill="none" stroke={color} strokeWidth={2.5} />
+      {actual.map((v, i) => <circle key={i} cx={px(i)} cy={py(v)} r={3} fill={color} />)}
+      <text x={W - PAD_R - 4} y={py(actual[11]) - 6} fontSize={10} textAnchor="end" fill={color} fontWeight={700}>{fmtCorto(actual[11])} ({anio})</text>
+      <text x={W - PAD_R - 4} y={py(prev[11]) - 6} fontSize={10} textAnchor="end" fill="#94a3b8" fontWeight={600}>{fmtCorto(prev[11])} ({anio - 1})</text>
+    </svg>
+  );
+}
+
+function MargenMensual({ meses }: { meses: MetricasMes[] }) {
+  const W = 720, H = 180, PAD_L = 50, PAD_B = 28, PAD_T = 20, PAD_R = 12;
+  const chartW = W - PAD_L - PAD_R, chartH = H - PAD_T - PAD_B;
+  const margen = meses.map((m) => m.bruto > 0 ? ((m.neto - m.gastosFijos) / m.bruto) * 100 : 0);
+  const max = Math.max(100, ...margen);
+  const min = Math.min(0, ...margen);
+  const rango = max - min || 1;
+  const px = (i: number) => PAD_L + (i / 11) * chartW;
+  const py = (v: number) => PAD_T + chartH * (1 - (v - min) / rango);
+  const linea = margen.map((v, i) => `${i === 0 ? "M" : "L"}${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(" ");
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: "100%", height: "auto", display: "block" }}>
+      {[0, 25, 50, 75, 100].filter((f) => f >= min && f <= max).map((f) => (
+        <g key={f}>
+          <line x1={PAD_L} y1={py(f)} x2={W - PAD_R} y2={py(f)} stroke={f === 0 ? "#ccc" : "#eee"} />
+          <text x={PAD_L - 6} y={py(f) + 3} fontSize={9} textAnchor="end" fill="#999">{f}%</text>
+        </g>
+      ))}
+      {NOMBRES_MES_CORTO.map((n, i) => (
+        <text key={n} x={px(i)} y={H - PAD_B + 14} fontSize={10} textAnchor="middle" fill="#666">{n}</text>
+      ))}
+      <path d={linea} fill="none" stroke="#059669" strokeWidth={2.5} />
+      {margen.map((v, i) => meses[i].bruto > 0 && (
+        <g key={i}>
+          <circle cx={px(i)} cy={py(v)} r={3} fill="#059669" />
+          <text x={px(i)} y={py(v) - 6} fontSize={9} textAnchor="middle" fill="#059669" fontWeight={600}>{v.toFixed(0)}%</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function BarrasHorizontales({ data, color = "#3b82f6", formato = "euro" }: { data: { label: string; value: number }[]; color?: string; formato?: "euro" | "numero" }) {
+  const max = Math.max(1, ...data.map((d) => d.value));
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {data.map((d) => (
+        <div key={d.label} style={{ display: "grid", gridTemplateColumns: "140px 1fr 80px", alignItems: "center", gap: 8, fontSize: 12 }}>
+          <span style={{ color: "#333", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{d.label}</span>
+          <div style={{ background: "#f1f5f9", borderRadius: 4, height: 18, position: "relative" }}>
+            <div style={{ background: color, height: "100%", width: `${(d.value / max) * 100}%`, borderRadius: 4, transition: "width 0.3s" }} />
+          </div>
+          <span style={{ textAlign: "right", color: "#666", fontWeight: 600 }}>{formato === "euro" ? fmtCorto(d.value) : d.value.toLocaleString("es-ES")}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Sparkline({ values, color = "#3b82f6", width = 100, height = 28 }: { values: number[]; color?: string; width?: number; height?: number }) {
+  const max = Math.max(1, ...values);
+  const min = Math.min(0, ...values);
+  const rango = max - min || 1;
+  const px = (i: number) => (i / Math.max(1, values.length - 1)) * (width - 4) + 2;
+  const py = (v: number) => height - 2 - ((v - min) / rango) * (height - 4);
+  const linea = values.map((v, i) => `${i === 0 ? "M" : "L"}${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(" ");
+  const area = `${linea} L${px(values.length - 1).toFixed(1)},${height - 2} L${px(0).toFixed(1)},${height - 2} Z`;
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: "block" }}>
+      <path d={area} fill={color} opacity={0.15} />
+      <path d={linea} fill="none" stroke={color} strokeWidth={1.5} />
+    </svg>
+  );
+}
+
+function Heatmap({ meses }: { meses: MetricasMes[] }) {
+  const lineas: { key: keyof MetricasMes; label: string; color: string }[] = [
+    { key: "alquileres", label: "Gestión alq.", color: "#3b82f6" },
+    { key: "alquilerComisiones", label: "Comisión alq.", color: "#8b5cf6" },
+    { key: "compraventas", label: "Compraventas", color: "#10b981" },
+    { key: "creditos", label: "Créditos", color: "#f59e0b" },
+  ];
+  const max: Record<string, number> = {};
+  lineas.forEach((l) => { max[l.key as string] = Math.max(1, ...meses.map((m) => (m[l.key] as number) || 0)); });
+  const cellW = 48, cellH = 32;
+  const W = cellW * 13 + 10, H = cellH * lineas.length + 20;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: "100%", height: "auto", display: "block" }}>
+      {NOMBRES_MES_CORTO.map((n, i) => (
+        <text key={n} x={cellW + i * cellW + cellW / 2} y={14} fontSize={10} textAnchor="middle" fill="#666">{n}</text>
+      ))}
+      {lineas.map((l, r) => (
+        <g key={l.key as string}>
+          <text x={cellW - 8} y={20 + r * cellH + cellH / 2 + 4} fontSize={10} textAnchor="end" fill="#333">{l.label}</text>
+          {meses.map((m, i) => {
+            const v = (m[l.key] as number) || 0;
+            const intensidad = v / max[l.key as string];
+            return (
+              <g key={i}>
+                <rect x={cellW + i * cellW + 2} y={20 + r * cellH + 2} width={cellW - 4} height={cellH - 4} fill={l.color} opacity={0.1 + intensidad * 0.85} rx={3} />
+                {v > 0 && <text x={cellW + i * cellW + cellW / 2} y={20 + r * cellH + cellH / 2 + 4} fontSize={9} textAnchor="middle" fill={intensidad > 0.5 ? "#fff" : "#333"} fontWeight={600}>{fmtCorto(v)}</text>}
+              </g>
+            );
+          })}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 function fmt(n: number) {
   return EUR.format(n || 0);
 }
@@ -942,6 +1177,7 @@ export default function ContabilidadManager() {
                 <div className="analytics-card" style={{ borderLeft: "3px solid #3b82f6" }}>
                   <h3>Gestión de alquileres</h3>
                   <div className="analytics-stat-value">{fmt(metricas.totalAnual.alquileres)}</div>
+                  <Sparkline values={metricas.meses.map((m) => m.alquileres)} color="#3b82f6" />
                   <p>
                     {porcentaje(metricas.totalAnual.alquileres, metricas.totalAnual.bruto).toFixed(1)}% del total ·{" "}
                     {fmtPct(variacionPct(metricas.totalAnual.alquileres, metricas.mesesAnterior.reduce((s, m) => s + m.alquileres, 0)))} vs {metricasAnio - 1}
@@ -950,6 +1186,7 @@ export default function ContabilidadManager() {
                 <div className="analytics-card" style={{ borderLeft: "3px solid #8b5cf6" }}>
                   <h3>Alquileres comisión</h3>
                   <div className="analytics-stat-value">{fmt(metricas.totalAnual.alquilerComisiones)}</div>
+                  <Sparkline values={metricas.meses.map((m) => m.alquilerComisiones ?? 0)} color="#8b5cf6" />
                   <p>
                     {porcentaje(metricas.totalAnual.alquilerComisiones, metricas.totalAnual.bruto).toFixed(1)}% del total ·{" "}
                     {fmtPct(variacionPct(metricas.totalAnual.alquilerComisiones, metricas.mesesAnterior.reduce((s, m) => s + (m.alquilerComisiones ?? 0), 0)))} vs {metricasAnio - 1}
@@ -958,6 +1195,7 @@ export default function ContabilidadManager() {
                 <div className="analytics-card" style={{ borderLeft: "3px solid #10b981" }}>
                   <h3>Compraventas</h3>
                   <div className="analytics-stat-value">{fmt(metricas.totalAnual.compraventas)}</div>
+                  <Sparkline values={metricas.meses.map((m) => m.compraventas)} color="#10b981" />
                   <p>
                     {porcentaje(metricas.totalAnual.compraventas, metricas.totalAnual.bruto).toFixed(1)}% del total ·{" "}
                     {fmtPct(variacionPct(metricas.totalAnual.compraventas, metricas.mesesAnterior.reduce((s, m) => s + m.compraventas, 0)))} vs {metricasAnio - 1}
@@ -966,6 +1204,7 @@ export default function ContabilidadManager() {
                 <div className="analytics-card" style={{ borderLeft: "3px solid #f59e0b" }}>
                   <h3>Créditos</h3>
                   <div className="analytics-stat-value">{fmt(metricas.totalAnual.creditos)}</div>
+                  <Sparkline values={metricas.meses.map((m) => m.creditos)} color="#f59e0b" />
                   <p>
                     {porcentaje(metricas.totalAnual.creditos, metricas.totalAnual.bruto).toFixed(1)}% del total ·{" "}
                     {fmtPct(variacionPct(metricas.totalAnual.creditos, metricas.mesesAnterior.reduce((s, m) => s + m.creditos, 0)))} vs {metricasAnio - 1}
@@ -978,6 +1217,7 @@ export default function ContabilidadManager() {
                 <div className="analytics-card">
                   <h3>Facturación bruta</h3>
                   <div className="analytics-stat-value">{fmt(metricas.totalAnual.bruto)}</div>
+                  <Sparkline values={metricas.meses.map((m) => m.bruto)} color="#3b82f6" />
                   <p>
                     {metricas.anioAnterior ? `${fmtPct(metricas.variacion.brutoPct)} vs ${metricasAnio - 1}` : `Sin datos de ${metricasAnio - 1}`}
                   </p>
@@ -985,11 +1225,13 @@ export default function ContabilidadManager() {
                 <div className="analytics-card">
                   <h3>Gastos liquidados</h3>
                   <div className="analytics-stat-value">{fmt(metricas.totalAnual.gastos)}</div>
+                  <Sparkline values={metricas.meses.map((m) => m.gastos)} color="#ef4444" />
                   <p>Imputados al mes en que se pagaron</p>
                 </div>
                 <div className="analytics-card">
                   <h3>Beneficio neto</h3>
                   <div className="analytics-stat-value">{fmt(metricas.totalAnual.neto)}</div>
+                  <Sparkline values={metricas.meses.map((m) => m.neto)} color="#059669" />
                   <p>
                     {metricas.anioAnterior ? `${fmtPct(metricas.variacion.netoPct)} vs ${metricasAnio - 1}` : `Sin datos de ${metricasAnio - 1}`}
                   </p>
@@ -1116,6 +1358,275 @@ export default function ContabilidadManager() {
                   );
                 })()}
               </div>
+
+              {/* Donuts: mix ingresos + mix gastos */}
+              <div className="articulos-list-section" style={{ marginTop: 16, padding: 16, background: "#fafafa", borderRadius: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div>
+                  <h3 style={{ marginTop: 0, marginBottom: 12 }}>Mix de ingresos</h3>
+                  <Donut titulo="Bruto" data={[
+                    { label: "Gestión alquileres", value: metricas.totalAnual.alquileres, color: "#3b82f6" },
+                    { label: "Comisión alquileres", value: metricas.totalAnual.alquilerComisiones, color: "#8b5cf6" },
+                    { label: "Compraventas", value: metricas.totalAnual.compraventas, color: "#10b981" },
+                    { label: "Créditos", value: metricas.totalAnual.creditos, color: "#f59e0b" },
+                  ]} />
+                </div>
+                <div>
+                  <h3 style={{ marginTop: 0, marginBottom: 12 }}>Mix de gastos</h3>
+                  <Donut titulo="Gastos" data={[
+                    { label: "Operacionales", value: metricas.totalAnual.gastos, color: "#ef4444" },
+                    { label: "Fijos", value: metricas.totalAnual.fijos, color: "#f97316" },
+                    { label: "Impuestos", value: metricas.totalAnual.impuestos, color: "#f59e0b" },
+                    { label: "Anuales", value: metricas.totalAnual.anuales, color: "#7c3aed" },
+                  ]} />
+                </div>
+              </div>
+
+              {/* Waterfall anual */}
+              <div className="articulos-list-section" style={{ marginTop: 16, padding: 16, background: "#fafafa", borderRadius: 8 }}>
+                <h3 style={{ margin: "0 0 12px" }}>Cascada anual: del bruto al neto final</h3>
+                <Waterfall items={[
+                  { label: "Bruto", value: metricas.totalAnual.bruto, tipo: "inicial" },
+                  { label: "Gastos op.", value: metricas.totalAnual.gastos, tipo: "negativo" },
+                  { label: "Fijos", value: metricas.totalAnual.fijos, tipo: "negativo" },
+                  { label: "Impuestos", value: metricas.totalAnual.impuestos, tipo: "negativo" },
+                  { label: "Anuales", value: metricas.totalAnual.anuales, tipo: "negativo" },
+                  { label: "Neto final", value: metricas.totalAnual.netoTrasFijos - metricas.totalAnual.impuestos - metricas.totalAnual.anuales, tipo: "final" },
+                ]} />
+              </div>
+
+              {/* YTD acumulado */}
+              <div className="articulos-list-section" style={{ marginTop: 16, padding: 16, background: "#fafafa", borderRadius: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 12 }}>
+                  <h3 style={{ margin: 0 }}>Acumulado YTD: bruto {metricasAnio} vs {metricasAnio - 1}</h3>
+                </div>
+                <LineaAcumulada meses={metricas.meses} mesesAnterior={metricas.mesesAnterior} anio={metricasAnio} campo="bruto" color="#3b82f6" />
+                <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 12 }}>
+                  <h3 style={{ margin: 0 }}>Acumulado YTD: neto {metricasAnio} vs {metricasAnio - 1}</h3>
+                </div>
+                <LineaAcumulada meses={metricas.meses} mesesAnterior={metricas.mesesAnterior} anio={metricasAnio} campo="neto" color="#059669" />
+              </div>
+
+              {/* Margen % mensual */}
+              <div className="articulos-list-section" style={{ marginTop: 16, padding: 16, background: "#fafafa", borderRadius: 8 }}>
+                <h3 style={{ margin: "0 0 12px" }}>Margen % mensual (neto tras fijos / bruto)</h3>
+                <MargenMensual meses={metricas.meses} />
+              </div>
+
+              {/* Heatmap mes × línea */}
+              <div className="articulos-list-section" style={{ marginTop: 16, padding: 16, background: "#fafafa", borderRadius: 8 }}>
+                <h3 style={{ margin: "0 0 12px" }}>Estacionalidad: mes × línea de negocio</h3>
+                <Heatmap meses={metricas.meses} />
+              </div>
+
+              {/* Barras horizontales: gasto fijo por concepto */}
+              {gastosFijos.filter((g) => !g.fecha_fin || new Date(g.fecha_fin).getFullYear() >= metricasAnio).length > 0 && (
+                <div className="articulos-list-section" style={{ marginTop: 16, padding: 16, background: "#fafafa", borderRadius: 8 }}>
+                  <h3 style={{ margin: "0 0 12px" }}>Gastos fijos por concepto (anualizado)</h3>
+                  <BarrasHorizontales
+                    color="#f97316"
+                    data={gastosFijos
+                      .filter((g) => !g.fecha_fin || new Date(g.fecha_fin).getFullYear() >= metricasAnio)
+                      .map((g) => ({
+                        label: g.concepto,
+                        value: g.tipo === "impuesto" ? g.importe_mensual * 4 : g.tipo === "anual" ? g.importe_mensual * 12 : g.importe_mensual * 12,
+                      }))
+                      .sort((a, b) => b.value - a.value)
+                      .slice(0, 12)}
+                  />
+                </div>
+              )}
+
+              {/* Barras horizontales: pagado_por */}
+              {(() => {
+                const porPersona: Record<string, number> = {};
+                gastosFijos.forEach((g) => {
+                  if (!g.pagado_por) return;
+                  const anualizado = g.tipo === "impuesto" ? g.importe_mensual * 4 : g.importe_mensual * 12;
+                  porPersona[g.pagado_por] = (porPersona[g.pagado_por] ?? 0) + anualizado;
+                });
+                gastosEmpresa.forEach((g) => {
+                  if (!g.pagado_por) return;
+                  if (new Date(g.fecha).getFullYear() !== metricasAnio) return;
+                  porPersona[g.pagado_por] = (porPersona[g.pagado_por] ?? 0) + Number(g.importe);
+                });
+                const data = Object.entries(porPersona).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+                if (data.length === 0) return null;
+                return (
+                  <div className="articulos-list-section" style={{ marginTop: 16, padding: 16, background: "#fafafa", borderRadius: 8 }}>
+                    <h3 style={{ margin: "0 0 12px" }}>Gasto adelantado por persona ({metricasAnio})</h3>
+                    <BarrasHorizontales color="#8b5cf6" data={data} />
+                  </div>
+                );
+              })()}
+
+              {/* Pendiente vs cobrado por línea */}
+              {balance && (
+                <div className="articulos-list-section" style={{ marginTop: 16, padding: 16, background: "#fafafa", borderRadius: 8 }}>
+                  <h3 style={{ margin: "0 0 12px" }}>Pendiente de cobro vs cobrado (balance global)</h3>
+                  {(() => {
+                    const filas = [
+                      { label: "Gestión alquileres", cobrado: balance.alquileres.cobrado, pendiente: balance.alquileres.pendiente, color: "#3b82f6" },
+                      ...(balance.alquilerComisiones ? [{ label: "Comisión alquileres", cobrado: balance.alquilerComisiones.cobrado, pendiente: balance.alquilerComisiones.pendiente, color: "#8b5cf6" }] : []),
+                      { label: "Compraventas", cobrado: balance.compraventas.cobrado, pendiente: balance.compraventas.pendiente, color: "#10b981" },
+                      { label: "Créditos", cobrado: balance.creditos.cobrado, pendiente: balance.creditos.pendiente, color: "#f59e0b" },
+                    ];
+                    const max = Math.max(1, ...filas.map((f) => f.cobrado + f.pendiente));
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {filas.map((f) => {
+                          const total = f.cobrado + f.pendiente;
+                          const pctCobrado = total > 0 ? (f.cobrado / max) * 100 : 0;
+                          const pctPendiente = total > 0 ? (f.pendiente / max) * 100 : 0;
+                          return (
+                            <div key={f.label} style={{ display: "grid", gridTemplateColumns: "150px 1fr 160px", gap: 10, alignItems: "center", fontSize: 12 }}>
+                              <span style={{ color: "#333" }}>{f.label}</span>
+                              <div style={{ background: "#f1f5f9", borderRadius: 4, height: 20, display: "flex", overflow: "hidden" }}>
+                                <div style={{ background: f.color, width: `${pctCobrado}%`, transition: "width 0.3s" }} title={`Cobrado ${fmt(f.cobrado)}`} />
+                                <div style={{ background: "#fdba74", width: `${pctPendiente}%`, transition: "width 0.3s" }} title={`Pendiente ${fmt(f.pendiente)}`} />
+                              </div>
+                              <span style={{ textAlign: "right", color: "#666", fontSize: 11 }}>
+                                <span style={{ color: f.color, fontWeight: 600 }}>{fmtCorto(f.cobrado)}</span>
+                                {" / "}
+                                <span style={{ color: f.pendiente > 0 ? "#c2410c" : "#999", fontWeight: 600 }}>{fmtCorto(f.pendiente)}</span>
+                              </span>
+                            </div>
+                          );
+                        })}
+                        <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#666", marginTop: 4 }}>
+                          <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#3b82f6", borderRadius: 2, marginRight: 4, verticalAlign: "middle" }} />Cobrado</span>
+                          <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#fdba74", borderRadius: 2, marginRight: 4, verticalAlign: "middle" }} />Pendiente</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Nº de operaciones cerradas por mes */}
+              {(() => {
+                const conteo = Array.from({ length: 12 }, () => ({ compraventas: 0, creditos: 0, alquileres: 0 }));
+                operaciones.forEach((o) => {
+                  const d = new Date(o.fecha_cierre);
+                  if (d.getFullYear() === metricasAnio) conteo[d.getMonth()].compraventas++;
+                });
+                creditos.forEach((c) => {
+                  const d = new Date(c.fecha);
+                  if (d.getFullYear() === metricasAnio) conteo[d.getMonth()].creditos++;
+                });
+                alquilerComisiones.forEach((a) => {
+                  const d = new Date(a.fecha);
+                  if (d.getFullYear() === metricasAnio) conteo[d.getMonth()].alquileres++;
+                });
+                const totalOps = conteo.reduce((s, c) => s + c.compraventas + c.creditos + c.alquileres, 0);
+                if (totalOps === 0) return null;
+                const max = Math.max(1, ...conteo.map((c) => c.compraventas + c.creditos + c.alquileres));
+                const W = 720, H = 180, PAD_L = 40, PAD_B = 28, PAD_T = 20, PAD_R = 12;
+                const chartW = W - PAD_L - PAD_R, chartH = H - PAD_T - PAD_B;
+                const barW = chartW / 12, barPad = 6;
+                return (
+                  <div className="articulos-list-section" style={{ marginTop: 16, padding: 16, background: "#fafafa", borderRadius: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 12 }}>
+                      <h3 style={{ margin: 0 }}>Nº de operaciones cerradas por mes ({totalOps} en {metricasAnio})</h3>
+                      <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
+                        <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#10b981", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Compraventas</span>
+                        <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#f59e0b", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Créditos</span>
+                        <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#8b5cf6", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Alquileres com.</span>
+                      </div>
+                    </div>
+                    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: "100%", height: "auto", display: "block" }}>
+                      {[0.25, 0.5, 0.75, 1].map((f) => (
+                        <line key={f} x1={PAD_L} y1={PAD_T + chartH * (1 - f)} x2={W - PAD_R} y2={PAD_T + chartH * (1 - f)} stroke="#eee" />
+                      ))}
+                      {conteo.map((c, i) => {
+                        const x = PAD_L + i * barW + barPad / 2;
+                        const w = barW - barPad;
+                        const hC = (c.compraventas / max) * chartH;
+                        const hK = (c.creditos / max) * chartH;
+                        const hA = (c.alquileres / max) * chartH;
+                        const yC = PAD_T + chartH - hC;
+                        const yK = yC - hK;
+                        const yA = yK - hA;
+                        const total = c.compraventas + c.creditos + c.alquileres;
+                        return (
+                          <g key={i}>
+                            {hC > 0 && <rect x={x} y={yC} width={w} height={hC} fill="#10b981" rx={2} />}
+                            {hK > 0 && <rect x={x} y={yK} width={w} height={hK} fill="#f59e0b" rx={2} />}
+                            {hA > 0 && <rect x={x} y={yA} width={w} height={hA} fill="#8b5cf6" rx={2} />}
+                            {total > 0 && <text x={x + w / 2} y={yA - 4} fontSize={10} textAnchor="middle" fill="#333" fontWeight={600}>{total}</text>}
+                            <text x={x + w / 2} y={H - PAD_B + 14} fontSize={10} textAnchor="middle" fill="#666">{NOMBRES_MES_CORTO[i]}</text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+                );
+              })()}
+
+              {/* Ticket medio por trimestre */}
+              {(() => {
+                const porTrimestre = [0, 1, 2, 3].map((q) => {
+                  const inicio = q * 3, fin = q * 3 + 3;
+                  const opsQ = operaciones.filter((o) => { const d = new Date(o.fecha_cierre); return d.getFullYear() === metricasAnio && d.getMonth() >= inicio && d.getMonth() < fin; });
+                  const credQ = creditos.filter((c) => { const d = new Date(c.fecha); return d.getFullYear() === metricasAnio && d.getMonth() >= inicio && d.getMonth() < fin; });
+                  const alqQ = alquilerComisiones.filter((a) => { const d = new Date(a.fecha); return d.getFullYear() === metricasAnio && d.getMonth() >= inicio && d.getMonth() < fin; });
+                  return {
+                    trimestre: q + 1,
+                    compraventas: opsQ.length > 0 ? opsQ.reduce((s, o) => s + Number(o.comision_calculada), 0) / opsQ.length : 0,
+                    creditos: credQ.length > 0 ? credQ.reduce((s, c) => s + Number(c.precio), 0) / credQ.length : 0,
+                    alquileres: alqQ.length > 0 ? alqQ.reduce((s, a) => s + Number(a.comision_calculada), 0) / alqQ.length : 0,
+                  };
+                });
+                const totalPresente = porTrimestre.some((t) => t.compraventas + t.creditos + t.alquileres > 0);
+                if (!totalPresente) return null;
+                const max = Math.max(1, ...porTrimestre.flatMap((t) => [t.compraventas, t.creditos, t.alquileres]));
+                const W = 720, H = 200, PAD_L = 50, PAD_B = 28, PAD_T = 20, PAD_R = 12;
+                const chartW = W - PAD_L - PAD_R, chartH = H - PAD_T - PAD_B;
+                const groupW = chartW / 4, barW = (groupW - 20) / 3;
+                return (
+                  <div className="articulos-list-section" style={{ marginTop: 16, padding: 16, background: "#fafafa", borderRadius: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 12 }}>
+                      <h3 style={{ margin: 0 }}>Ticket medio por trimestre</h3>
+                      <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
+                        <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#10b981", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Compraventas</span>
+                        <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#f59e0b", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Créditos</span>
+                        <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#8b5cf6", borderRadius: 2, marginRight: 6, verticalAlign: "middle" }} />Alquileres com.</span>
+                      </div>
+                    </div>
+                    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: "100%", height: "auto", display: "block" }}>
+                      {[0.25, 0.5, 0.75, 1].map((f) => (
+                        <g key={f}>
+                          <line x1={PAD_L} y1={PAD_T + chartH * (1 - f)} x2={W - PAD_R} y2={PAD_T + chartH * (1 - f)} stroke="#eee" />
+                          <text x={PAD_L - 6} y={PAD_T + chartH * (1 - f) + 3} fontSize={9} textAnchor="end" fill="#999">{fmtCorto(max * f)}</text>
+                        </g>
+                      ))}
+                      {porTrimestre.map((t, i) => {
+                        const xBase = PAD_L + i * groupW + 10;
+                        const bars = [
+                          { v: t.compraventas, color: "#10b981" },
+                          { v: t.creditos, color: "#f59e0b" },
+                          { v: t.alquileres, color: "#8b5cf6" },
+                        ];
+                        return (
+                          <g key={i}>
+                            {bars.map((b, j) => {
+                              const h = (b.v / max) * chartH;
+                              const x = xBase + j * barW;
+                              const y = PAD_T + chartH - h;
+                              return (
+                                <g key={j}>
+                                  {h > 0 && <rect x={x} y={y} width={barW - 2} height={h} fill={b.color} rx={2} />}
+                                  {b.v > 0 && <text x={x + barW / 2} y={y - 3} fontSize={8} textAnchor="middle" fill={b.color} fontWeight={600}>{fmtCorto(b.v)}</text>}
+                                </g>
+                              );
+                            })}
+                            <text x={xBase + (groupW - 20) / 2} y={H - PAD_B + 14} fontSize={10} textAnchor="middle" fill="#666">T{t.trimestre}</text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+                );
+              })()}
 
               {/* Trimestres */}
               <h3 style={{ marginTop: 24 }}>Por trimestre</h3>
