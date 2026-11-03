@@ -6,6 +6,7 @@ import ContratoRender from "../../../../../components/ContratoRender";
 import { getContrato } from "../../../../../lib/contratos";
 import { SITE_URL } from "../../../../../lib/site";
 import ContratoAcciones from "./ContratoAcciones";
+import EditorCuerpo from "./EditorCuerpo";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,8 @@ export default async function ContratoDetailPage({ params }: { params: Promise<{
         </div>
 
         <ContratoAcciones contratoId={contrato.id} estado={contrato.estado} signingLink={signingLink} />
+
+        {contrato.estado === "borrador" && <EditorCuerpo contratoId={contrato.id} />}
 
         <div style={{ marginTop: 24, border: "1px solid #e5e5e5", borderRadius: 12, overflow: "hidden" }}>
           <ContratoRender contrato={contrato} showPlaceholders={true} />

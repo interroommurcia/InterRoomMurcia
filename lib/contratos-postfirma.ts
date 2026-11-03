@@ -60,6 +60,14 @@ export async function tramitarPostFirma(contratoId: string): Promise<{
     errores.push(`email: ${r.error}`);
   }
 
+  // Adjuntar el PDF firmado a los documentos del cliente (si está registrado
+  // en Contabilidad y tiene alguna operación de compraventa donde guardarlo).
+  if (pdf && contrato.cliente_id) {
+    await adjuntarPdfAClienteSiProcede(contrato, pdf).catch((e) => {
+      errores.push(`doc cliente: ${e?.message ?? e}`);
+    });
+  }
+
   // Telegram al admin con el PDF si lo tenemos; si no, mensaje de aviso.
   if (pdf) {
     telegramOk = await enviarPdfATelegramAdmin(contrato, pdf).catch((e) => {
@@ -74,6 +82,22 @@ export async function tramitarPostFirma(contratoId: string): Promise<{
   }
 
   return { pdfGenerado, emailOk, telegramOk, errores };
+}
+
+/**
+ * Guarda el PDF firmado en los documentos de la operación de compraventa
+ * más reciente del cliente. Si el cliente no tiene ninguna operación, no
+ * hay dónde colgarlo en el modelo actual: se omite sin romper el flujo.
+ */
+async function adjuntarPdfAClienteSiProcede(contrato: Contrato, pdf: Buffer): Promise<void> {
+  if (!contrato.cliente_id) return;
+  const { listarOperaciones, subirDocumento } = await import("./contabilidad");
+  const operaciones = (await listarOperaciones()).filter((o) => o.cliente_id === contrato.cliente_id);
+  if (!operaciones.length) return; // cliente sin operación donde archivarlo
+  const op = operaciones[0]; // listarOperaciones viene ordenada por fecha desc
+  const fecha = new Date().toISOString().slice(0, 10);
+  const nombre = `Contrato ${tipoLabel(contrato)} firmado ${fecha}.pdf`;
+  await subirDocumento(op.id, nombre, pdf, "application/pdf");
 }
 
 function tipoLabel(contrato: Contrato): string {

@@ -50,6 +50,8 @@ type Props = {
   firmaPropietario?: Firma | null;
   firmaAgencia?: Firma | null;
   showPlaceholders?: boolean;
+  /** Cuerpo HTML editado a mano. Si existe, sustituye las cláusulas de la plantilla. */
+  cuerpoHtml?: string | null;
 };
 
 const MESES = [
@@ -123,9 +125,36 @@ export default function ContratoHTML({
   firmaPropietario,
   firmaAgencia,
   showPlaceholders = true,
+  cuerpoHtml,
 }: Props) {
   const { propietario, inmueble, agencia } = datos;
   const show = showPlaceholders;
+
+  // Cuerpo personalizado: cabecera + firmas de siempre, cláusulas editadas a mano.
+  if (cuerpoHtml && cuerpoHtml.trim()) {
+    return (
+      <div className="contrato-canvas">
+        <style dangerouslySetInnerHTML={{ __html: CSS }} />
+        <article className="contrato-paper">
+          <header className="contrato-brand">
+            <div className="contrato-brand-name">
+              Inter<span className="contrato-brand-accent">Room</span> Murcia
+            </div>
+            <div className="contrato-brand-meta">Agencia inmobiliaria · Murcia</div>
+          </header>
+          <div dangerouslySetInnerHTML={{ __html: cuerpoHtml }} />
+          <div className="contrato-signatures">
+            <FirmaRendering firma={firmaPropietario} rol="El Propietario" />
+            <FirmaRendering firma={firmaAgencia} rol="La Agencia" />
+          </div>
+          <footer className="contrato-foot">
+            <span>InterRoom Murcia · Agencia inmobiliaria</span>
+            <span>Encargo exclusiva</span>
+          </footer>
+        </article>
+      </div>
+    );
+  }
 
   const fechaFirmaIso =
     firmaPropietario?.ts || firmaAgencia?.ts || new Date().toISOString();

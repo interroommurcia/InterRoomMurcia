@@ -11,6 +11,8 @@ function getResend(): Resend {
   return new Resend(key);
 }
 const FROM = () => process.env.EMAIL_FROM || "InterRoom Murcia <onboarding@resend.dev>";
+// Correo interno de la agencia: recibe copia de cada contrato firmado.
+const EMAIL_AGENCIA = () => process.env.EMAIL_AGENCIA || "interroommurcia@gmail.com";
 
 /**
  * Envía por email una copia del contrato firmado al propietario.
@@ -120,9 +122,14 @@ export async function enviarContratoFirmadoPropietario(
 
   try {
     const resend = getResend();
+    // Copia también a la agencia (deduplicando si el propietario fuese el mismo correo).
+    const agencia = EMAIL_AGENCIA();
+    const to = agencia && agencia.toLowerCase() !== destinatario.toLowerCase()
+      ? [destinatario, agencia]
+      : [destinatario];
     const { error } = await resend.emails.send({
       from: FROM(),
-      to: destinatario,
+      to,
       subject,
       html,
       attachments: pdfBuffer

@@ -97,6 +97,7 @@ export type Contrato = {
   firma_propietario: Firma | null;
   firma_agencia: Firma | null;
   pdf_storage_path: string | null;
+  cuerpo_html: string | null;
   firmado_at: string | null;
   created_at: string;
   updated_at: string;
@@ -133,6 +134,7 @@ function row(c: Record<string, unknown>): Contrato {
     firma_propietario: (c.firma_propietario as Firma | null) ?? null,
     firma_agencia: (c.firma_agencia as Firma | null) ?? null,
     pdf_storage_path: (c.pdf_storage_path as string | null) ?? null,
+    cuerpo_html: (c.cuerpo_html as string | null) ?? null,
     firmado_at: (c.firmado_at as string | null) ?? null,
     created_at: String(c.created_at),
     updated_at: String(c.updated_at),
@@ -211,6 +213,27 @@ export async function actualizarDatosContrato(
     .select("*")
     .single();
   if (error || !data) throw new Error(error?.message || "No se pudo actualizar el contrato");
+  return row(data);
+}
+
+/**
+ * Guarda (o limpia con null) el cuerpo HTML personalizado del contrato.
+ * Solo tiene efecto mientras el contrato está en borrador: una vez
+ * generado el enlace o firmado no debe tocarse para no desincronizar
+ * lo que ya vieron/firmaron las partes.
+ */
+export async function actualizarCuerpoContrato(
+  id: string,
+  cuerpoHtml: string | null,
+): Promise<Contrato> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("contratos")
+    .update({ cuerpo_html: cuerpoHtml, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(error?.message || "No se pudo guardar el cuerpo del contrato");
   return row(data);
 }
 

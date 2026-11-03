@@ -18,6 +18,7 @@ export default function ContratoRender({ contrato, showPlaceholders = true }: Pr
         firmaPropietario={contrato.firma_propietario}
         firmaAgencia={contrato.firma_agencia}
         showPlaceholders={showPlaceholders}
+        cuerpoHtml={contrato.cuerpo_html}
       />
     );
   }
@@ -27,6 +28,7 @@ export default function ContratoRender({ contrato, showPlaceholders = true }: Pr
       firmaPropietario={contrato.firma_propietario}
       firmaAgencia={contrato.firma_agencia}
       showPlaceholders={showPlaceholders}
+      cuerpoHtml={contrato.cuerpo_html}
     />
   );
 }

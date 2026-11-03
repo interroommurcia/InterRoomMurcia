@@ -113,6 +113,7 @@ export async function renderContratoHtml(contrato: Contrato): Promise<string> {
           firmaPropietario: contrato.firma_propietario,
           firmaAgencia: contrato.firma_agencia,
           showPlaceholders: false,
+          cuerpoHtml: contrato.cuerpo_html,
         }),
       )
     : renderToStaticMarkup(
@@ -121,6 +122,7 @@ export async function renderContratoHtml(contrato: Contrato): Promise<string> {
           firmaPropietario: contrato.firma_propietario,
           firmaAgencia: contrato.firma_agencia,
           showPlaceholders: false,
+          cuerpoHtml: contrato.cuerpo_html,
         }),
       );
   return `<!doctype html>
@@ -136,6 +138,41 @@ export async function renderContratoHtml(contrato: Contrato): Promise<string> {
 </head>
 <body>${body}</body>
 </html>`;
+}
+
+/**
+ * Devuelve el HTML editable del cuerpo del contrato (de la cabecera de
+ * marca hacia abajo, sin incluir la cabecera ni el bloque de firmas).
+ * Si el contrato ya tiene cuerpo personalizado, lo devuelve tal cual;
+ * si no, renderiza la plantilla por defecto con los datos ya rellenados
+ * para que el admin parta de las cláusulas reales.
+ */
+export async function renderContenidoEditable(contrato: Contrato): Promise<string> {
+  if (contrato.cuerpo_html && contrato.cuerpo_html.trim()) return contrato.cuerpo_html;
+
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const esGestion = contrato.tipo === "gestion_alquiler";
+  const markup = esGestion
+    ? renderToStaticMarkup(
+        createElement(ContratoGestionHTML, {
+          datos: contrato.datos as DatosContratoGestion,
+          firmaPropietario: null,
+          firmaAgencia: null,
+          showPlaceholders: false,
+        }),
+      )
+    : renderToStaticMarkup(
+        createElement(ContratoHTML, {
+          datos: contrato.datos as DatosContratoExclusiva,
+          firmaPropietario: null,
+          firmaAgencia: null,
+          showPlaceholders: false,
+        }),
+      );
+  // La plantilla es: <header class="contrato-brand">…</header> CONTENIDO <div class="contrato-signatures">…
+  const afterHeader = markup.split("</header>")[1] ?? markup;
+  const contenido = afterHeader.split('<div class="contrato-signatures"')[0] ?? afterHeader;
+  return contenido.trim();
 }
 
 // -----------------------------------------------------------------
