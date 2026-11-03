@@ -41,10 +41,41 @@ const TIPO_COLOR: Record<TipoContrato, string> = {
 export default async function ContratosListPage() {
   const contratos = await listarContratos().catch(() => []);
 
+  // Pendientes de firmar por la agencia: aún no firmó la agencia y el contrato sigue en curso.
+  const pendientesAgencia = contratos.filter(
+    (c) => c.estado === "pendiente_firmas" || c.estado === "firmado_propietario",
+  );
+
   return (
     <section className="section admin">
       <div className="wrap">
         <AdminNav active="/admin/documentos" />
+
+        {pendientesAgencia.length > 0 && (
+          <Link
+            href={`/admin/documentos/contratos/${pendientesAgencia[0].id}`}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              background: "#fffbeb",
+              border: "1px solid #fcd34d",
+              borderRadius: 10,
+              padding: "14px 18px",
+              marginBottom: 20,
+              textDecoration: "none",
+              color: "#92400e",
+            }}
+          >
+            <span style={{ fontSize: "1.3rem", lineHeight: 1 }}>⚠️</span>
+            <span style={{ flex: 1, fontSize: "0.92rem", fontWeight: 500 }}>
+              {pendientesAgencia.length === 1
+                ? "1 contrato pendiente de firmar por la agencia"
+                : `${pendientesAgencia.length} contratos pendientes de firmar por la agencia`}
+            </span>
+            <span style={{ fontWeight: 600, whiteSpace: "nowrap" }}>Firmar ahora →</span>
+          </Link>
+        )}
 
         <div className="section-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
           <div>
@@ -159,6 +190,14 @@ export default async function ContratosListPage() {
                       >
                         {ESTADO_LABEL[c.estado]}
                       </span>
+                      {(c.estado === "pendiente_firmas" || c.estado === "firmado_propietario") && (
+                        <Link
+                          href={`/admin/documentos/contratos/${c.id}`}
+                          style={{ marginLeft: 8, color: "#b45309", fontWeight: 600, fontSize: "0.8rem", whiteSpace: "nowrap" }}
+                        >
+                          Firmar →
+                        </Link>
+                      )}
                     </td>
                     <td style={{ padding: "12px 16px", fontSize: "0.85rem", opacity: 0.7 }}>
                       {new Date(c.created_at).toLocaleDateString("es-ES")}
