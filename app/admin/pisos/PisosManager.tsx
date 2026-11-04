@@ -408,7 +408,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
                     {piso.estado && piso.estado !== "disponible" ? ` · ${({reservada:"Reservada",alquilada:"Alquilada",vendida:"Vendida",no_disponible:"No disponible",proximamente:"Próximamente"} as Record<string,string>)[piso.estado] || ""}` : !piso.disponible ? " · No disponible" : ""}
                     {" · "}
                     <span style={{ fontWeight: 500, color: piso.categoria === "compraventa" ? "#7c3aed" : "#059669" }}>
-                      {piso.categoria === "compraventa" ? "Compraventa" : piso.tipoAlquiler === "habitacion" ? "Habitación" : "Piso completo"}
+                      {piso.categoria === "compraventa" ? "Compraventa" : piso.tipoAlquiler === "habitacion" ? "Habitación" : piso.tipoAlquiler === "larga_estancia" ? "Larga estancia" : "Piso completo"}
                     </span>
                   </div>
                 </div>
@@ -561,10 +561,11 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
               className="pf-select"
               name="tipo_alquiler"
               value={tipoAlquiler}
-              onChange={(e) => setTipoAlquiler(e.target.value as "completo" | "habitacion")}
+              onChange={(e) => setTipoAlquiler(e.target.value as "completo" | "habitacion" | "larga_estancia")}
             >
               <option value="completo">Piso completo</option>
               <option value="habitacion">Habitación</option>
+              <option value="larga_estancia">Alquiler larga estancia</option>
             </select>
           </div>
         )}

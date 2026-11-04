@@ -72,6 +72,7 @@ export default function PisoCard({ piso }: { piso: Piso }) {
             pisoTitulo={piso.titulo}
             pisoCategoria={piso.categoria}
             numHabitaciones={piso.numHabitaciones}
+            tipoAlquiler={piso.tipoAlquiler}
             variant="card"
           />
         )}

@@ -53,7 +53,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (typeof categoriaVal === "string" && (categoriaVal === "alquiler" || categoriaVal === "compraventa")) updates.categoria = categoriaVal;
 
   const tipoAlquilerVal = form.get("tipo_alquiler");
-  if (typeof tipoAlquilerVal === "string" && (tipoAlquilerVal === "completo" || tipoAlquilerVal === "habitacion")) updates.tipoAlquiler = tipoAlquilerVal;
+  if (typeof tipoAlquilerVal === "string" && (tipoAlquilerVal === "completo" || tipoAlquilerVal === "habitacion" || tipoAlquilerVal === "larga_estancia")) updates.tipoAlquiler = tipoAlquilerVal;
 
   const habRaw = form.get("numHabitaciones");
   if (habRaw !== null) updates.numHabitaciones = habRaw === "" ? null : Number(habRaw);

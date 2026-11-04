@@ -10,10 +10,12 @@ type Props = {
   pisoTitulo: string;
   pisoCategoria: string;
   numHabitaciones?: number | null;
+  tipoAlquiler?: string | null;
   variant?: "card" | "ficha";
 };
 
-export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numHabitaciones, variant = "ficha" }: Props) {
+export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numHabitaciones, tipoAlquiler, variant = "ficha" }: Props) {
+  const esLargaEstancia = tipoAlquiler === "larga_estancia";
   const [abierto, setAbierto] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -57,8 +59,8 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
           piso_categoria: pisoCategoria,
           nombre: nombre.trim(),
           telefono: `${prefijo} ${digitos}`,
-          tipo_interes: tipo,
-          grupo_tam: tipo === "grupo" ? grupoTam : null,
+          tipo_interes: esLargaEstancia ? "individual" : tipo,
+          grupo_tam: !esLargaEstancia && tipo === "grupo" ? grupoTam : null,
           mensaje: mensaje.trim(),
         }),
       });
@@ -103,7 +105,8 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
               <form onSubmit={enviar} style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: 0, flex: 1 }}>
                 {/* Campos (scrollables si la pantalla es baja) */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, overflowY: "auto", minHeight: 0, flex: "1 1 auto", paddingRight: 2 }}>
-                {/* Individual vs grupo */}
+                {/* Individual vs grupo — no aplica en alquiler de larga estancia */}
+                {!esLargaEstancia && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <label style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", border: `2px solid ${tipo === "individual" ? "var(--orange)" : "#e5e7eb"}`, borderRadius: 10, cursor: "pointer", fontSize: 14 }}>
                     <input type="radio" name="tipo" checked={tipo === "individual"} onChange={() => setTipo("individual")} />
@@ -124,6 +127,7 @@ export default function QuieroAlquilar({ pisoId, pisoTitulo, pisoCategoria, numH
                     personas
                   </label>
                 </div>
+                )}
 
                 <input
                   type="text"

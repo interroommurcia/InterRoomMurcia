@@ -116,6 +116,7 @@ export default async function PisoPage({ params }: { params: { zona: string; slu
                     pisoTitulo={piso.titulo}
                     pisoCategoria={piso.categoria}
                     numHabitaciones={piso.numHabitaciones}
+                    tipoAlquiler={piso.tipoAlquiler}
                     variant="ficha"
                   />
                 </div>

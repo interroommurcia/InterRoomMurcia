@@ -14,7 +14,7 @@ export type Zona = {
 
 export type CategoriaPiso = "alquiler" | "compraventa";
 
-export type TipoAlquiler = "completo" | "habitacion";
+export type TipoAlquiler = "completo" | "habitacion" | "larga_estancia";
 
 export type EstadoPiso = "disponible" | "reservada" | "alquilada" | "vendida" | "no_disponible" | "proximamente";
 
