@@ -726,11 +726,20 @@ h1 em {
 }
 
 .ficha-back {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.85rem;
   font-weight: 600;
   opacity: 0.6;
   margin-bottom: 24px;
+  transition: gap 0.18s ease, opacity 0.18s ease;
+}
+.ficha-back:hover {
+  gap: 10px;
+}
+.ficha-back svg {
+  flex: 0 0 auto;
 }
 
 .ficha-back:hover {

@@ -46,8 +46,12 @@ export default async function PisoPage({ params }: { params: { zona: string; slu
     <>
       <section className="ficha">
         <div className="wrap">
-          <Link href={zona ? `/habitaciones/${zona.slug}` : "/#catalogo-compraventa"} className="ficha-back">
-            &lt;- {zona ? `Volver a ${zona.universidad}` : "Volver al catálogo"}
+          <Link href="/catalogo" className="ficha-back">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M19 12H6" />
+              <path d="M12 18l-6-6 6-6" />
+            </svg>
+            Volver al catálogo
           </Link>
 
           <div className="ficha-grid">
