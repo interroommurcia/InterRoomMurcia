@@ -59,7 +59,12 @@ export default function PisoCard({ piso }: { piso: Piso }) {
               ? `${piso.precioMes.toLocaleString("es-ES")}€`
               : <>{piso.precioMes}€ <span>/mes</span></>}
           </div>
-          <div className="piso-arrow">-&gt;</div>
+          <div className="piso-arrow" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h13" />
+              <path d="M12 6l6 6-6 6" />
+            </svg>
+          </div>
         </div>
         {estado === "disponible" && !esCompraventa && (
           <QuieroAlquilar

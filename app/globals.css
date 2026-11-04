@@ -559,6 +559,11 @@ h1 em {
   will-change: transform;
 }
 
+.piso-arrow svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* Empujón a la derecha y vuelta al origen; lo dispara PisoArrowMotion
    en una tarjeta al azar, nunca dos a la vez. */
 .piso-arrow--nudge {
