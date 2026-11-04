@@ -5,6 +5,7 @@ import { FONT, Propiedad, totalConGaraje } from "./shared";
 import type { Piso } from "../../../../lib/pisos";
 import { retocarFoto } from "../../../../lib/retoqueFoto";
 import { GenerarReel } from "./GenerarReel";
+import { GenerarHistoria } from "./GenerarHistoria";
 
 // Media normalizada que consume el panel (vale para propiedades y para pisos).
 type ItemMedia = { id: string; url: string };
@@ -108,6 +109,15 @@ export function CompartirRedes({ p }: { p: Propiedad }) {
   const precio = totalConGaraje(p);
   const textoPrecio = precio ? `${precio.toLocaleString("es-ES")}€${p.tipo === "venta_activo" ? "" : "/mes"}` : "";
   const textoZona = (p.direccion ?? "").trim() || "Murcia";
+  const titulo = p.nombre || `${TIPO_LABEL[p.tipo] ?? p.tipo} en ${textoZona}`;
+  const incluye: string[] = [];
+  if (p.num_habitaciones) incluye.push(`${p.num_habitaciones} habitaciones`);
+  if (p.num_banos) incluye.push(`${p.num_banos} baño${p.num_banos !== 1 ? "s" : ""}`);
+  if (p.servicio_wifi) incluye.push("Wifi");
+  if (p.servicio_limpieza) incluye.push("Limpieza");
+  if (p.servicio_luz) incluye.push("Luz");
+  if (p.servicio_agua) incluye.push("Agua");
+  if (p.tiene_garaje) incluye.push("Plaza de garaje");
   return (
     <CompartirRedesCore
       nombre={p.nombre}
@@ -116,6 +126,8 @@ export function CompartirRedes({ p }: { p: Propiedad }) {
       construirCaption={() => construirCaptionPropiedad(p)}
       textoPrecio={textoPrecio}
       textoZona={textoZona}
+      titulo={titulo}
+      incluye={incluye}
     />
   );
 }
@@ -129,6 +141,13 @@ export function CompartirRedesPiso({ piso, onCerrar }: { piso: Piso; onCerrar?: 
   const esVenta = piso.categoria === "compraventa";
   const textoPrecio = piso.precioMes ? `${piso.precioMes.toLocaleString("es-ES")}€${esVenta ? "" : "/mes"}` : "";
   const textoZona = (piso.barrio ?? "").trim() || "Murcia";
+  const incluye: string[] = [];
+  if (piso.numHabitaciones) incluye.push(`${piso.numHabitaciones} habitaciones`);
+  if (piso.numBanos) incluye.push(`${piso.numBanos} baño${piso.numBanos !== 1 ? "s" : ""}`);
+  if (piso.metros) incluye.push(`${piso.metros} m²`);
+  if (piso.terraza) incluye.push("Terraza");
+  if (piso.piscina) incluye.push("Piscina");
+  if (piso.garaje) incluye.push("Garaje");
   return (
     <CompartirRedesCore
       nombre={piso.slug || piso.titulo}
@@ -137,6 +156,8 @@ export function CompartirRedesPiso({ piso, onCerrar }: { piso: Piso; onCerrar?: 
       construirCaption={() => construirCaptionPiso(piso)}
       textoPrecio={textoPrecio}
       textoZona={textoZona}
+      titulo={piso.titulo}
+      incluye={incluye}
       defaultAbierto
       onCerrar={onCerrar}
     />
@@ -150,6 +171,8 @@ function CompartirRedesCore({
   construirCaption,
   textoPrecio,
   textoZona,
+  titulo,
+  incluye,
   defaultAbierto = false,
   onCerrar,
 }: {
@@ -159,6 +182,8 @@ function CompartirRedesCore({
   construirCaption: () => string;
   textoPrecio: string;
   textoZona: string;
+  titulo: string;
+  incluye: string[];
   defaultAbierto?: boolean;
   onCerrar?: () => void;
 }) {
@@ -434,6 +459,8 @@ function CompartirRedesCore({
         <b>Carrusel de Instagram:</b> Instagram no deja mandar varias fotos a la vez por el menú de compartir. Marca las fotos, pulsa <b>«⬇️ Descargar seleccionadas»</b>, abre Instagram y elige esas fotos de la galería para el carrusel. Pega la descripción (ya copiada) y añade el audio en tendencia.<br />
         <b>«📲 Compartir»</b> va bien para <b>1 foto, una historia o el vídeo</b>.
       </p>
+
+      <GenerarHistoria nombre={nombre} fotos={fotos} titulo={titulo} textoPrecio={textoPrecio} incluye={incluye} />
 
       <GenerarReel nombre={nombre} videos={videos} textoPrecio={textoPrecio} textoZona={textoZona} />
 
