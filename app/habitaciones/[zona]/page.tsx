@@ -16,7 +16,9 @@ export function generateMetadata({ params }: { params: { zona: string } }): Meta
 
 export default async function ZonaPage({ params }: { params: { zona: string } }) {
   const zona = zonaPorSlug(params.zona);
-  const pisosZona = await pisosPorZona(zona?.slug ?? params.zona);
+  const todosZona = await pisosPorZona(zona?.slug ?? params.zona);
+  // Ocultar "No disponible" del catálogo de cliente.
+  const pisosZona = todosZona.filter((p) => p.estado !== "no_disponible");
   if (!zona && pisosZona.length === 0) return notFound();
 
   const label = zona?.barrio ?? params.zona.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());

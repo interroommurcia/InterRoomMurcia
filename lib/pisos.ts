@@ -228,7 +228,7 @@ export function zonaPorSlug(slug: string) {
 // Total de habitaciones reales de alquiler (completo cuenta sus N habitaciones).
 export function contarHabitaciones(pisos: Piso[]): number {
   return pisos
-    .filter((p) => p.categoria !== "compraventa")
+    .filter((p) => p.categoria !== "compraventa" && p.estado !== "no_disponible")
     .reduce((s, p) => {
       const n = p.numHabitaciones && p.numHabitaciones > 0 ? p.numHabitaciones : 1;
       return s + (p.tipoAlquiler === "completo" ? n : 1);
@@ -236,7 +236,7 @@ export function contarHabitaciones(pisos: Piso[]): number {
 }
 
 export function resumenZona(pisos: Piso[], zonaSlug: string): { totalHabitaciones: number; desde: number } {
-  const enZona = pisos.filter((p) => p.zona === zonaSlug && p.categoria !== "compraventa");
+  const enZona = pisos.filter((p) => p.zona === zonaSlug && p.categoria !== "compraventa" && p.estado !== "no_disponible");
   let total = 0;
   let desde = Infinity;
   for (const p of enZona) {
@@ -254,7 +254,7 @@ export async function catalogSnapshot(): Promise<string> {
   const pisos = await getPisos();
   return zonas
     .map((z) => {
-      const enZona = pisos.filter((p) => p.zona === z.slug);
+      const enZona = pisos.filter((p) => p.zona === z.slug && p.estado !== "no_disponible");
       if (enZona.length === 0) return `${z.universidad} (${z.barrio}): sin habitaciones publicadas ahora mismo.`;
       const disponibles = enZona.filter((p) => p.disponible).length;
       const precios = enZona.map((p) => p.precioMes);

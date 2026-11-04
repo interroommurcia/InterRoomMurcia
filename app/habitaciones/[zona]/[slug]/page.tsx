@@ -32,12 +32,13 @@ export async function generateMetadata({
 export default async function PisoPage({ params }: { params: { zona: string; slug: string } }) {
   const zona = zonaPorSlug(params.zona);
   const piso = await pisoPorSlug(zona?.slug ?? params.zona, params.slug);
-  if (!piso) return notFound();
+  // "No disponible" se oculta del cliente, también su ficha por enlace directo.
+  if (!piso || piso.estado === "no_disponible") return notFound();
 
   const esCompraventa = piso.categoria === "compraventa";
   const zonaLabel = zona?.universidad ?? piso.barrio;
   const barrioLabel = zona?.barrio ?? piso.barrio;
-  const otros = (await pisosPorZona(zona?.slug ?? params.zona)).filter((p) => p.id !== piso.id).slice(0, 3);
+  const otros = (await pisosPorZona(zona?.slug ?? params.zona)).filter((p) => p.id !== piso.id && p.estado !== "no_disponible").slice(0, 3);
   const mensaje = esCompraventa
     ? `Hola, estoy interesado/a en el activo "${piso.titulo}" (${piso.barrio}) que he visto en la web. ¿Sigue disponible?`
     : `Hola, estoy interesado/a en la habitación "${piso.titulo}" (${piso.barrio}) que he visto en la web. ¿Sigue disponible?`;

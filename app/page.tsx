@@ -7,8 +7,10 @@ import PisoCard from "../components/PisoCard";
 export default async function HomePage() {
   const pisos = await getPisos();
   const disponibles = pisos.filter((p) => p.disponible).length;
-  const alquileres = pisos.filter((p) => p.categoria === "alquiler");
-  const compraventas = pisos.filter((p) => p.categoria === "compraventa");
+  // Los "No disponible" no se muestran en el catálogo de cliente.
+  const visibles = pisos.filter((p) => p.estado !== "no_disponible");
+  const alquileres = visibles.filter((p) => p.categoria === "alquiler");
+  const compraventas = visibles.filter((p) => p.categoria === "compraventa");
 
   return (
     <>

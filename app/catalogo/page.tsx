@@ -13,7 +13,8 @@ export const metadata = {
 export default async function CatalogoPage() {
   const pisos = await getPisos();
   const proximamente = pisos.filter((p) => p.estado === "proximamente");
-  const publicados = pisos.filter((p) => p.estado !== "proximamente");
+  // Los "No disponible" no se muestran en el catálogo de cliente.
+  const publicados = pisos.filter((p) => p.estado !== "proximamente" && p.estado !== "no_disponible");
   const alquileres = publicados.filter((p) => p.categoria === "alquiler");
   const compraventas = publicados.filter((p) => p.categoria === "compraventa");
 
