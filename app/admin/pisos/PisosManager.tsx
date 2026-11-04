@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { Piso } from "../../../lib/pisos";
 import { supabase } from "../../../lib/supabaseClient";
+import { CompartirRedesPiso } from "../propiedades/_components/CompartirRedes";
 
 const ZONAS_ALQUILER = [
   { slug: "ucam", label: "UCAM" },
@@ -171,6 +172,7 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
   const [error, setError] = useState("");
   const [copiado, setCopiado] = useState<string | null>(null);
   const [exito, setExito] = useState("");
+  const [compartir, setCompartir] = useState<Piso | null>(null);
 
   useEffect(() => {
     setPisos(pisosInit);
@@ -193,6 +195,28 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
       });
     } catch {
       setError("No se pudo cargar los datos del piso para editar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Carga la galería/vídeo completos del piso (la lista no los trae) y abre el panel IG/TikTok.
+  async function abrirCompartir(piso: Piso) {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/pisos/${piso.id}`);
+      if (!res.ok) throw new Error("No se pudo cargar el piso");
+      const row = await res.json();
+      setCompartir({
+        ...piso,
+        descripcion: row.descripcion ?? piso.descripcion ?? "",
+        metros: row.metros ?? null,
+        gallery: Array.isArray(row.gallery) ? row.gallery : [],
+        videoUrl: row.video_url ?? null,
+      });
+    } catch {
+      setError("No se pudieron cargar las fotos del piso para compartir.");
     } finally {
       setBusy(false);
     }
@@ -422,6 +446,9 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
                   <button type="button" className="btn-ghost" onClick={() => descargarFotos(piso)} disabled={busy}>
                     Descargar fotos
                   </button>
+                  <button type="button" className="btn-ghost" onClick={() => abrirCompartir(piso)} disabled={busy}>
+                    📲 IG/TikTok
+                  </button>
                   <button type="button" className="btn-ghost" onClick={() => cargarYEditar(piso)} disabled={busy}>
                     Editar
                   </button>
@@ -430,6 +457,9 @@ export default function PisosManager({ pisos: pisosInit }: { pisos: Piso[] }) {
                   </button>
                 </div>
               </>
+            )}
+            {compartir?.id === piso.id && (
+              <CompartirRedesPiso piso={compartir} onCerrar={() => setCompartir(null)} />
             )}
           </div>
         ))}

@@ -1,9 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { FONT, Media, Propiedad, totalConGaraje } from "./shared";
+import { useState } from "react";
+import { FONT, Propiedad, totalConGaraje } from "./shared";
+import type { Piso } from "../../../../lib/pisos";
 import { retocarFoto } from "../../../../lib/retoqueFoto";
 import { GenerarReel } from "./GenerarReel";
+
+// Media normalizada que consume el panel (vale para propiedades y para pisos).
+type ItemMedia = { id: string; url: string };
 
 const TIPO_LABEL: Record<string, string> = {
   piso: "Piso",
@@ -15,7 +19,7 @@ const TIPO_LABEL: Record<string, string> = {
 
 // Descripción para IG/TikTok generada a partir de los datos de la propiedad.
 // Gratis (plantilla, sin IA) y editable por el usuario antes de copiar.
-function construirCaption(p: Propiedad): string {
+function construirCaptionPropiedad(p: Propiedad): string {
   const esVenta = p.tipo === "venta_activo";
   const tipoLabel = TIPO_LABEL[p.tipo] ?? p.tipo;
   const precio = totalConGaraje(p);
@@ -54,24 +58,121 @@ function construirCaption(p: Propiedad): string {
   return lineas.join("\n");
 }
 
+// Descripción para IG/TikTok a partir de un piso del catálogo (mismo estilo).
+function construirCaptionPiso(p: Piso): string {
+  const esVenta = p.categoria === "compraventa";
+  const zonaTxt = (p.barrio ?? "").trim() || "Murcia";
+
+  const specs: string[] = [];
+  if (p.numHabitaciones) specs.push(`🛏️ ${p.numHabitaciones} hab`);
+  if (p.numBanos) specs.push(`🚿 ${p.numBanos} baño${p.numBanos !== 1 ? "s" : ""}`);
+  if (p.metros) specs.push(`📐 ${p.metros} m²`);
+
+  const extras = [p.terraza && "Terraza", p.piscina && "Piscina", p.garaje && "Garaje"].filter(Boolean) as string[];
+
+  const hashtags = [
+    "#Murcia",
+    "#InterRoomMurcia",
+    "#inmobiliaria",
+    ...(esVenta
+      ? ["#casasenventa", "#compraMurcia", "#inversioninmobiliaria"]
+      : ["#alquilerMurcia", "#pisosMurcia", "#habitacionesMurcia", "#alquiler"]),
+  ].join(" ");
+
+  const link =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/habitaciones/${p.zona}/${p.slug}`
+      : "interroommurcia.com";
+
+  const lineas: string[] = [];
+  lineas.push(`🏡 ${p.titulo}`);
+  if (specs.length) lineas.push(specs.join("  ·  "));
+  if (p.precioMes) lineas.push(`💶 ${p.precioMes.toLocaleString("es-ES")}€${esVenta ? "" : "/mes"}`);
+  if (extras.length) lineas.push(`✨ ${extras.join(", ")}`);
+  lineas.push(`📍 ${zonaTxt}`);
+  lineas.push("");
+  lineas.push(`📲 Más info y fotos 👉 ${link}`);
+  lineas.push("📞 Escríbenos y te la enseñamos.");
+  lineas.push("");
+  lineas.push(hashtags);
+  return lineas.join("\n");
+}
+
 // Estado de retoque por foto: su blob retocado y qué versión usar.
 type EstadoFoto = { blob?: Blob; objUrl?: string; usar: "orig" | "retoque" };
 
+// Adaptador para una propiedad (ficha de propiedades). Conserva el uso previo.
 export function CompartirRedes({ p }: { p: Propiedad }) {
-  const [abierto, setAbierto] = useState(false);
-  const [caption, setCaption] = useState(() => construirCaption(p));
+  const fotos = p.media.filter((m) => m.tipo === "foto").map((m) => ({ id: m.id, url: m.url }));
+  const videos = p.media.filter((m) => m.tipo === "video").map((m) => ({ id: m.id, url: m.url }));
+  const precio = totalConGaraje(p);
+  const textoPrecio = precio ? `${precio.toLocaleString("es-ES")}€${p.tipo === "venta_activo" ? "" : "/mes"}` : "";
+  const textoZona = (p.direccion ?? "").trim() || "Murcia";
+  return (
+    <CompartirRedesCore
+      nombre={p.nombre}
+      fotos={fotos}
+      videos={videos}
+      construirCaption={() => construirCaptionPropiedad(p)}
+      textoPrecio={textoPrecio}
+      textoZona={textoZona}
+    />
+  );
+}
+
+// Adaptador para un piso del catálogo. Se abre directo (panel inline) y se cierra con onCerrar.
+export function CompartirRedesPiso({ piso, onCerrar }: { piso: Piso; onCerrar?: () => void }) {
+  const fotos = [piso.imageUrl, ...piso.gallery]
+    .filter((u): u is string => Boolean(u))
+    .map((url, i) => ({ id: `f${i}`, url }));
+  const videos = piso.videoUrl ? [{ id: "v0", url: piso.videoUrl }] : [];
+  const esVenta = piso.categoria === "compraventa";
+  const textoPrecio = piso.precioMes ? `${piso.precioMes.toLocaleString("es-ES")}€${esVenta ? "" : "/mes"}` : "";
+  const textoZona = (piso.barrio ?? "").trim() || "Murcia";
+  return (
+    <CompartirRedesCore
+      nombre={piso.slug || piso.titulo}
+      fotos={fotos}
+      videos={videos}
+      construirCaption={() => construirCaptionPiso(piso)}
+      textoPrecio={textoPrecio}
+      textoZona={textoZona}
+      defaultAbierto
+      onCerrar={onCerrar}
+    />
+  );
+}
+
+function CompartirRedesCore({
+  nombre,
+  fotos,
+  videos,
+  construirCaption,
+  textoPrecio,
+  textoZona,
+  defaultAbierto = false,
+  onCerrar,
+}: {
+  nombre: string;
+  fotos: ItemMedia[];
+  videos: ItemMedia[];
+  construirCaption: () => string;
+  textoPrecio: string;
+  textoZona: string;
+  defaultAbierto?: boolean;
+  onCerrar?: () => void;
+}) {
+  const [abierto, setAbierto] = useState(defaultAbierto);
+  const [caption, setCaption] = useState(() => construirCaption());
   const [copiado, setCopiado] = useState(false);
   const [compartiendo, setCompartiendo] = useState(false);
   const [aviso, setAviso] = useState("");
   const [estados, setEstados] = useState<Record<string, EstadoFoto>>({});
-  const [preview, setPreview] = useState<Media | null>(null);
+  const [preview, setPreview] = useState<ItemMedia | null>(null);
   const [retocando, setRetocando] = useState(false);
 
-  const fotos = useMemo(() => p.media.filter((m) => m.tipo === "foto"), [p.media]);
-  const videos = useMemo(() => p.media.filter((m) => m.tipo === "video"), [p.media]);
-
   // URL a usar para una foto según la versión elegida.
-  function urlDe(m: Media): string {
+  function urlDe(m: ItemMedia): string {
     const e = estados[m.id];
     return e && e.usar === "retoque" && e.objUrl ? e.objUrl : m.url;
   }
@@ -86,7 +187,7 @@ export function CompartirRedes({ p }: { p: Propiedad }) {
     }
   }
 
-  async function retocar(m: Media) {
+  async function retocar(m: ItemMedia) {
     setRetocando(true);
     setAviso("");
     try {
@@ -104,22 +205,22 @@ export function CompartirRedes({ p }: { p: Propiedad }) {
     }
   }
 
-  function elegir(m: Media, usar: "orig" | "retoque") {
+  function elegir(m: ItemMedia, usar: "orig" | "retoque") {
     setEstados((prev) => ({ ...prev, [m.id]: { ...prev[m.id], usar } }));
   }
 
-  function descargar(m: Media) {
+  function descargar(m: ItemMedia) {
     const e = estados[m.id];
     const href = urlDe(m);
     const a = document.createElement("a");
     a.href = href;
-    a.download = `${p.nombre || "foto"}-${e && e.usar === "retoque" ? "retocada" : "original"}.jpg`;
+    a.download = `${nombre || "foto"}-${e && e.usar === "retoque" ? "retocada" : "original"}.jpg`;
     document.body.appendChild(a);
     a.click();
     a.remove();
   }
 
-  async function compartir(items: Media[], nombreBase: string) {
+  async function compartir(items: ItemMedia[], nombreBase: string) {
     setAviso("");
     setCompartiendo(true);
     try {
@@ -184,7 +285,7 @@ export function CompartirRedes({ p }: { p: Propiedad }) {
     <div style={{ marginTop: 14, padding: 16, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, fontFamily: FONT }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>Compartir en redes</div>
-        <button type="button" onClick={() => setAbierto(false)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 18 }}>×</button>
+        <button type="button" onClick={() => { setAbierto(false); onCerrar?.(); }} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 18 }}>×</button>
       </div>
 
       {/* Galería: toca una foto para retocarla o descargarla */}
@@ -232,7 +333,7 @@ export function CompartirRedes({ p }: { p: Propiedad }) {
         </button>
         <button
           type="button"
-          onClick={() => setCaption(construirCaption(p))}
+          onClick={() => setCaption(construirCaption())}
           style={{ padding: "8px 14px", borderRadius: 6, border: "1px solid #d1d5db", background: "#fff", cursor: "pointer", fontSize: 13 }}
         >
           ↺ Regenerar
@@ -267,7 +368,7 @@ export function CompartirRedes({ p }: { p: Propiedad }) {
         Desde el <b>móvil</b>: retoca las fotos que quieras, toca «Compartir fotos», elige <b>Instagram</b> o <b>TikTok</b>, añade el audio en tendencia y pega la descripción (ya copiada). Se comparte la versión elegida de cada foto.
       </p>
 
-      <GenerarReel p={p} />
+      <GenerarReel nombre={nombre} videos={videos} textoPrecio={textoPrecio} textoZona={textoZona} />
 
       {aviso && <p style={{ fontSize: 12, color: "#b45309", background: "#fffbeb", padding: 8, borderRadius: 6, marginTop: 8 }}>{aviso}</p>}
 

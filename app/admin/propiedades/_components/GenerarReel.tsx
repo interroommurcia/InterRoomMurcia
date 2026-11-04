@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FONT, Media, Propiedad, totalConGaraje } from "./shared";
+import { FONT } from "./shared";
+
+type ItemVideo = { id: string; url: string };
 
 // Genera un reel vertical 9:16 en el navegador con ffmpeg.wasm (gratis).
 // Recorta un tramo, lo acelera, lo recorta a 720x1280 y le superpone una
@@ -73,9 +75,8 @@ async function crearOverlay(precio: string, zona: string): Promise<Blob> {
   return await new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("overlay"))), "image/png"));
 }
 
-export function GenerarReel({ p }: { p: Propiedad }) {
+export function GenerarReel({ nombre, videos, textoPrecio, textoZona }: { nombre: string; videos: ItemVideo[]; textoPrecio: string; textoZona: string }) {
   const [abierto, setAbierto] = useState(false);
-  const videos = p.media.filter((m) => m.tipo === "video");
 
   const [fuenteUrl, setFuenteUrl] = useState<string>(videos[0]?.url ?? "");
   const [archivo, setArchivo] = useState<File | null>(null);
@@ -89,10 +90,6 @@ export function GenerarReel({ p }: { p: Propiedad }) {
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
   const [error, setError] = useState("");
   const ffmpegRef = useRef<unknown>(null);
-
-  const precio = totalConGaraje(p);
-  const textoPrecio = precio ? `${precio.toLocaleString("es-ES")}€${p.tipo === "venta_activo" ? "" : "/mes"}` : "";
-  const textoZona = (p.direccion ?? "").trim() || "Murcia";
 
   async function generar() {
     setError("");
@@ -152,7 +149,7 @@ export function GenerarReel({ p }: { p: Propiedad }) {
 
   async function compartirReel() {
     if (!resultBlob) return;
-    const file = new File([resultBlob], `reel-${(p.nombre || "propiedad").replace(/[^a-zA-Z0-9]/g, "-")}.mp4`, { type: "video/mp4" });
+    const file = new File([resultBlob], `reel-${(nombre || "propiedad").replace(/[^a-zA-Z0-9]/g, "-")}.mp4`, { type: "video/mp4" });
     const nav = navigator as Navigator & { canShare?: (d?: unknown) => boolean };
     if (nav.canShare && nav.canShare({ files: [file] })) {
       try { await nav.share({ files: [file] } as ShareData); } catch { /* cancelado */ }
@@ -164,7 +161,7 @@ export function GenerarReel({ p }: { p: Propiedad }) {
     if (!resultUrl) return;
     const a = document.createElement("a");
     a.href = resultUrl;
-    a.download = `reel-${(p.nombre || "propiedad").replace(/[^a-zA-Z0-9]/g, "-")}.mp4`;
+    a.download = `reel-${(nombre || "propiedad").replace(/[^a-zA-Z0-9]/g, "-")}.mp4`;
     document.body.appendChild(a);
     a.click();
     a.remove();
