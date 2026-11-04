@@ -564,6 +564,35 @@ h1 em {
   height: 16px;
 }
 
+/* Iconos de características (gris) en tarjetas y fichas */
+.piso-features {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 10px;
+  color: #6b7280;
+}
+.pf-feat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1;
+}
+.pf-feat svg {
+  color: #9ca3af;
+  flex: 0 0 auto;
+}
+.piso-features--ficha {
+  gap: 18px;
+  margin: 10px 0 14px;
+}
+.piso-features--ficha .pf-feat {
+  font-size: 0.95rem;
+}
+
 /* Empujón a la derecha y vuelta al origen; lo dispara PisoArrowMotion
    en una tarjeta al azar, nunca dos a la vez. */
 .piso-arrow--nudge {

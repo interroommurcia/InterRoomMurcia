@@ -60,6 +60,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const banosRaw = form.get("numBanos");
   if (banosRaw !== null) updates.numBanos = banosRaw === "" ? null : Number(banosRaw);
 
+  const boolCampo = (v: FormDataEntryValue | null): boolean | null => (v === "si" ? true : v === "no" ? false : null);
+  if (form.get("terraza") !== null) updates.terraza = boolCampo(form.get("terraza"));
+  if (form.get("piscina") !== null) updates.piscina = boolCampo(form.get("piscina"));
+  if (form.get("garaje") !== null) updates.garaje = boolCampo(form.get("garaje"));
+
   try {
     const imagen = form.get("imagen");
     if (imagen instanceof File && imagen.size > 0) {

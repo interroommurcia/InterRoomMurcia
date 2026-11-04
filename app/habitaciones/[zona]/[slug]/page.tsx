@@ -6,6 +6,7 @@ import { whatsappHref, WHATSAPP_NUMBER } from "../../../../lib/whatsapp";
 import FichaMedia from "../../../../components/FichaMedia";
 import PisoCard from "../../../../components/PisoCard";
 import QuieroAlquilar from "../../../../components/QuieroAlquilar";
+import PisoFeatures from "../../../../components/PisoFeatures";
 import DescripcionPlegable from "../../../../components/DescripcionPlegable";
 
 // Siempre fresco: un anuncio recién publicado se ve al instante y nunca se
@@ -63,6 +64,8 @@ export default async function PisoPage({ params }: { params: { zona: string; slu
               <div className="ficha-loc">
                 {piso.barrio}{zona ? ` · ${zona.universidad}` : ""}
               </div>
+
+              <PisoFeatures piso={piso} size={18} className="piso-features--ficha" />
 
               <div className="ficha-facts">
                 <div>

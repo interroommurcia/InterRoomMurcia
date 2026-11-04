@@ -37,6 +37,9 @@ export type Piso = {
   tipoAlquiler: TipoAlquiler;
   numHabitaciones: number | null;
   numBanos: number | null;
+  terraza: boolean | null;
+  piscina: boolean | null;
+  garaje: boolean | null;
 };
 
 export const zonas: Zona[] = [
@@ -100,6 +103,9 @@ type PisoRow = {
   tipo_alquiler: TipoAlquiler | null;
   num_habitaciones: number | null;
   num_banos: number | null;
+  terraza: boolean | null;
+  piscina: boolean | null;
+  garaje: boolean | null;
 };
 
 function deriveEstado(row: { estado?: string | null; disponible: boolean; reservada?: boolean }): EstadoPiso {
@@ -132,10 +138,13 @@ function mapPiso(row: PisoRow): Piso {
     tipoAlquiler: row.tipo_alquiler ?? "completo",
     numHabitaciones: row.num_habitaciones ?? null,
     numBanos: row.num_banos ?? null,
+    terraza: row.terraza ?? null,
+    piscina: row.piscina ?? null,
+    garaje: row.garaje ?? null,
   };
 }
 
-function mapPisoCard(row: Pick<PisoRow, "id" | "slug" | "titulo" | "zona" | "barrio" | "precio_mes" | "disponible" | "reservada" | "image_url" | "categoria" | "tipo_alquiler" | "num_habitaciones" | "num_banos"> & { estado?: string | null }): Piso {
+function mapPisoCard(row: Partial<Pick<PisoRow, "terraza" | "piscina" | "garaje">> & Pick<PisoRow, "id" | "slug" | "titulo" | "zona" | "barrio" | "precio_mes" | "disponible" | "reservada" | "image_url" | "categoria" | "tipo_alquiler" | "num_habitaciones" | "num_banos"> & { estado?: string | null }): Piso {
   const estado = deriveEstado(row);
   return {
     id: row.id,
@@ -156,37 +165,45 @@ function mapPisoCard(row: Pick<PisoRow, "id" | "slug" | "titulo" | "zona" | "bar
     tipoAlquiler: row.tipo_alquiler ?? "completo",
     numHabitaciones: row.num_habitaciones ?? null,
     numBanos: row.num_banos ?? null,
+    terraza: row.terraza ?? null,
+    piscina: row.piscina ?? null,
+    garaje: row.garaje ?? null,
   };
 }
 
-const CARD_COLS = "id,slug,titulo,zona,barrio,precio_mes,disponible,reservada,estado,image_url,categoria,tipo_alquiler,num_habitaciones,num_banos" as const;
+const CARD_COLS_BASE = "id,slug,titulo,zona,barrio,precio_mes,disponible,reservada,estado,image_url,categoria,tipo_alquiler,num_habitaciones,num_banos" as const;
+const CARD_COLS = `${CARD_COLS_BASE},terraza,piscina,garaje` as const;
+
+function faltaColumna(error: { message?: string } | null): boolean {
+  return !!error && /column .* does not exist/i.test(error.message ?? "");
+}
+
+// Ejecuta la consulta de tarjetas con las columnas nuevas; si la migración de
+// terraza/piscina/garaje aún no se ha corrido, reintenta sin ellas para no
+// romper el catálogo.
+async function runCards(
+  build: (cols: string) => PromiseLike<{ data: unknown; error: { message?: string } | null }>,
+): Promise<Piso[]> {
+  let { data, error } = await build(CARD_COLS);
+  if (faltaColumna(error)) ({ data, error } = await build(CARD_COLS_BASE));
+  if (error) throw error;
+  return ((data ?? []) as Parameters<typeof mapPisoCard>[0][]).map(mapPisoCard);
+}
 
 export async function getPisos(): Promise<Piso[]> {
-  const { data, error } = await supabasePublic
-    .from("pisos")
-    .select(CARD_COLS)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(mapPisoCard);
+  return runCards((cols) =>
+    supabasePublic.from("pisos").select(cols).order("created_at", { ascending: false }),
+  );
 }
 
 export async function pisosPorCategoria(categoria: CategoriaPiso): Promise<Piso[]> {
-  const { data, error } = await supabasePublic
-    .from("pisos")
-    .select(CARD_COLS)
-    .eq("categoria", categoria)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(mapPisoCard);
+  return runCards((cols) =>
+    supabasePublic.from("pisos").select(cols).eq("categoria", categoria).order("created_at", { ascending: false }),
+  );
 }
 
 export async function pisosPorZona(zona: ZonaSlug): Promise<Piso[]> {
-  const { data, error } = await supabasePublic
-    .from("pisos")
-    .select(CARD_COLS)
-    .eq("zona", zona);
-  if (error) throw error;
-  return (data ?? []).map(mapPisoCard);
+  return runCards((cols) => supabasePublic.from("pisos").select(cols).eq("zona", zona));
 }
 
 export async function pisoPorSlug(zona: ZonaSlug, slug: string): Promise<Piso | null> {

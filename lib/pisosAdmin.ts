@@ -21,6 +21,9 @@ export type PisoInput = {
   tipoAlquiler?: TipoAlquiler;
   numHabitaciones?: number | null;
   numBanos?: number | null;
+  terraza?: boolean | null;
+  piscina?: boolean | null;
+  garaje?: boolean | null;
 };
 
 function toRow(input: Partial<PisoInput>) {
@@ -42,6 +45,9 @@ function toRow(input: Partial<PisoInput>) {
   if (input.tipoAlquiler !== undefined) row.tipo_alquiler = input.tipoAlquiler;
   if (input.numHabitaciones !== undefined) row.num_habitaciones = input.numHabitaciones;
   if (input.numBanos !== undefined) row.num_banos = input.numBanos;
+  if (input.terraza !== undefined) row.terraza = input.terraza;
+  if (input.piscina !== undefined) row.piscina = input.piscina;
+  if (input.garaje !== undefined) row.garaje = input.garaje;
   return row;
 }
 

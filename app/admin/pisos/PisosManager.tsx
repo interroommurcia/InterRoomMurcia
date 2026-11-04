@@ -625,7 +625,7 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
         </div>
         <div className="pf-field">
           <span className="pf-label">Garaje</span>
-          <select className="pf-select" name="garaje" defaultValue="">
+          <select className="pf-select" name="garaje" defaultValue={piso?.garaje === true ? "si" : piso?.garaje === false ? "no" : ""}>
             <option value="">—</option>
             <option value="si">Sí</option>
             <option value="no">No</option>
@@ -633,7 +633,15 @@ function PisoFields({ piso, isEdit }: { piso?: Piso; isEdit?: boolean }) {
         </div>
         <div className="pf-field">
           <span className="pf-label">Terraza</span>
-          <select className="pf-select" name="terraza" defaultValue="">
+          <select className="pf-select" name="terraza" defaultValue={piso?.terraza === true ? "si" : piso?.terraza === false ? "no" : ""}>
+            <option value="">—</option>
+            <option value="si">Sí</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+        <div className="pf-field">
+          <span className="pf-label">Piscina</span>
+          <select className="pf-select" name="piscina" defaultValue={piso?.piscina === true ? "si" : piso?.piscina === false ? "no" : ""}>
             <option value="">—</option>
             <option value="si">Sí</option>
             <option value="no">No</option>
