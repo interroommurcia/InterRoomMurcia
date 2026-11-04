@@ -170,11 +170,38 @@ function CompartirRedesCore({
   const [estados, setEstados] = useState<Record<string, EstadoFoto>>({});
   const [preview, setPreview] = useState<ItemMedia | null>(null);
   const [retocando, setRetocando] = useState(false);
+  // Fotos marcadas para compartir/descargar (por defecto todas).
+  const [seleccion, setSeleccion] = useState<Set<string>>(() => new Set(fotos.map((f) => f.id)));
+
+  const fotosSel = fotos.filter((f) => seleccion.has(f.id));
+
+  function toggleSel(id: string) {
+    setSeleccion((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
+
+  function todas(marcar: boolean) {
+    setSeleccion(marcar ? new Set(fotos.map((f) => f.id)) : new Set());
+  }
 
   // URL a usar para una foto según la versión elegida.
   function urlDe(m: ItemMedia): string {
     const e = estados[m.id];
     return e && e.usar === "retoque" && e.objUrl ? e.objUrl : m.url;
+  }
+
+  // Descarga secuencial de las fotos seleccionadas (para montar el carrusel a mano en IG).
+  async function descargarSeleccionadas() {
+    if (!fotosSel.length) return;
+    setAviso("");
+    for (let i = 0; i < fotosSel.length; i++) {
+      descargar(fotosSel[i], i + 1);
+      await new Promise((r) => setTimeout(r, 350));
+    }
   }
 
   async function copiar() {
@@ -209,12 +236,13 @@ function CompartirRedesCore({
     setEstados((prev) => ({ ...prev, [m.id]: { ...prev[m.id], usar } }));
   }
 
-  function descargar(m: ItemMedia) {
+  function descargar(m: ItemMedia, n?: number) {
     const e = estados[m.id];
     const href = urlDe(m);
+    const sufijo = n != null ? `-${String(n).padStart(2, "0")}` : e && e.usar === "retoque" ? "-retocada" : "-original";
     const a = document.createElement("a");
     a.href = href;
-    a.download = `${nombre || "foto"}-${e && e.usar === "retoque" ? "retocada" : "original"}.jpg`;
+    a.download = `${nombre || "foto"}${sufijo}.jpg`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -243,15 +271,27 @@ function CompartirRedesCore({
         }
       }
       const nav = navigator as Navigator & { canShare?: (d?: unknown) => boolean };
-      if (files.length && nav.canShare && nav.canShare({ files })) {
-        await nav.share({ files, text: caption } as ShareData);
-      } else {
-        setAviso(
-          "Tu navegador no permite compartir directo. Ábrelo desde el móvil para enviar a Instagram/TikTok, o descarga las fotos una a una.",
-        );
+      if (!files.length) {
+        setAviso("No hay nada seleccionado para compartir.");
+        return;
       }
-    } catch {
-      /* el usuario canceló el menú de compartir: sin error */
+      if (!nav.canShare || !nav.canShare({ files })) {
+        setAviso(
+          nombreBase === "foto" && files.length > 1
+            ? "Tu móvil no deja mandar varias fotos a Instagram de golpe (Instagram no acepta carruseles por aquí). Usa «⬇️ Descargar seleccionadas» y súbelas en la app de Instagram, o comparte de una en una."
+            : "Tu navegador no permite compartir directo. Ábrelo desde el móvil para enviar a Instagram/TikTok.",
+        );
+        return;
+      }
+      await nav.share({ files, text: caption } as ShareData);
+    } catch (err) {
+      // AbortError = el usuario cerró el menú de compartir: no es un fallo.
+      if (err instanceof Error && err.name === "AbortError") return;
+      setAviso(
+        nombreBase === "foto" && items.length > 1
+          ? "Instagram no admite varias fotos a la vez por el menú de compartir. Usa «⬇️ Descargar seleccionadas» y monta el carrusel en la app, o comparte de una en una."
+          : "No se pudo abrir el menú de compartir. Prueba desde el móvil o descarga el archivo.",
+      );
     } finally {
       setCompartiendo(false);
     }
@@ -291,23 +331,39 @@ function CompartirRedesCore({
       {/* Galería: toca una foto para retocarla o descargarla */}
       {fotos.length > 0 && (
         <>
-          <label style={{ fontSize: 12, color: "#6b7280", fontWeight: 500 }}>Fotos — toca una para retocarla (gratis) o descargarla</label>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+            <label style={{ fontSize: 12, color: "#6b7280", fontWeight: 500 }}>
+              Fotos — marca ✓ las que quieras · toca la foto para retocarla
+            </label>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button type="button" onClick={() => todas(true)} style={{ background: "none", border: "none", color: "var(--orange)", cursor: "pointer", fontSize: 12, fontWeight: 600, padding: 0 }}>Todas</button>
+              <button type="button" onClick={() => todas(false)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", fontSize: 12, fontWeight: 600, padding: 0 }}>Ninguna</button>
+            </div>
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))", gap: 8, marginTop: 6, marginBottom: 14 }}>
             {fotos.map((m) => {
               const e = estados[m.id];
               const esRetoque = e?.usar === "retoque" && e.objUrl;
+              const sel = seleccion.has(m.id);
               return (
                 <button
                   key={m.id}
                   type="button"
                   onClick={() => setPreview(m)}
-                  style={{ position: "relative", padding: 0, border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden", cursor: "pointer", aspectRatio: "1 / 1", background: "#f3f4f6" }}
+                  style={{ position: "relative", padding: 0, border: `2px solid ${sel ? "var(--orange)" : "#e5e7eb"}`, borderRadius: 8, overflow: "hidden", cursor: "pointer", aspectRatio: "1 / 1", background: "#f3f4f6" }}
                   title="Ver / retocar"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={urlDe(m)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  <img src={urlDe(m)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: sel ? 1 : 0.4 }} />
+                  <span
+                    onClick={(ev) => { ev.stopPropagation(); toggleSel(m.id); }}
+                    title={sel ? "Quitar de la selección" : "Añadir a la selección"}
+                    style={{ position: "absolute", top: 4, left: 4, width: 22, height: 22, borderRadius: 6, border: "2px solid #fff", background: sel ? "var(--orange)" : "rgba(0,0,0,0.4)", color: "#fff", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 3px rgba(0,0,0,0.4)", cursor: "pointer" }}
+                  >
+                    {sel ? "✓" : ""}
+                  </span>
                   {esRetoque && (
-                    <span style={{ position: "absolute", top: 4, right: 4, background: "#16a34a", color: "#fff", fontSize: 10, fontWeight: 600, padding: "1px 5px", borderRadius: 4 }}>✨ retocada</span>
+                    <span style={{ position: "absolute", top: 4, right: 4, background: "#16a34a", color: "#fff", fontSize: 10, fontWeight: 600, padding: "1px 5px", borderRadius: 4 }}>✨</span>
                   )}
                 </button>
               );
@@ -342,14 +398,24 @@ function CompartirRedesCore({
 
       <div style={{ marginTop: 16, display: "flex", gap: 8, flexWrap: "wrap" }}>
         {fotos.length > 0 && (
-          <button
-            type="button"
-            onClick={() => compartir(fotos.slice(0, 15), "foto")}
-            disabled={compartiendo}
-            style={{ padding: "10px 16px", borderRadius: 8, border: "none", background: "var(--orange)", color: "#fff", cursor: compartiendo ? "wait" : "pointer", fontSize: 13, fontWeight: 600 }}
-          >
-            {compartiendo ? "Preparando…" : `📸 Compartir ${fotos.length} foto${fotos.length !== 1 ? "s" : ""}`}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => descargarSeleccionadas()}
+              disabled={!fotosSel.length}
+              style={{ padding: "10px 16px", borderRadius: 8, border: "none", background: "var(--orange)", color: "#fff", cursor: fotosSel.length ? "pointer" : "not-allowed", opacity: fotosSel.length ? 1 : 0.5, fontSize: 13, fontWeight: 600 }}
+            >
+              ⬇️ Descargar {fotosSel.length} seleccionada{fotosSel.length !== 1 ? "s" : ""}
+            </button>
+            <button
+              type="button"
+              onClick={() => compartir(fotosSel, "foto")}
+              disabled={compartiendo || !fotosSel.length}
+              style={{ padding: "10px 16px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", cursor: compartiendo || !fotosSel.length ? "not-allowed" : "pointer", opacity: fotosSel.length ? 1 : 0.5, fontSize: 13, fontWeight: 600 }}
+            >
+              {compartiendo ? "Preparando…" : `📲 Compartir (${fotosSel.length})`}
+            </button>
+          </>
         )}
         {videos.map((v, i) => (
           <button
@@ -365,7 +431,8 @@ function CompartirRedesCore({
       </div>
 
       <p style={{ fontSize: 12, color: "#6b7280", marginTop: 12, lineHeight: 1.5 }}>
-        Desde el <b>móvil</b>: retoca las fotos que quieras, toca «Compartir fotos», elige <b>Instagram</b> o <b>TikTok</b>, añade el audio en tendencia y pega la descripción (ya copiada). Se comparte la versión elegida de cada foto.
+        <b>Carrusel de Instagram:</b> Instagram no deja mandar varias fotos a la vez por el menú de compartir. Marca las fotos, pulsa <b>«⬇️ Descargar seleccionadas»</b>, abre Instagram y elige esas fotos de la galería para el carrusel. Pega la descripción (ya copiada) y añade el audio en tendencia.<br />
+        <b>«📲 Compartir»</b> va bien para <b>1 foto, una historia o el vídeo</b>.
       </p>
 
       <GenerarReel nombre={nombre} videos={videos} textoPrecio={textoPrecio} textoZona={textoZona} />
