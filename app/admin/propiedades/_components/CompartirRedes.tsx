@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FONT, Propiedad, totalConGaraje } from "./shared";
 import type { Piso } from "../../../../lib/pisos";
 import { retocarFoto } from "../../../../lib/retoqueFoto";
+import { retocarEditorial } from "../../../../lib/retoqueEditorial";
 import { GenerarReel } from "./GenerarReel";
 import { GenerarHistoria } from "./GenerarHistoria";
 
@@ -99,8 +100,12 @@ function construirCaptionPiso(p: Piso): string {
   return lineas.join("\n");
 }
 
-// Estado de retoque por foto: su blob retocado y qué versión usar.
-type EstadoFoto = { blob?: Blob; objUrl?: string; usar: "orig" | "retoque" };
+// Estado de retoque por foto: cada variante retocada (auto / skill editorial) y
+// qué versión usar al compartir/descargar.
+type Variante = { blob: Blob; objUrl: string };
+type Modo = "auto" | "skill";
+type Usar = "orig" | Modo;
+type EstadoFoto = { auto?: Variante; skill?: Variante; usar: Usar };
 
 // Adaptador para una propiedad (ficha de propiedades). Conserva el uso previo.
 export function CompartirRedes({ p }: { p: Propiedad }) {
@@ -194,7 +199,7 @@ function CompartirRedesCore({
   const [aviso, setAviso] = useState("");
   const [estados, setEstados] = useState<Record<string, EstadoFoto>>({});
   const [preview, setPreview] = useState<ItemMedia | null>(null);
-  const [retocando, setRetocando] = useState(false);
+  const [retocando, setRetocando] = useState<Modo | null>(null);
   // Fotos marcadas para compartir/descargar (por defecto todas).
   const [seleccion, setSeleccion] = useState<Set<string>>(() => new Set(fotos.map((f) => f.id)));
 
@@ -213,10 +218,16 @@ function CompartirRedesCore({
     setSeleccion(marcar ? new Set(fotos.map((f) => f.id)) : new Set());
   }
 
+  // Variante activa (auto/skill) de una foto, si la hay.
+  function variante(m: ItemMedia): Variante | undefined {
+    const e = estados[m.id];
+    if (!e || e.usar === "orig") return undefined;
+    return e[e.usar];
+  }
+
   // URL a usar para una foto según la versión elegida.
   function urlDe(m: ItemMedia): string {
-    const e = estados[m.id];
-    return e && e.usar === "retoque" && e.objUrl ? e.objUrl : m.url;
+    return variante(m)?.objUrl ?? m.url;
   }
 
   // Descarga secuencial de las fotos seleccionadas (para montar el carrusel a mano en IG).
@@ -239,32 +250,33 @@ function CompartirRedesCore({
     }
   }
 
-  async function retocar(m: ItemMedia) {
-    setRetocando(true);
+  async function retocar(m: ItemMedia, modo: Modo) {
+    setRetocando(modo);
     setAviso("");
     try {
-      const blob = await retocarFoto(m.url);
+      const blob = modo === "skill" ? await retocarEditorial(m.url) : await retocarFoto(m.url);
       const objUrl = URL.createObjectURL(blob);
       setEstados((prev) => {
-        const anterior = prev[m.id];
+        const anterior = prev[m.id]?.[modo];
         if (anterior?.objUrl) URL.revokeObjectURL(anterior.objUrl);
-        return { ...prev, [m.id]: { blob, objUrl, usar: "retoque" } };
+        return { ...prev, [m.id]: { ...prev[m.id], [modo]: { blob, objUrl }, usar: modo } };
       });
     } catch {
       setAviso("No se pudo retocar esta foto. Prueba con otra o compártela sin retocar.");
     } finally {
-      setRetocando(false);
+      setRetocando(null);
     }
   }
 
-  function elegir(m: ItemMedia, usar: "orig" | "retoque") {
+  function elegir(m: ItemMedia, usar: Usar) {
     setEstados((prev) => ({ ...prev, [m.id]: { ...prev[m.id], usar } }));
   }
 
   function descargar(m: ItemMedia, n?: number) {
     const e = estados[m.id];
     const href = urlDe(m);
-    const sufijo = n != null ? `-${String(n).padStart(2, "0")}` : e && e.usar === "retoque" ? "-retocada" : "-original";
+    const etiqueta = e && e.usar !== "orig" ? `-${e.usar}` : "-original";
+    const sufijo = n != null ? `-${String(n).padStart(2, "0")}` : etiqueta;
     const a = document.createElement("a");
     a.href = href;
     a.download = `${nombre || "foto"}${sufijo}.jpg`;
@@ -281,10 +293,10 @@ function CompartirRedesCore({
       for (let i = 0; i < items.length; i++) {
         try {
           const m = items[i];
-          const e = estados[m.id];
+          const v = nombreBase === "foto" ? variante(m) : undefined;
           let blob: Blob;
-          if (nombreBase === "foto" && e && e.usar === "retoque" && e.blob) {
-            blob = e.blob;
+          if (v) {
+            blob = v.blob;
           } else {
             const r = await fetch(m.url);
             blob = await r.blob();
@@ -368,7 +380,7 @@ function CompartirRedesCore({
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))", gap: 8, marginTop: 6, marginBottom: 14 }}>
             {fotos.map((m) => {
               const e = estados[m.id];
-              const esRetoque = e?.usar === "retoque" && e.objUrl;
+              const esRetoque = e && e.usar !== "orig";
               const sel = seleccion.has(m.id);
               return (
                 <button
@@ -469,8 +481,20 @@ function CompartirRedesCore({
       {/* Preview de una foto con retoque antes/después */}
       {preview && (() => {
         const e = estados[preview.id];
-        const tieneRetoque = Boolean(e?.objUrl);
-        const mostrando: "orig" | "retoque" = e?.usar === "retoque" && e.objUrl ? "retoque" : "orig";
+        const usar: Usar = e?.usar ?? "orig";
+        const tieneAuto = Boolean(e?.auto);
+        const tieneSkill = Boolean(e?.skill);
+        const etiqueta = usar === "auto" ? "✨ Auto" : usar === "skill" ? "🎨 Skill editorial" : "Original";
+        const ocupado = retocando !== null;
+        const chip = (val: Usar, label: string, color: string) => (
+          <button
+            type="button"
+            onClick={() => elegir(preview, val)}
+            style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: `1px solid ${usar === val ? color : "#d1d5db"}`, background: usar === val ? color : "#fff", color: usar === val ? "#fff" : "#333", cursor: "pointer", fontSize: 13, fontWeight: 500 }}
+          >
+            {label}
+          </button>
+        );
         return (
           <div
             onClick={() => setPreview(null)}
@@ -479,39 +503,40 @@ function CompartirRedesCore({
             <div onClick={(ev) => ev.stopPropagation()} style={{ background: "#fff", borderRadius: 12, maxWidth: 520, width: "100%", maxHeight: "92vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <div style={{ position: "relative", background: "#111", flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={mostrando === "retoque" && e?.objUrl ? e.objUrl : preview.url} alt="" style={{ maxWidth: "100%", maxHeight: "60vh", objectFit: "contain", display: "block" }} />
+                <img src={urlDe(preview)} alt="" style={{ maxWidth: "100%", maxHeight: "60vh", objectFit: "contain", display: "block" }} />
                 <span style={{ position: "absolute", top: 8, left: 8, background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 11, padding: "2px 8px", borderRadius: 4 }}>
-                  {mostrando === "retoque" ? "✨ Retocada" : "Original"}
+                  {etiqueta}
                 </span>
               </div>
               <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-                {!tieneRetoque ? (
+                <div style={{ display: "flex", gap: 6 }}>
                   <button
                     type="button"
-                    onClick={() => retocar(preview)}
-                    disabled={retocando}
-                    style={{ padding: "10px 16px", borderRadius: 8, border: "none", background: "var(--orange)", color: "#fff", cursor: retocando ? "wait" : "pointer", fontSize: 14, fontWeight: 600 }}
+                    onClick={() => retocar(preview, "auto")}
+                    disabled={ocupado}
+                    style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "none", background: "var(--orange)", color: "#fff", cursor: ocupado ? "wait" : "pointer", fontSize: 13, fontWeight: 600 }}
                   >
-                    {retocando ? "Retocando…" : "✨ Retocar (auto, gratis)"}
+                    {retocando === "auto" ? "Retocando…" : tieneAuto ? "✨ Rehacer auto" : "✨ Retocar (auto)"}
                   </button>
-                ) : (
+                  <button
+                    type="button"
+                    onClick={() => retocar(preview, "skill")}
+                    disabled={ocupado}
+                    style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "none", background: "#7c3aed", color: "#fff", cursor: ocupado ? "wait" : "pointer", fontSize: 13, fontWeight: 600 }}
+                  >
+                    {retocando === "skill" ? "Retocando…" : tieneSkill ? "🎨 Rehacer skill" : "🎨 Retocar skill"}
+                  </button>
+                </div>
+                {(tieneAuto || tieneSkill) && (
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button
-                      type="button"
-                      onClick={() => elegir(preview, "orig")}
-                      style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: `1px solid ${mostrando === "orig" ? "#111827" : "#d1d5db"}`, background: mostrando === "orig" ? "#111827" : "#fff", color: mostrando === "orig" ? "#fff" : "#333", cursor: "pointer", fontSize: 13, fontWeight: 500 }}
-                    >
-                      Original
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => elegir(preview, "retoque")}
-                      style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: `1px solid ${mostrando === "retoque" ? "#16a34a" : "#d1d5db"}`, background: mostrando === "retoque" ? "#16a34a" : "#fff", color: mostrando === "retoque" ? "#fff" : "#333", cursor: "pointer", fontSize: 13, fontWeight: 500 }}
-                    >
-                      ✨ Retocada
-                    </button>
+                    {chip("orig", "Original", "#111827")}
+                    {tieneAuto && chip("auto", "✨ Auto", "#16a34a")}
+                    {tieneSkill && chip("skill", "🎨 Skill", "#7c3aed")}
                   </div>
                 )}
+                <p style={{ fontSize: 11, color: "#9ca3af", margin: 0, lineHeight: 1.4 }}>
+                  <b>Skill (editorial):</b> look de revista — luz, blancos neutros, color y nitidez. No quita cables/objetos ni endereza paredes (eso necesita IA).
+                </p>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
                     type="button"
