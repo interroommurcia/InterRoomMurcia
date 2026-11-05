@@ -71,7 +71,7 @@ export default async function ContratoDetailPage({ params }: { params: Promise<{
           </span>
         </div>
 
-        <ContratoAcciones contratoId={contrato.id} estado={contrato.estado} signingLink={signingLink} />
+        <ContratoAcciones contratoId={contrato.id} estado={contrato.estado} signingLink={signingLink} emailPropietario={contrato.datos.propietario?.email ?? ""} />
 
         {contrato.estado === "borrador" && <EditorCuerpo contratoId={contrato.id} />}
 

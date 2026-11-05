@@ -8,14 +8,38 @@ type Props = {
   contratoId: string;
   estado: string;
   signingLink: string | null;
+  emailPropietario: string;
 };
 
-export default function ContratoAcciones({ contratoId, estado, signingLink }: Props) {
+export default function ContratoAcciones({ contratoId, estado, signingLink, emailPropietario }: Props) {
   const router = useRouter();
   const [cargando, setCargando] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [firmandoAgencia, setFirmandoAgencia] = useState(false);
   const [error, setError] = useState("");
+  const [emailReenvio, setEmailReenvio] = useState(emailPropietario);
+  const [reenviando, setReenviando] = useState(false);
+  const [reenviado, setReenviado] = useState("");
+
+  async function reenviarEmail() {
+    setError("");
+    setReenviado("");
+    setReenviando(true);
+    try {
+      const res = await fetch(`/api/admin/contratos/${contratoId}/reenviar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailReenvio.trim() }),
+      });
+      const data = await res.json().catch(() => ({ error: "" }));
+      if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
+      setReenviado(`Enviado a ${data.email || emailReenvio.trim()}`);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo reenviar el email");
+    } finally {
+      setReenviando(false);
+    }
+  }
 
   async function generarLink() {
     setCargando(true);
@@ -322,6 +346,51 @@ export default function ContratoAcciones({ contratoId, estado, signingLink }: Pr
           >
             📝 Descargar Word
           </button>
+
+          <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid #eee" }}>
+            <h4 style={{ margin: "0 0 4px" }}>Reenviar copia por email al propietario</h4>
+            <p style={{ fontSize: "0.85rem", opacity: 0.7, margin: "0 0 10px" }}>
+              Reenvía el PDF firmado adjunto sin volver a firmar. Si el email anterior rebotó,
+              corrígelo aquí: se guardará en el contrato.
+            </p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <input
+                type="email"
+                value={emailReenvio}
+                onChange={(e) => setEmailReenvio(e.target.value)}
+                placeholder="email@propietario.com"
+                style={{
+                  flex: "1 1 280px",
+                  padding: "10px 12px",
+                  border: "1px solid #ddd",
+                  borderRadius: 8,
+                  fontSize: "0.9rem",
+                }}
+              />
+              <button
+                type="button"
+                onClick={reenviarEmail}
+                disabled={reenviando || !emailReenvio.trim()}
+                style={{
+                  padding: "10px 22px",
+                  background: "var(--ink)",
+                  color: "#fff",
+                  border: 0,
+                  borderRadius: 8,
+                  fontWeight: 500,
+                  cursor: reenviando ? "wait" : "pointer",
+                  opacity: reenviando || !emailReenvio.trim() ? 0.6 : 1,
+                }}
+              >
+                {reenviando ? "Enviando…" : "✉️ Reenviar"}
+              </button>
+            </div>
+            {reenviado && (
+              <div style={{ marginTop: 10, padding: 10, background: "#ecfdf5", color: "#065f46", borderRadius: 8, fontSize: "0.85rem" }}>
+                ✓ {reenviado}
+              </div>
+            )}
+          </div>
         </>
       )}
 
