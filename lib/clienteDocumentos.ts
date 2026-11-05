@@ -20,6 +20,7 @@ export type ClienteDocumento = {
   categoria: CategoriaDocumento;
   storage_path: string;
   content_type: string | null;
+  solo_clientes: boolean;
   created_at: string;
 };
 
@@ -27,15 +28,29 @@ function sanitizeFilename(name: string): string {
   return name.normalize("NFD").replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_+/g, "_").slice(0, 120);
 }
 
-export async function listarClienteDocumentos(clienteId: string): Promise<ClienteDocumento[]> {
+export async function listarClienteDocumentos(
+  clienteId: string,
+  opts?: { ocultarSoloClientes?: boolean },
+): Promise<ClienteDocumento[]> {
   const admin = getSupabaseAdmin();
-  const { data, error } = await admin
+  let q = admin
     .from("cliente_documentos")
     .select("*")
-    .eq("cliente_id", clienteId)
-    .order("created_at", { ascending: false });
+    .eq("cliente_id", clienteId);
+  // Vista de Contabilidad: ocultar los marcados como "solo Clientes".
+  if (opts?.ocultarSoloClientes) q = q.eq("solo_clientes", false);
+  const { data, error } = await q.order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as ClienteDocumento[];
+}
+
+export async function actualizarVisibilidadDocumento(id: string, soloClientes: boolean): Promise<void> {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin
+    .from("cliente_documentos")
+    .update({ solo_clientes: soloClientes })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export async function subirClienteDocumento(

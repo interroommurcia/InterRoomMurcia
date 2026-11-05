@@ -524,7 +524,7 @@ export default function ClientesManager() {
                     {cliente.notas && <div className="loc" style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>{cliente.notas}</div>}
                   </div>
                   <div className="lead-form-actions" style={{ padding: "0 16px 12px", flexWrap: "wrap" }}>
-                    <Link href={`/admin/contabilidad/${cliente.id}`} className="btn-ghost" style={{ minHeight: 44, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                    <Link href={`/admin/clientes/${cliente.id}`} className="btn-ghost" style={{ minHeight: 44, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
                       📁 Documentos y facturas
                     </Link>
                     <button type="button" className="btn-ghost" style={{ minHeight: 44 }} onClick={() => abrirEdicion(cliente)}>

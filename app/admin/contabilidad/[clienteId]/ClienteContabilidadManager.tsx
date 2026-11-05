@@ -178,7 +178,7 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
   }, [clienteId]);
 
   const cargarDocumentos = useCallback(async () => {
-    const data = await fetch(`/api/admin/clientes/${clienteId}/documentos`).then((r) => r.json());
+    const data = await fetch(`/api/admin/clientes/${clienteId}/documentos?view=contabilidad`).then((r) => r.json());
     setDocumentos(Array.isArray(data) ? data : []);
   }, [clienteId]);
 

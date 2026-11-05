@@ -1,8 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { descargarClienteDocumento, eliminarClienteDocumento } from "../../../../../../../lib/clienteDocumentos";
+import { descargarClienteDocumento, eliminarClienteDocumento, actualizarVisibilidadDocumento } from "../../../../../../../lib/clienteDocumentos";
+import { getSesion } from "../../../../../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+// Cambiar la visibilidad "solo Clientes" de un documento. Solo admin.
+export async function PATCH(req: NextRequest, { params }: { params: { id: string; docId: string } }) {
+  try {
+    const sesion = await getSesion();
+    if (sesion?.rol !== "admin") {
+      return NextResponse.json({ error: "Solo un administrador puede cambiar la visibilidad" }, { status: 403 });
+    }
+    const body = await req.json().catch(() => ({}));
+    await actualizarVisibilidadDocumento(params.docId, Boolean(body?.solo_clientes));
+    return NextResponse.json({ ok: true });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Error desconocido" }, { status: 500 });
+  }
+}
 
 export async function GET(req: NextRequest, { params }: { params: { id: string; docId: string } }) {
   try {

@@ -12,9 +12,10 @@ export const maxDuration = 60;
 const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
 const TIPOS_OK = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    return NextResponse.json(await listarClienteDocumentos(params.id));
+    const ocultarSoloClientes = new URL(req.url).searchParams.get("view") === "contabilidad";
+    return NextResponse.json(await listarClienteDocumentos(params.id, { ocultarSoloClientes }));
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error desconocido" }, { status: 500 });
   }
