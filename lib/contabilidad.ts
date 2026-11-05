@@ -276,6 +276,7 @@ export async function actualizarCliente(
     comision_fija_alquiler: number | null;
     alquiler_fecha_inicio: string | null;
     alquiler_fecha_fin: string | null;
+    datos_completados: boolean;
   }>
 ) {
   const admin = getSupabaseAdmin();

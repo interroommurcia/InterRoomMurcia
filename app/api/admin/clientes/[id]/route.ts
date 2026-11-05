@@ -19,6 +19,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   try {
     await actualizarCliente(params.id, {
       ...body,
+      // Guardar desde "Editar" cuenta como ficha ya rellenada: quita el aviso
+      // "pendiente de rellenar" aunque el cliente no usara el autorrelleno.
+      datos_completados: true,
       mensualidad: body.mensualidad !== undefined ? Number(body.mensualidad) || 0 : undefined,
       comision_pct_alquiler: body.comision_pct_alquiler !== undefined ? Number(body.comision_pct_alquiler) || 15 : undefined,
     });
