@@ -125,15 +125,15 @@ export default async function ContratosListPage() {
             </Link>
           </div>
         ) : (
-          <div className="analytics-card" style={{ padding: 0, overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div className="admin-table-wrap">
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 680 }}>
               <thead>
                 <tr style={{ background: "#fafafa", borderBottom: "1px solid #eee" }}>
                   <th style={{ textAlign: "left", padding: "12px 16px", fontSize: "0.78rem", fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666" }}>Tipo</th>
                   <th style={{ textAlign: "left", padding: "12px 16px", fontSize: "0.78rem", fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666" }}>Propietario</th>
+                  <th style={{ textAlign: "left", padding: "12px 16px", fontSize: "0.78rem", fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666" }}>Estado</th>
                   <th style={{ textAlign: "left", padding: "12px 16px", fontSize: "0.78rem", fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666" }}>Inmueble</th>
                   <th style={{ textAlign: "right", padding: "12px 16px", fontSize: "0.78rem", fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666" }}>Importe</th>
-                  <th style={{ textAlign: "left", padding: "12px 16px", fontSize: "0.78rem", fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666" }}>Estado</th>
                   <th style={{ textAlign: "left", padding: "12px 16px", fontSize: "0.78rem", fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666" }}>Creado</th>
                 </tr>
               </thead>
@@ -170,12 +170,6 @@ export default async function ContratosListPage() {
                         {c.datos.propietario?.nombre || <em style={{ opacity: 0.5 }}>Sin nombre</em>}
                       </Link>
                     </td>
-                    <td style={{ padding: "12px 16px", fontSize: "0.9rem", opacity: 0.8 }}>
-                      {c.datos.inmueble?.direccion || <em style={{ opacity: 0.5 }}>—</em>}
-                    </td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.9rem" }}>
-                      {importe}
-                    </td>
                     <td style={{ padding: "12px 16px" }}>
                       <span
                         style={{
@@ -198,6 +192,12 @@ export default async function ContratosListPage() {
                           Firmar →
                         </Link>
                       )}
+                    </td>
+                    <td style={{ padding: "12px 16px", fontSize: "0.9rem", opacity: 0.8 }}>
+                      {c.datos.inmueble?.direccion || <em style={{ opacity: 0.5 }}>—</em>}
+                    </td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.9rem" }}>
+                      {importe}
                     </td>
                     <td style={{ padding: "12px 16px", fontSize: "0.85rem", opacity: 0.7 }}>
                       {new Date(c.created_at).toLocaleDateString("es-ES")}
