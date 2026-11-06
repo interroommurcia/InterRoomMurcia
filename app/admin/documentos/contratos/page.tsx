@@ -33,6 +33,14 @@ const TIPO_LABEL: Record<TipoContrato, string> = {
   gestion_alquiler: "Gestión alquiler",
 };
 
+const EMAIL_BADGE: Record<string, { label: string; bg: string; color: string }> = {
+  enviado: { label: "✉ Enviado", bg: "#e0e7ff", color: "#3730a3" },
+  entregado: { label: "✓ Entregado", bg: "#dcfce7", color: "#166534" },
+  rebotado: { label: "⚠ Rebotado", bg: "#fee2e2", color: "#991b1b" },
+  queja: { label: "⚠ Spam", bg: "#fee2e2", color: "#991b1b" },
+  fallo: { label: "⚠ Fallo email", bg: "#fee2e2", color: "#991b1b" },
+};
+
 const TIPO_COLOR: Record<TipoContrato, string> = {
   exclusiva_venta: "#ea6a12",
   gestion_alquiler: "#2563eb",
@@ -191,6 +199,24 @@ export default async function ContratosListPage() {
                         >
                           Firmar →
                         </Link>
+                      )}
+                      {c.email_estado && EMAIL_BADGE[c.email_estado] && (
+                        <div style={{ marginTop: 6 }}>
+                          <span
+                            title={c.email_error ?? undefined}
+                            style={{
+                              display: "inline-block",
+                              padding: "2px 9px",
+                              borderRadius: 999,
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                              background: EMAIL_BADGE[c.email_estado].bg,
+                              color: EMAIL_BADGE[c.email_estado].color,
+                            }}
+                          >
+                            {EMAIL_BADGE[c.email_estado].label}
+                          </span>
+                        </div>
                       )}
                     </td>
                     <td style={{ padding: "12px 16px", fontSize: "0.9rem", opacity: 0.8 }}>
