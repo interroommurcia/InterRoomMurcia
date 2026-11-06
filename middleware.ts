@@ -30,9 +30,11 @@ const PREFIJOS_RESTRINGIDOS: { prefix: string; roles: string[] }[] = [
   { prefix: "/admin/articulos", roles: ["admin", "direccion"] },
   { prefix: "/api/admin/articulos", roles: ["admin", "direccion"] },
   { prefix: "/api/admin/blog-stats", roles: ["admin", "direccion"] },
+  // Analytics: dirección también, pero NO las grabaciones de pantalla
+  { prefix: "/admin/analytics", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/analytics", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/posthog/recordings", roles: ["admin"] },
   // Solo admin
-  { prefix: "/admin/analytics", roles: ["admin"] },
-  { prefix: "/api/admin/analytics", roles: ["admin"] },
   { prefix: "/admin/seguridad", roles: ["admin"] },
   { prefix: "/api/admin/seguridad", roles: ["admin"] },
   { prefix: "/admin/usuarios", roles: ["admin"] },

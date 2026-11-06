@@ -279,7 +279,7 @@ function periodoLabel(p: Periodo, mesVal: string, anioVal: number) {
 
 const inputStyle: React.CSSProperties = { padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 };
 
-export default function AnalyticsManager() {
+export default function AnalyticsManager({ esAdmin }: { esAdmin: boolean }) {
   const [data, setData] = useState<PostHogData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -419,7 +419,7 @@ export default function AnalyticsManager() {
         {loading && <span style={{ fontSize: 12, color: "#9ca3af" }}>Cargando...</span>}
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", marginLeft: "auto" }}>
           <input type="checkbox" checked={excluirAdmin} onChange={(e) => setExcluirAdmin(e.target.checked)} />
-          Excluir mis visitas (admin)
+          Excluir visitas de admin
         </label>
       </div>
 
@@ -748,9 +748,13 @@ export default function AnalyticsManager() {
         </>
       )}
 
-      {/* ── Grabaciones de sesión ── */}
-      <SectionHead id="recordings" title="Grabaciones de sesión" tip="Reproduce visualmente lo que hace cada visitante en tu web (clicks, scroll, movimiento del cursor)" />
-      {openSections.recordings && <RecordingsBlock />}
+      {/* ── Grabaciones de sesión (solo admin) ── */}
+      {esAdmin && (
+        <>
+          <SectionHead id="recordings" title="Grabaciones de sesión" tip="Reproduce visualmente lo que hace cada visitante en tu web (clicks, scroll, movimiento del cursor)" />
+          {openSections.recordings && <RecordingsBlock />}
+        </>
+      )}
     </div>
   );
 }

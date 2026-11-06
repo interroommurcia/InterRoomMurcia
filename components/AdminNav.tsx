@@ -23,7 +23,7 @@ const ITEMS: NavItem[] = [
   { href: "/admin/facturas", label: "Facturas", roles: ["admin", "direccion"] },
   { href: "/admin/articulos", label: "Artículos", roles: ["admin", "direccion"] },
   { href: "/admin/documentos", label: "Documentos", roles: ["admin", "comercial", "direccion"] },
-  { href: "/admin/analytics", label: "Analytics", roles: ["admin"] },
+  { href: "/admin/analytics", label: "Analytics", roles: ["admin", "direccion"] },
   { href: "/admin/seguridad", label: "Seguridad", roles: ["admin"] },
   { href: "/admin/usuarios", label: "Usuarios", roles: ["admin"] },
 ];
