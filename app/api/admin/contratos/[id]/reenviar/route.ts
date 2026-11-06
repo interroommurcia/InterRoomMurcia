@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getContrato, actualizarDatosContrato, descargarPdfContrato } from "../../../../../../lib/contratos";
+import { getContrato, actualizarDatosContrato, descargarPdfContrato, actualizarEmailEstadoContrato } from "../../../../../../lib/contratos";
 import { generarYSubirPdfSiProcede } from "../../../../../../lib/contratos-pdf";
 import { enviarContratoFirmadoPropietario } from "../../../../../../lib/contratos-email";
 
@@ -42,6 +42,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     else pdf = await generarYSubirPdfSiProcede(params.id);
 
     const r = await enviarContratoFirmadoPropietario(contrato, pdf);
+    await actualizarEmailEstadoContrato(params.id, {
+      email_resend_id: r.id ?? null,
+      email_estado: r.ok ? "enviado" : "fallo",
+      email_error: r.ok ? null : r.error ?? "Error desconocido",
+    }).catch(() => undefined);
     if (!r.ok) return NextResponse.json({ error: r.error || "No se pudo enviar el email" }, { status: 502 });
 
     return NextResponse.json({ ok: true, email: contrato.datos.propietario.email });

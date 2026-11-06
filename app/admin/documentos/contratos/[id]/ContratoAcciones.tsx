@@ -9,9 +9,20 @@ type Props = {
   estado: string;
   signingLink: string | null;
   emailPropietario: string;
+  emailEstado: string | null;
+  emailError: string | null;
+  emailAt: string | null;
 };
 
-export default function ContratoAcciones({ contratoId, estado, signingLink, emailPropietario }: Props) {
+const EMAIL_BADGE: Record<string, { label: string; bg: string; color: string }> = {
+  enviado: { label: "Email enviado", bg: "#e0e7ff", color: "#3730a3" },
+  entregado: { label: "Email entregado", bg: "#dcfce7", color: "#166534" },
+  rebotado: { label: "Email rebotado", bg: "#fee2e2", color: "#991b1b" },
+  queja: { label: "Marcado como spam", bg: "#fee2e2", color: "#991b1b" },
+  fallo: { label: "Fallo al enviar", bg: "#fee2e2", color: "#991b1b" },
+};
+
+export default function ContratoAcciones({ contratoId, estado, signingLink, emailPropietario, emailEstado, emailError, emailAt }: Props) {
   const router = useRouter();
   const [cargando, setCargando] = useState(false);
   const [copiado, setCopiado] = useState(false);
@@ -34,6 +45,7 @@ export default function ContratoAcciones({ contratoId, estado, signingLink, emai
       const data = await res.json().catch(() => ({ error: "" }));
       if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
       setReenviado(`Enviado a ${data.email || emailReenvio.trim()}`);
+      router.refresh();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "No se pudo reenviar el email");
     } finally {
@@ -306,9 +318,30 @@ export default function ContratoAcciones({ contratoId, estado, signingLink, emai
       {yaFirmado && (
         <>
           <h3>✓ Contrato firmado por ambas partes</h3>
-          <p style={{ fontSize: "0.9rem", opacity: 0.75, margin: "4px 0 14px" }}>
+          <p style={{ fontSize: "0.9rem", opacity: 0.75, margin: "4px 0 10px" }}>
             Se ha enviado una copia por email al propietario y por Telegram a tu chat.
           </p>
+          {emailEstado && EMAIL_BADGE[emailEstado] && (
+            <div style={{ margin: "0 0 14px" }}>
+              <span style={{
+                display: "inline-block",
+                padding: "3px 12px",
+                borderRadius: 999,
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                background: EMAIL_BADGE[emailEstado].bg,
+                color: EMAIL_BADGE[emailEstado].color,
+              }}>
+                {EMAIL_BADGE[emailEstado].label}
+                {emailAt ? ` · ${new Date(emailAt).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}
+              </span>
+              {(emailEstado === "rebotado" || emailEstado === "fallo" || emailEstado === "queja") && emailError && (
+                <div style={{ marginTop: 8, padding: 10, background: "#fef2f2", color: "#b91c1c", borderRadius: 8, fontSize: "0.82rem" }}>
+                  {emailError} — corrige el email abajo y pulsa Reenviar.
+                </div>
+              )}
+            </div>
+          )}
           <button
             type="button"
             onClick={() => descargarPdf(false)}

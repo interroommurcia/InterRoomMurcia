@@ -99,6 +99,10 @@ export type Contrato = {
   pdf_storage_path: string | null;
   cuerpo_html: string | null;
   firmado_at: string | null;
+  email_resend_id: string | null;
+  email_estado: string | null;
+  email_error: string | null;
+  email_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -136,9 +140,37 @@ function row(c: Record<string, unknown>): Contrato {
     pdf_storage_path: (c.pdf_storage_path as string | null) ?? null,
     cuerpo_html: (c.cuerpo_html as string | null) ?? null,
     firmado_at: (c.firmado_at as string | null) ?? null,
+    email_resend_id: (c.email_resend_id as string | null) ?? null,
+    email_estado: (c.email_estado as string | null) ?? null,
+    email_error: (c.email_error as string | null) ?? null,
+    email_at: (c.email_at as string | null) ?? null,
     created_at: String(c.created_at),
     updated_at: String(c.updated_at),
   };
+}
+
+// Casa un evento de webhook de Resend con su contrato por el id del email.
+export async function getContratoPorResendId(emailId: string): Promise<Contrato | null> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("contratos")
+    .select("*")
+    .eq("email_resend_id", emailId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? row(data) : null;
+}
+
+export async function actualizarEmailEstadoContrato(
+  id: string,
+  patch: { email_resend_id?: string | null; email_estado?: string | null; email_error?: string | null },
+): Promise<void> {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin
+    .from("contratos")
+    .update({ ...patch, email_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 // Narrowing helpers (ergonomía en los flujos server-side).

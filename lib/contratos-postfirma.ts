@@ -55,9 +55,18 @@ export async function tramitarPostFirma(contratoId: string): Promise<{
   // Que falle el PDF no debe impedir que el cliente reciba el aviso.
   const r = await enviarContratoFirmadoPropietario(contrato, pdf);
   emailOk = r.ok;
+  // Guardar el estado del envío para verlo en el panel y casar el webhook de Resend.
+  const { actualizarEmailEstadoContrato } = await import("./contratos");
+  await actualizarEmailEstadoContrato(contratoId, {
+    email_resend_id: r.id ?? null,
+    email_estado: r.ok ? "enviado" : "fallo",
+    email_error: r.ok ? null : r.error ?? "Error desconocido",
+  }).catch((e) => errores.push(`email estado: ${e?.message ?? e}`));
   if (!r.ok && r.error) {
     console.error("[postfirma] email failed:", r.error);
     errores.push(`email: ${r.error}`);
+    // Aviso inmediato: el email ni siquiera se pudo enviar.
+    await avisarAdminEmailProblema(contrato, `No se pudo enviar el email: ${r.error}`).catch(() => undefined);
   }
 
   // Adjuntar el PDF firmado a los documentos del cliente (si está registrado
@@ -129,6 +138,33 @@ function cifra(contrato: Contrato): string {
     ? `${d.precio_venta.toLocaleString("es-ES")} €`
     : "sin precio";
   return `Precio: ${precio}\nComisión: ${d.comision_pct}%`;
+}
+
+/**
+ * Avisa al admin por Telegram de un problema con el email del contrato
+ * (no se pudo enviar, o rebotó). Lo usa postfirma (fallo síncrono) y el
+ * webhook de Resend (rebote/queja asíncronos).
+ */
+export async function avisarAdminEmailProblema(contrato: Contrato, motivo: string): Promise<boolean> {
+  const chatIds = (process.env.TELEGRAM_CHAT_ID ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!chatIds.length) return false;
+  const nombre = contrato.datos.propietario?.nombre || "sin nombre";
+  const email = contrato.datos.propietario?.email || "sin email";
+  const inmueble = contrato.datos.inmueble?.direccion || "sin dirección";
+  const msg = `⚠️ Problema con el email del contrato de ${tipoLabel(contrato)}.
+
+Cliente: ${nombre}
+Email: ${email}
+Inmueble: ${inmueble}
+
+${motivo}
+
+Corrige el email en el contrato y usa "Reenviar": /admin/documentos/contratos/${contrato.id}`;
+  await Promise.all(chatIds.map((id) => telegramSendMessage(id, msg).catch(() => undefined)));
+  return true;
 }
 
 async function notificarAdminFirmaCompletaSinPdf(contrato: Contrato): Promise<boolean> {

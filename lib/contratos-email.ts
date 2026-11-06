@@ -22,7 +22,7 @@ const EMAIL_AGENCIA = () => process.env.EMAIL_AGENCIA || "interroommurcia@gmail.
 export async function enviarContratoFirmadoPropietario(
   contrato: Contrato,
   pdfBuffer: Buffer | null,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; id?: string }> {
   const destinatario = contrato.datos.propietario?.email?.trim();
   if (!destinatario) return { ok: false, error: "El propietario no tiene email en el contrato" };
 
@@ -127,11 +127,13 @@ export async function enviarContratoFirmadoPropietario(
     const to = agencia && agencia.toLowerCase() !== destinatario.toLowerCase()
       ? [destinatario, agencia]
       : [destinatario];
-    const { error } = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: FROM(),
       to,
       subject,
       html,
+      // Etiqueta para rastrear el contrato en el panel de Resend.
+      tags: [{ name: "contrato_id", value: contrato.id }],
       attachments: pdfBuffer
         ? [
             {
@@ -142,7 +144,7 @@ export async function enviarContratoFirmadoPropietario(
         : undefined,
     });
     if (error) return { ok: false, error: error.message };
-    return { ok: true };
+    return { ok: true, id: data?.id };
   } catch (e: unknown) {
     return { ok: false, error: e instanceof Error ? e.message : "Error desconocido" };
   }
