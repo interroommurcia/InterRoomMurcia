@@ -77,6 +77,26 @@ export async function listarPropiedades(): Promise<PropiedadConDetalle[]> {
   }));
 }
 
+export type PropiedadDeCliente = { id: string; nombre: string; direccion: string | null; rol: "propietario" | "inquilino" };
+
+// Propiedades ligadas a un cliente: como propietario, o como inquilino de una habitación.
+export async function listarPropiedadesDeCliente(clienteId: string): Promise<PropiedadDeCliente[]> {
+  const admin = getSupabaseAdmin();
+  const [propias, habitadas] = await Promise.all([
+    admin.from("propiedades").select("id, nombre, direccion").eq("propietario_id", clienteId),
+    admin.from("propiedad_habitaciones").select("propiedades(id, nombre, direccion)").eq("cliente_id", clienteId),
+  ]);
+  const map = new Map<string, PropiedadDeCliente>();
+  for (const p of (propias.data ?? []) as { id: string; nombre: string; direccion: string | null }[]) {
+    map.set(p.id, { id: p.id, nombre: p.nombre, direccion: p.direccion ?? null, rol: "propietario" });
+  }
+  for (const h of (habitadas.data ?? []) as unknown as { propiedades: { id: string; nombre: string; direccion: string | null } | null }[]) {
+    const p = h.propiedades;
+    if (p && !map.has(p.id)) map.set(p.id, { id: p.id, nombre: p.nombre, direccion: p.direccion ?? null, rol: "inquilino" });
+  }
+  return [...map.values()];
+}
+
 export async function crearPropiedad(input: {
   tipo?: string;
   nombre: string;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Bloque, Cliente, FONT, Field, Habitacion, Propiedad, ServicioTag, descripcionConServicios, inputStyle, totalConGaraje } from "./shared";
 import { ClienteBuscador } from "./ClienteBuscador";
 import { EstadisticasPropietario } from "./EstadisticasPropietario";
@@ -57,7 +58,7 @@ export function PropiedadCard({
   const portada = mediaGeneral.find((m) => m.tipo === "foto") ?? p.media.find((m) => m.tipo === "foto");
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", fontFamily: FONT }}>
+    <div id={`prop-${p.id}`} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", fontFamily: FONT, scrollMarginTop: 90 }}>
       <div style={{ display: "flex", gap: 20, padding: 20, cursor: "pointer", flexWrap: "wrap" }} onClick={onToggle}>
         <div style={{ width: "100%", maxWidth: 180, height: 130, borderRadius: 8, background: "#f3f4f6", overflow: "hidden", flexShrink: 0 }}>
           {portada ? (
@@ -215,6 +216,11 @@ export function PropiedadCard({
                   onChange={(id) => set("propietario_id", id)}
                   placeholderVacio="Sin asignar"
                 />
+                {val("propietario_id") && (
+                  <Link href={`/admin/clientes/${val("propietario_id")}`} style={{ display: "inline-block", marginTop: 6, fontSize: 12, color: "#ea6a12", fontWeight: 500 }}>
+                    Ver ficha del propietario →
+                  </Link>
+                )}
               </Field>
               <Field label="Valor de compra (€) — para rentabilidad">
                 <input type="number" min={0} step="1" value={val("valor_compra") ?? ""} onChange={(e) => set("valor_compra", e.target.value ? Number(e.target.value) : null)} style={inputStyle} />

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 
 type ClienteDocumento = {
   id: string;
@@ -18,6 +19,8 @@ type FacturaEmitida = {
   total: number;
 };
 
+type PropiedadDeCliente = { id: string; nombre: string; direccion: string | null; rol: "propietario" | "inquilino" };
+
 const CATEGORIAS: { value: string; label: string }[] = [
   { value: "factura", label: "Factura" },
   { value: "seguro", label: "Seguro" },
@@ -32,18 +35,21 @@ const fmtEur = (n: number) => n.toLocaleString("es-ES", { style: "currency", cur
 export default function ClienteFichaManager({ clienteId }: { clienteId: string }) {
   const [documentos, setDocumentos] = useState<ClienteDocumento[]>([]);
   const [facturas, setFacturas] = useState<FacturaEmitida[]>([]);
+  const [propiedades, setPropiedades] = useState<PropiedadDeCliente[]>([]);
   const [categoria, setCategoria] = useState("otro");
   const [nombre, setNombre] = useState("");
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState("");
 
   const cargar = useCallback(async () => {
-    const [docs, facs] = await Promise.all([
+    const [docs, facs, props] = await Promise.all([
       fetch(`/api/admin/clientes/${clienteId}/documentos?view=clientes`).then((r) => r.json()).catch(() => []),
       fetch(`/api/admin/clientes/${clienteId}/facturas`).then((r) => r.json()).catch(() => []),
+      fetch(`/api/admin/clientes/${clienteId}/propiedades`).then((r) => r.json()).catch(() => []),
     ]);
     setDocumentos(Array.isArray(docs) ? docs : []);
     setFacturas(Array.isArray(facs) ? facs : []);
+    setPropiedades(Array.isArray(props) ? props : []);
   }, [clienteId]);
 
   useEffect(() => { cargar(); }, [cargar]);
@@ -98,6 +104,26 @@ export default function ClienteFichaManager({ clienteId }: { clienteId: string }
 
   return (
     <>
+      {propiedades.length > 0 && (
+        <div className="analytics-card" style={{ marginBottom: 20 }}>
+          <h3 style={{ marginTop: 0 }}>Propiedades</h3>
+          {propiedades.map((p) => (
+            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
+              <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+                <div style={{ fontWeight: 500 }}>
+                  {p.nombre}
+                  <span style={{ marginLeft: 8, padding: "1px 8px", background: p.rol === "propietario" ? "#e0e7ff" : "#dcfce7", color: p.rol === "propietario" ? "#3730a3" : "#166534", borderRadius: 999, fontSize: 11 }}>
+                    {p.rol === "propietario" ? "Propietario" : "Inquilino"}
+                  </span>
+                </div>
+                {p.direccion && <div style={{ fontSize: 12, opacity: 0.6 }}>{p.direccion}</div>}
+              </div>
+              <Link href={`/admin/propiedades#prop-${p.id}`} className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px", textDecoration: "none" }}>Abrir propiedad</Link>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="analytics-card" style={{ marginBottom: 20 }}>
         <h3 style={{ marginTop: 0 }}>Subir documento</h3>
         <form onSubmit={subir} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>

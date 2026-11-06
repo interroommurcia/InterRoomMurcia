@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { Cliente, FONT, FILTROS_INIT, Field, Filtros, Habitacion, NUEVA, Propiedad, filtrarPropiedades, inputStyle } from "./_components/shared";
 import { PropiedadCard } from "./_components/PropiedadCard";
@@ -38,6 +38,20 @@ export default function PropiedadesManager() {
   }
 
   useEffect(() => { cargar(); }, []);
+
+  // Al llegar con #prop-<id> (desde la ficha del cliente), abre y desplaza esa tarjeta.
+  const hashAplicado = useRef(false);
+  useEffect(() => {
+    if (loading || hashAplicado.current) return;
+    const m = window.location.hash.match(/^#prop-(.+)$/);
+    if (!m) return;
+    const id = m[1];
+    if (props.some((p) => p.id === id)) {
+      hashAplicado.current = true;
+      setAbierta(id);
+      setTimeout(() => document.getElementById(`prop-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+    }
+  }, [loading, props]);
 
   async function crear(e: React.FormEvent) {
     e.preventDefault();
