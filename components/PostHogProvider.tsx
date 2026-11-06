@@ -53,9 +53,13 @@ function PostHogPageview() {
       /* no-op */
     }
 
-    // Pausa el session replay en el panel admin o si este dispositivo está
-    // marcado como interno — no interesa grabar nuestras propias navegaciones.
-    if (pathname.startsWith("/admin") || esInterno()) {
+    // En el panel admin solo grabamos si BackofficeRecording lo ha marcado
+    // (roles comercial/dirección); admin nunca se graba. Fuera del admin,
+    // grabamos salvo que el dispositivo esté marcado como interno.
+    if (pathname.startsWith("/admin")) {
+      const grabarBackoffice = typeof window !== "undefined" && window.__irBackofficeRecord === true;
+      try { grabarBackoffice ? posthog.startSessionRecording() : posthog.stopSessionRecording(); } catch {}
+    } else if (esInterno()) {
       try { posthog.stopSessionRecording(); } catch {}
     } else {
       try { posthog.startSessionRecording(); } catch {}

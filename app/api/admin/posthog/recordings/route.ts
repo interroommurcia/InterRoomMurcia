@@ -154,6 +154,8 @@ export async function GET(req: NextRequest) {
         browser: (props.$browser as string) || "",
         os: (props.$os as string) || "",
         referrer_domain: (props.$initial_referring_domain as string) || "",
+        backoffice_rol: (props.backoffice_rol as string) || "",
+        backoffice_nombre: (props.backoffice_nombre as string) || "",
         converted: conv.converted,
         exit_intent_shown: conv.exitShown,
         exit_intent_action: conv.exitAction || "",

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getSesion, type Rol } from "../lib/auth";
 import { LogoutButton } from "./LogoutButton";
 import LeadsBadge from "./LeadsBadge";
+import { BackofficeRecording } from "./BackofficeRecording";
 
 type NavItem = {
   href: string;
@@ -47,6 +48,7 @@ export async function AdminNav({ active }: { active: string }) {
           <LogoutButton />
         </div>
       )}
+      {session && <BackofficeRecording rol={session.rol} userId={session.id} nombre={session.nombre} />}
     </div>
   );
 }

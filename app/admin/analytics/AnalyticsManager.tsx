@@ -1128,10 +1128,17 @@ type Recording = {
   device: string;
   browser: string;
   referrer_domain: string;
+  backoffice_rol: string;
+  backoffice_nombre: string;
   converted: boolean;
   exit_intent_shown: boolean;
   exit_intent_action: string;
   player_url: string;
+};
+
+const ROL_BADGE: Record<string, { label: string; bg: string; color: string }> = {
+  direccion: { label: "Dirección", bg: "#ede9fe", color: "#5b21b6" },
+  comercial: { label: "Comercial", bg: "#dcfce7", color: "#166534" },
 };
 
 // Convierte un código de país ISO-3166 alpha-2 (ES, FR…) en su bandera emoji.
@@ -1146,7 +1153,7 @@ function RecordingsBlock() {
   const [recordings, setRecordings] = useState<Recording[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState<"todos" | "convertidos" | "exit">("todos");
+  const [filter, setFilter] = useState<"todos" | "convertidos" | "exit" | "backoffice">("todos");
   const [pathFilter, setPathFilter] = useState("");
   const [playing, setPlaying] = useState<{ url: string; sessionId: string } | null>(null);
   const [hasNext, setHasNext] = useState(false);
@@ -1166,6 +1173,7 @@ function RecordingsBlock() {
     if (!res.ok) throw new Error(data?.error || "Error");
     let list: Recording[] = data.recordings ?? [];
     if (filter === "exit") list = list.filter((r) => r.exit_intent_shown);
+    if (filter === "backoffice") list = list.filter((r) => r.backoffice_rol);
     return { list, hasNext: Boolean(data.has_next) };
   }, [filter, pathFilter]);
 
@@ -1245,7 +1253,7 @@ function RecordingsBlock() {
             />
           </label>
           <div style={{ display: "flex", gap: 4 }}>
-            {(["todos", "convertidos", "exit"] as const).map((f) => (
+            {(["todos", "convertidos", "exit", "backoffice"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -1260,7 +1268,7 @@ function RecordingsBlock() {
                   fontWeight: 500,
                 }}
               >
-                {f === "todos" ? "Todas" : f === "convertidos" ? "Solo conversiones" : "Vieron exit intent"}
+                {f === "todos" ? "Todas" : f === "convertidos" ? "Solo conversiones" : f === "exit" ? "Vieron exit intent" : "Backoffice"}
               </button>
             ))}
           </div>
@@ -1330,6 +1338,11 @@ function RecordingsBlock() {
                   </td>
                   <td style={{ padding: "10px 14px" }}>
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {r.backoffice_rol && ROL_BADGE[r.backoffice_rol] && (
+                        <span title={r.backoffice_nombre || undefined} style={{ background: ROL_BADGE[r.backoffice_rol].bg, color: ROL_BADGE[r.backoffice_rol].color, padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600 }}>
+                          {ROL_BADGE[r.backoffice_rol].label}
+                        </span>
+                      )}
                       {r.converted && <span style={{ background: "#d1fae5", color: "#065f46", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 500 }}>✓ Convirtió</span>}
                       {r.exit_intent_shown && <span style={{ background: "#fef3c7", color: "#92400e", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 500 }}>Exit popup</span>}
                     </div>
