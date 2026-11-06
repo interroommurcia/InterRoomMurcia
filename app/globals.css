@@ -3611,6 +3611,63 @@ button {
   }
 }
 
+/* Grabaciones de sesión: tabla → tarjetas apiladas en móvil */
+@media (max-width: 760px) {
+  .rec-table thead {
+    display: none;
+  }
+  .rec-table,
+  .rec-table tbody,
+  .rec-table tr,
+  .rec-table td {
+    display: block;
+    width: 100%;
+  }
+  .rec-table tr {
+    border-bottom: 8px solid #f3f4f6 !important;
+    padding: 6px 0;
+  }
+  .rec-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 6px 14px !important;
+    text-align: right !important;
+    max-width: none !important;
+    white-space: normal !important;
+  }
+  .rec-table td::before {
+    content: attr(data-label);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9ca3af;
+    font-weight: 600;
+    flex: 0 0 auto;
+    text-align: left;
+  }
+  .rec-table td[data-label=""]::before {
+    content: none;
+  }
+  .rec-table .rec-play-cell {
+    text-align: center !important;
+  }
+  .rec-table .rec-play-cell button {
+    width: 100%;
+    padding: 10px !important;
+    font-size: 13px !important;
+  }
+  .rec-player-overlay {
+    padding: 0 !important;
+  }
+  .rec-player-box {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+  }
+}
+
 .analytics-periodo-bar {
   display: flex;
   align-items: center;

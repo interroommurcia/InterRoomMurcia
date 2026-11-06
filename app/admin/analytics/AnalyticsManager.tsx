@@ -1291,7 +1291,7 @@ function RecordingsBlock() {
             Sin grabaciones todavía. Da margen de 10-15 min desde que empiezan a entrar visitantes.
           </div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <table className="rec-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ background: "#fafafa", borderBottom: "1px solid #eee" }}>
                 <th style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#666", fontWeight: 500 }}>Fecha</th>
@@ -1308,17 +1308,17 @@ function RecordingsBlock() {
             <tbody>
               {recordings.map((r) => (
                 <tr key={r.session_id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>{fmtDate(r.start_time)}</td>
-                  <td style={{ padding: "10px 14px", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.start_url}>
+                  <td data-label="Fecha" style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>{fmtDate(r.start_time)}</td>
+                  <td data-label="Entró en" style={{ padding: "10px 14px", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.start_url}>
                     {r.start_url.replace(/^https?:\/\/[^/]+/, "") || "/"}
                   </td>
-                  <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtDur(r.duration_sec)}</td>
-                  <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{r.clicks}</td>
-                  <td style={{ padding: "10px 14px" }}>
+                  <td data-label="Duración" style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtDur(r.duration_sec)}</td>
+                  <td data-label="Clicks" style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{r.clicks}</td>
+                  <td data-label="Device" style={{ padding: "10px 14px" }}>
                     {r.device || "—"}
                     {r.browser ? <span style={{ opacity: 0.5 }}> · {r.browser}</span> : null}
                   </td>
-                  <td style={{ padding: "10px 14px" }}>
+                  <td data-label="Ubicación" style={{ padding: "10px 14px" }}>
                     {r.country || r.region || r.city ? (
                       <>
                         <div>
@@ -1333,10 +1333,10 @@ function RecordingsBlock() {
                       </>
                     ) : "—"}
                   </td>
-                  <td style={{ padding: "10px 14px" }}>
+                  <td data-label="Origen" style={{ padding: "10px 14px" }}>
                     {r.referrer_domain || "—"}
                   </td>
-                  <td style={{ padding: "10px 14px" }}>
+                  <td data-label="Marcas" style={{ padding: "10px 14px" }}>
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                       {r.backoffice_rol && ROL_BADGE[r.backoffice_rol] && (
                         <span title={r.backoffice_nombre || undefined} style={{ background: ROL_BADGE[r.backoffice_rol].bg, color: ROL_BADGE[r.backoffice_rol].color, padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600 }}>
@@ -1347,7 +1347,7 @@ function RecordingsBlock() {
                       {r.exit_intent_shown && <span style={{ background: "#fef3c7", color: "#92400e", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 500 }}>Exit popup</span>}
                     </div>
                   </td>
-                  <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                  <td data-label="" className="rec-play-cell" style={{ padding: "10px 14px", textAlign: "right" }}>
                     <button
                       onClick={() => openPlayer(r)}
                       style={{
@@ -1385,6 +1385,7 @@ function RecordingsBlock() {
       {playing && (
         <div
           onClick={() => setPlaying(null)}
+          className="rec-player-overlay"
           style={{
             position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 9999,
             display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
@@ -1392,6 +1393,7 @@ function RecordingsBlock() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
+            className="rec-player-box"
             style={{
               background: "#fff", borderRadius: 10, width: "min(1200px, 100%)", height: "min(90vh, 800px)",
               display: "flex", flexDirection: "column", overflow: "hidden",
