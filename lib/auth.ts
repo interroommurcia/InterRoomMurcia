@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "./supabaseAdmin";
 
-export type Rol = "admin" | "comercial";
+export type Rol = "admin" | "comercial" | "direccion";
 
 export type SessionUser = {
   id: string;
@@ -143,7 +143,7 @@ export async function crearUsuario(email: string, password: string, nombre: stri
     await enviarEmailBienvenida(
       email.toLowerCase().trim(),
       nombre,
-      rol as "admin" | "comercial",
+      rol,
       password,
       `${SITE_URL}/admin/login`,
     );

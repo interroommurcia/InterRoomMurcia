@@ -7,11 +7,11 @@ const FROM = process.env.EMAIL_FROM || "InterRoom Murcia <onboarding@resend.dev>
 export async function enviarEmailBienvenida(
   destinatario: string,
   nombre: string,
-  rol: "admin" | "comercial",
+  rol: "admin" | "comercial" | "direccion",
   passwordTemporal: string,
   loginUrl: string,
 ) {
-  const rolLabel = rol === "admin" ? "Administrador" : "Comercial";
+  const rolLabel = rol === "admin" ? "Administrador" : rol === "direccion" ? "Dirección" : "Comercial";
 
   const html = `
 <!DOCTYPE html>

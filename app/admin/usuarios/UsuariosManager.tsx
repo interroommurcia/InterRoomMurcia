@@ -131,6 +131,7 @@ export default function UsuariosManager() {
               Rol
               <select value={form.rol} onChange={(e) => setForm({ ...form, rol: e.target.value })} style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14, fontFamily: FONT }}>
                 <option value="comercial">Comercial</option>
+                <option value="direccion">Dirección</option>
                 <option value="admin">Administrador</option>
               </select>
             </label>
@@ -153,10 +154,10 @@ export default function UsuariosManager() {
               </div>
               <span style={{
                 padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 500,
-                background: u.rol === "admin" ? "#eff6ff" : "#f0fdf4",
-                color: u.rol === "admin" ? "#1e40af" : "#166534",
+                background: u.rol === "admin" ? "#eff6ff" : u.rol === "direccion" ? "#fef3c7" : "#f0fdf4",
+                color: u.rol === "admin" ? "#1e40af" : u.rol === "direccion" ? "#92400e" : "#166534",
               }}>
-                {u.rol === "admin" ? "Administrador" : "Comercial"}
+                {u.rol === "admin" ? "Administrador" : u.rol === "direccion" ? "Dirección" : "Comercial"}
               </span>
               <button type="button" onClick={() => toggleActivo(u)} disabled={busy} style={{
                 padding: "3px 10px", borderRadius: 999, fontSize: 12, border: "none", cursor: "pointer",

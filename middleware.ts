@@ -3,39 +3,46 @@ import { jwtVerify } from "jose";
 
 const COOKIE = "ir_session";
 
-// Rutas accesibles ÚNICAMENTE para rol "admin". El rol "comercial", aunque esté
-// correctamente logueado, debe recibir 403 (API) o redirect a /admin (pagina).
-// Si una página admin-only tiene su API en /api/admin/<x>, añade ambos aquí.
-const ADMIN_ONLY_PREFIXES = [
-  // Páginas
-  "/admin/contabilidad",
-  "/admin/facturas",
-  "/admin/articulos",
-  "/admin/analytics",
-  "/admin/seguridad",
-  "/admin/usuarios",
-  // APIs sensibles (contabilidad y facturación completas)
-  "/api/admin/contabilidad",
-  "/api/admin/facturas",
-  "/api/admin/articulos",
-  "/api/admin/analytics",
-  "/api/admin/blog-stats",
-  "/api/admin/ingresos",
-  "/api/admin/cliente-gastos",
-  "/api/admin/gastos-fijos",
-  "/api/admin/gastos-empresa",
-  "/api/admin/liquidaciones",
-  "/api/admin/alquiler-comisiones",
-  "/api/admin/creditos",
-  "/api/admin/operaciones",
-  "/api/admin/documentos",
-  "/api/admin/factura-config",
-  "/api/admin/seguridad",
-  "/api/admin/usuarios",
+// Rutas restringidas y qué roles pueden entrar (además de "admin", que siempre
+// puede). Un rol logueado que no esté en la lista recibe 403 (API) o redirect
+// a /admin (página). Si una página restringida tiene su API en /api/admin/<x>,
+// añade ambos prefijos con los mismos roles.
+//   direccion → Contabilidad, Facturas, Artículos (no Analytics/Seguridad/Usuarios).
+//   comercial → solo lo no listado aquí.
+const PREFIJOS_RESTRINGIDOS: { prefix: string; roles: string[] }[] = [
+  // Contabilidad (páginas + APIs sensibles)
+  { prefix: "/admin/contabilidad", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/contabilidad", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/ingresos", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/cliente-gastos", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/gastos-fijos", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/gastos-empresa", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/liquidaciones", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/alquiler-comisiones", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/creditos", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/operaciones", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/documentos", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/factura-config", roles: ["admin", "direccion"] },
+  // Facturas
+  { prefix: "/admin/facturas", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/facturas", roles: ["admin", "direccion"] },
+  // Artículos
+  { prefix: "/admin/articulos", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/articulos", roles: ["admin", "direccion"] },
+  { prefix: "/api/admin/blog-stats", roles: ["admin", "direccion"] },
+  // Solo admin
+  { prefix: "/admin/analytics", roles: ["admin"] },
+  { prefix: "/api/admin/analytics", roles: ["admin"] },
+  { prefix: "/admin/seguridad", roles: ["admin"] },
+  { prefix: "/api/admin/seguridad", roles: ["admin"] },
+  { prefix: "/admin/usuarios", roles: ["admin"] },
+  { prefix: "/api/admin/usuarios", roles: ["admin"] },
 ];
 
-function esAdminOnly(path: string): boolean {
-  return ADMIN_ONLY_PREFIXES.some((p) => path === p || path.startsWith(p + "/"));
+// Roles permitidos para una ruta, o null si no está restringida.
+function rolesPermitidos(path: string): string[] | null {
+  const m = PREFIJOS_RESTRINGIDOS.find((p) => path === p.prefix || path.startsWith(p.prefix + "/"));
+  return m ? m.roles : null;
 }
 
 function getJwtSecret() {
@@ -111,13 +118,14 @@ export async function middleware(req: NextRequest) {
       const { payload } = await jwtVerify(token, getJwtSecret());
       const rol = typeof payload.rol === "string" ? payload.rol : null;
 
-      // Check rol para rutas admin-only. Un comercial logueado NO puede entrar.
-      if (esAdminOnly(path) && rol !== "admin") {
+      // Check rol para rutas restringidas. Un rol sin permiso NO puede entrar.
+      const permitidos = rolesPermitidos(path);
+      if (permitidos && (!rol || !permitidos.includes(rol))) {
         logUnauthorized(req, `rol_insuficiente:${rol ?? "sin_rol"}`);
         if (!path.startsWith("/api/")) {
           return NextResponse.redirect(new URL("/admin", req.url));
         }
-        return NextResponse.json({ error: "Acceso restringido a administradores" }, { status: 403 });
+        return NextResponse.json({ error: "Acceso restringido" }, { status: 403 });
       }
 
       logAuthorized(req);

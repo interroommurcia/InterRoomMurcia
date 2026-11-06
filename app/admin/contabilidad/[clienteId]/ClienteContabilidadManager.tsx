@@ -119,7 +119,7 @@ const añoActual = (mes: string) => new Date(mes).getUTCFullYear();
 
 type Tab = "pagos" | "partidas" | "documentos" | "resumen" | "config";
 
-export default function ClienteContabilidadManager({ clienteId }: { clienteId: string }) {
+export default function ClienteContabilidadManager({ clienteId, esAdmin }: { clienteId: string; esAdmin: boolean }) {
   const router = useRouter();
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [ingresos, setIngresos] = useState<Ingreso[]>([]);
@@ -768,9 +768,11 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
                 <span className="loc" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{new Date(d.created_at).toLocaleDateString("es-ES")}</span>
                 <a href={`/api/admin/clientes/${clienteId}/documentos/${d.id}`} target="_blank" rel="noreferrer" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }}>Abrir</a>
                 <a href={`/api/admin/clientes/${clienteId}/documentos/${d.id}?download=1`} className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }}>Descargar</a>
-                <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }} onClick={() => toggleVisibilidadDoc(d)}>
-                  {d.solo_contabilidad ? "Mostrar en Clientes" : "Ocultar en Clientes"}
-                </button>
+                {esAdmin && (
+                  <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }} onClick={() => toggleVisibilidadDoc(d)}>
+                    {d.solo_contabilidad ? "Mostrar en Clientes" : "Ocultar en Clientes"}
+                  </button>
+                )}
                 <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px", color: "#dc2626" }} onClick={() => borrarDocumento(d.id)}>Borrar</button>
               </div>
             );
