@@ -13,7 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: "Solo un administrador puede cambiar la visibilidad" }, { status: 403 });
     }
     const body = await req.json().catch(() => ({}));
-    await actualizarVisibilidadDocumento(params.docId, Boolean(body?.solo_clientes));
+    await actualizarVisibilidadDocumento(params.docId, Boolean(body?.solo_contabilidad));
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error desconocido" }, { status: 500 });

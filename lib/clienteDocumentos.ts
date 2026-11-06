@@ -20,7 +20,7 @@ export type ClienteDocumento = {
   categoria: CategoriaDocumento;
   storage_path: string;
   content_type: string | null;
-  solo_clientes: boolean;
+  solo_contabilidad: boolean;
   created_at: string;
 };
 
@@ -30,25 +30,25 @@ function sanitizeFilename(name: string): string {
 
 export async function listarClienteDocumentos(
   clienteId: string,
-  opts?: { ocultarSoloClientes?: boolean },
+  opts?: { ocultarSoloContabilidad?: boolean },
 ): Promise<ClienteDocumento[]> {
   const admin = getSupabaseAdmin();
   let q = admin
     .from("cliente_documentos")
     .select("*")
     .eq("cliente_id", clienteId);
-  // Vista de Contabilidad: ocultar los marcados como "solo Clientes".
-  if (opts?.ocultarSoloClientes) q = q.eq("solo_clientes", false);
+  // Vista de Clientes (comercial/gestora): ocultar los marcados como "solo Contabilidad".
+  if (opts?.ocultarSoloContabilidad) q = q.eq("solo_contabilidad", false);
   const { data, error } = await q.order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as ClienteDocumento[];
 }
 
-export async function actualizarVisibilidadDocumento(id: string, soloClientes: boolean): Promise<void> {
+export async function actualizarVisibilidadDocumento(id: string, soloContabilidad: boolean): Promise<void> {
   const admin = getSupabaseAdmin();
   const { error } = await admin
     .from("cliente_documentos")
-    .update({ solo_clientes: soloClientes })
+    .update({ solo_contabilidad: soloContabilidad })
     .eq("id", id);
   if (error) throw error;
 }

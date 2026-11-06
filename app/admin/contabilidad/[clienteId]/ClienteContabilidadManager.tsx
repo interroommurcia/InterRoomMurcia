@@ -40,6 +40,7 @@ type ClienteDocumento = {
   nombre: string;
   categoria: string;
   content_type: string | null;
+  solo_contabilidad: boolean;
   created_at: string;
 };
 
@@ -178,7 +179,7 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
   }, [clienteId]);
 
   const cargarDocumentos = useCallback(async () => {
-    const data = await fetch(`/api/admin/clientes/${clienteId}/documentos?view=contabilidad`).then((r) => r.json());
+    const data = await fetch(`/api/admin/clientes/${clienteId}/documentos`).then((r) => r.json());
     setDocumentos(Array.isArray(data) ? data : []);
   }, [clienteId]);
 
@@ -214,6 +215,20 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
     const res = await fetch(`/api/admin/clientes/${clienteId}/documentos/${docId}`, { method: "DELETE" });
     if (res.ok) await cargarDocumentos();
     else setErrorDoc("No se pudo eliminar el documento");
+  }
+
+  // Oculta/muestra el documento en la ficha de Clientes (comercial/gestora).
+  async function toggleVisibilidadDoc(doc: ClienteDocumento) {
+    const res = await fetch(`/api/admin/clientes/${clienteId}/documentos/${doc.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ solo_contabilidad: !doc.solo_contabilidad }),
+    });
+    if (res.ok) {
+      setDocumentos((prev) => prev.map((d) => (d.id === doc.id ? { ...d, solo_contabilidad: !d.solo_contabilidad } : d)));
+    } else {
+      setErrorDoc("No se pudo cambiar la visibilidad");
+    }
   }
 
   async function actualizarMensualidad() {
@@ -747,9 +762,15 @@ export default function ClienteContabilidadManager({ clienteId }: { clienteId: s
               <div key={d.id} className="pisos-list-item" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #eee" }}>
                 <span style={{ padding: "2px 8px", background: "#f3f4f6", color: "#374151", borderRadius: 4, fontSize: 11, whiteSpace: "nowrap" }}>{labelCat(d.categoria)}</span>
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.nombre}</span>
+                {d.solo_contabilidad && (
+                  <span style={{ padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 999, fontSize: 11, whiteSpace: "nowrap" }}>Oculto en Clientes</span>
+                )}
                 <span className="loc" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{new Date(d.created_at).toLocaleDateString("es-ES")}</span>
                 <a href={`/api/admin/clientes/${clienteId}/documentos/${d.id}`} target="_blank" rel="noreferrer" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }}>Abrir</a>
                 <a href={`/api/admin/clientes/${clienteId}/documentos/${d.id}?download=1`} className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }}>Descargar</a>
+                <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }} onClick={() => toggleVisibilidadDoc(d)}>
+                  {d.solo_contabilidad ? "Mostrar en Clientes" : "Ocultar en Clientes"}
+                </button>
                 <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px", color: "#dc2626" }} onClick={() => borrarDocumento(d.id)}>Borrar</button>
               </div>
             );

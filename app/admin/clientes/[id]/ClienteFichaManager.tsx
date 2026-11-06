@@ -7,7 +7,6 @@ type ClienteDocumento = {
   nombre: string;
   categoria: string;
   content_type: string | null;
-  solo_clientes: boolean;
   created_at: string;
 };
 
@@ -30,7 +29,7 @@ const CATEGORIAS: { value: string; label: string }[] = [
 const labelCat = (v: string) => CATEGORIAS.find((c) => c.value === v)?.label || "Otro";
 const fmtEur = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 
-export default function ClienteFichaManager({ clienteId, esAdmin }: { clienteId: string; esAdmin: boolean }) {
+export default function ClienteFichaManager({ clienteId }: { clienteId: string }) {
   const [documentos, setDocumentos] = useState<ClienteDocumento[]>([]);
   const [facturas, setFacturas] = useState<FacturaEmitida[]>([]);
   const [categoria, setCategoria] = useState("otro");
@@ -40,7 +39,7 @@ export default function ClienteFichaManager({ clienteId, esAdmin }: { clienteId:
 
   const cargar = useCallback(async () => {
     const [docs, facs] = await Promise.all([
-      fetch(`/api/admin/clientes/${clienteId}/documentos`).then((r) => r.json()).catch(() => []),
+      fetch(`/api/admin/clientes/${clienteId}/documentos?view=clientes`).then((r) => r.json()).catch(() => []),
       fetch(`/api/admin/clientes/${clienteId}/facturas`).then((r) => r.json()).catch(() => []),
     ]);
     setDocumentos(Array.isArray(docs) ? docs : []);
@@ -80,20 +79,6 @@ export default function ClienteFichaManager({ clienteId, esAdmin }: { clienteId:
     await cargar();
   }
 
-  async function toggleVisibilidad(doc: ClienteDocumento) {
-    const res = await fetch(`/api/admin/clientes/${clienteId}/documentos/${doc.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ solo_clientes: !doc.solo_clientes }),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({ error: "" }));
-      setError(data?.error || "No se pudo cambiar la visibilidad");
-      return;
-    }
-    setDocumentos((prev) => prev.map((d) => (d.id === doc.id ? { ...d, solo_clientes: !d.solo_clientes } : d)));
-  }
-
   const docFacturas = documentos.filter((d) => d.categoria === "factura");
   const docOtros = documentos.filter((d) => d.categoria !== "factura");
 
@@ -103,20 +88,10 @@ export default function ClienteFichaManager({ clienteId, esAdmin }: { clienteId:
         <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis" }}>{d.nombre}</div>
         <div style={{ fontSize: 12, opacity: 0.6 }}>
           {labelCat(d.categoria)} · {new Date(d.created_at).toLocaleDateString("es-ES")}
-          {d.solo_clientes && (
-            <span style={{ marginLeft: 8, padding: "1px 8px", background: "#fef3c7", color: "#92400e", borderRadius: 999, fontSize: 11 }}>
-              Solo Clientes
-            </span>
-          )}
         </div>
       </div>
       <a href={`/api/admin/clientes/${clienteId}/documentos/${d.id}`} target="_blank" rel="noreferrer" className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }}>Abrir</a>
       <a href={`/api/admin/clientes/${clienteId}/documentos/${d.id}?download=1`} className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }}>Descargar</a>
-      {esAdmin && (
-        <button type="button" onClick={() => toggleVisibilidad(d)} className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px" }}>
-          {d.solo_clientes ? "Mostrar en Contabilidad" : "Ocultar de Contabilidad"}
-        </button>
-      )}
       <button type="button" onClick={() => eliminar(d.id)} className="btn-ghost" style={{ fontSize: 12, padding: "3px 10px", color: "#dc2626" }}>Eliminar</button>
     </div>
   );

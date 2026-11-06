@@ -14,8 +14,8 @@ const TIPOS_OK = new Set(["application/pdf", "image/jpeg", "image/png", "image/w
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const ocultarSoloClientes = new URL(req.url).searchParams.get("view") === "contabilidad";
-    return NextResponse.json(await listarClienteDocumentos(params.id, { ocultarSoloClientes }));
+    const ocultarSoloContabilidad = new URL(req.url).searchParams.get("view") === "clientes";
+    return NextResponse.json(await listarClienteDocumentos(params.id, { ocultarSoloContabilidad }));
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error desconocido" }, { status: 500 });
   }

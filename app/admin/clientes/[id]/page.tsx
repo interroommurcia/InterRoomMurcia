@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import ClienteFichaManager from "./ClienteFichaManager";
 import { AdminNav } from "../../../../components/AdminNav";
 import { getCliente } from "../../../../lib/contabilidad";
-import { getSesion } from "../../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +13,8 @@ export const metadata: Metadata = {
 };
 
 export default async function ClienteFichaPage({ params }: { params: { id: string } }) {
-  const [cliente, sesion] = await Promise.all([getCliente(params.id), getSesion()]);
+  const cliente = await getCliente(params.id);
   if (!cliente) notFound();
-  const esAdmin = sesion?.rol === "admin";
   const nombre = `${cliente.nombre}${cliente.apellidos ? ` ${cliente.apellidos}` : ""}`;
 
   return (
@@ -32,7 +30,7 @@ export default async function ClienteFichaPage({ params }: { params: { id: strin
             {cliente.telefono || "sin teléfono"} · {cliente.email || "sin email"} · {cliente.nif ? `NIF: ${cliente.nif}` : "sin NIF"}
           </p>
         </div>
-        <ClienteFichaManager clienteId={params.id} esAdmin={esAdmin} />
+        <ClienteFichaManager clienteId={params.id} />
       </div>
     </section>
   );
