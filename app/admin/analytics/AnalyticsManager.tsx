@@ -183,6 +183,31 @@ function fmtDiaLargo(day: string): string {
   } catch { return day; }
 }
 
+// En la vista de "Año completo" agrupamos las series diarias por mes para dar
+// perspectiva (12 barras en vez de 365). Suma por defecto; "max" para el pico
+// concurrente (sumar picos no tendría sentido).
+function agregarPorMes<T extends { day: string }>(rows: T[], keys: string[], modo: "suma" | "max" = "suma"): T[] {
+  const m = new Map<string, { day: string; vals: Record<string, number> }>();
+  for (const r of rows) {
+    const k = r.day.slice(0, 7); // YYYY-MM
+    const cur = m.get(k) ?? { day: `${k}-01`, vals: {} };
+    for (const key of keys) {
+      const v = Number((r as Record<string, unknown>)[key]) || 0;
+      cur.vals[key] = modo === "max" ? Math.max(cur.vals[key] ?? 0, v) : (cur.vals[key] ?? 0) + v;
+    }
+    m.set(k, cur);
+  }
+  return Array.from(m.values())
+    .sort((a, b) => a.day.localeCompare(b.day))
+    .map((e) => ({ day: e.day, ...e.vals })) as unknown as T[];
+}
+
+// Etiqueta del eje X: nombre de mes en vista anual, MM-DD en el resto.
+function ejeX(day: string, anual: boolean): string {
+  if (anual) return MESES_NOMBRE[Number(day.slice(5, 7)) - 1] ?? day.slice(5);
+  return day.slice(5);
+}
+
 function Delta({ cur, prev }: { cur: number; prev: number }) {
   if (prev === 0) {
     return <div className="analytics-delta analytics-delta--up">{cur > 0 ? "nuevo" : "—"}</div>;
@@ -379,13 +404,20 @@ export default function AnalyticsManager({ esAdmin }: { esAdmin: boolean }) {
   if (error && !data) return <p className="lead-form-error">{error}</p>;
   if (!data) return null;
 
-  const maxDaily = Math.max(1, ...data.dailyViews.map((d) => d.pageviews));
-  const maxNewUsers = Math.max(1, ...data.newUsersDaily.map((d) => d.newUsers));
+  // Vista anual → series por mes (más perspectiva). Resto → por día.
+  const anual = periodo === "anio";
+  const vistasDia = anual ? agregarPorMes(data.dailyViews, ["pageviews", "visitors"]) : data.dailyViews;
+  const nuevosDia = anual ? agregarPorMes(data.newUsersDaily, ["newUsers"]) : data.newUsersDaily;
+  const picoDia = anual ? agregarPorMes(data.peakConcurrentDaily, ["peak"], "max") : data.peakConcurrentDaily;
+  const nvrDia = anual ? agregarPorMes(data.newVsReturn, ["newUsers", "returning"]) : data.newVsReturn;
+
+  const maxDaily = Math.max(1, ...vistasDia.map((d) => d.pageviews));
+  const maxNewUsers = Math.max(1, ...nuevosDia.map((d) => d.newUsers));
   const maxSource = Math.max(1, ...data.sources.map((s) => s.visits));
   const maxCountry = Math.max(1, ...data.countries.map((c) => c.visits));
-  const peakAll = Math.max(0, ...data.peakConcurrentDaily.map((d) => d.peak));
+  const peakAll = Math.max(0, ...picoDia.map((d) => d.peak));
   const maxPeak = Math.max(1, peakAll);
-  const maxNvR = Math.max(1, ...data.newVsReturn.map((d) => d.newUsers + d.returning));
+  const maxNvR = Math.max(1, ...nvrDia.map((d) => d.newUsers + d.returning));
   const totalReturning = data.newVsReturn.reduce((s, d) => s + d.returning, 0);
 
   return (
@@ -515,13 +547,13 @@ export default function AnalyticsManager({ esAdmin }: { esAdmin: boolean }) {
       {openSections.audiencia && (
         <div className="analytics-grid">
           <div className="analytics-card">
-            <h3>Nuevos vs recurrentes por día <HelpTip tip="Comparativa diaria entre usuarios que visitan por primera vez y los que ya habían visitado antes" /></h3>
+            <h3>Nuevos vs recurrentes {anual ? "por mes" : "por día"} <HelpTip tip="Comparativa diaria entre usuarios que visitan por primera vez y los que ya habían visitado antes" /></h3>
             <div style={{ display: "flex", gap: 16, fontSize: 12, marginBottom: 8, color: "#6b7280" }}>
               <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#22c55e", marginRight: 4 }} />Nuevos</span>
               <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#6366f1", marginRight: 4 }} />Recurrentes</span>
             </div>
             <div className="analytics-daily-chart analytics-daily-chart--tall">
-              {data.newVsReturn.map((d) => {
+              {nvrDia.map((d) => {
                 const total = d.newUsers + d.returning;
                 const pctNew = maxNvR > 0 ? Math.round((d.newUsers / maxNvR) * 100) : 0;
                 const pctRet = maxNvR > 0 ? Math.round((d.returning / maxNvR) * 100) : 0;
@@ -532,7 +564,7 @@ export default function AnalyticsManager({ esAdmin }: { esAdmin: boolean }) {
                       <div className="analytics-daily-bar" style={{ height: `${pctRet}%`, background: "#6366f1", borderRadius: "3px 3px 0 0", minHeight: d.returning > 0 ? 2 : 0 }} />
                       <div className="analytics-daily-bar analytics-daily-bar--new" style={{ height: `${pctNew}%`, borderRadius: d.returning > 0 ? "0" : "3px 3px 0 0", minHeight: d.newUsers > 0 ? 2 : 0 }} />
                     </div>
-                    <span>{d.day.slice(5)}</span>
+                    <span>{ejeX(d.day, anual)}</span>
                   </div>
                 );
               })}
@@ -540,39 +572,39 @@ export default function AnalyticsManager({ esAdmin }: { esAdmin: boolean }) {
           </div>
 
           <div className="analytics-card">
-            <h3>Usuarios nuevos por día <HelpTip tip="Número de personas que visitan la web por primera vez cada día" /></h3>
+            <h3>Usuarios nuevos {anual ? "por mes" : "por día"} <HelpTip tip="Número de personas que visitan la web por primera vez cada día" /></h3>
             <div className="analytics-daily-chart analytics-daily-chart--tall">
-              {data.newUsersDaily.map((d) => (
+              {nuevosDia.map((d) => (
                 <div key={d.day} className="analytics-daily-col">
                   <span className="analytics-daily-number">{d.newUsers}</span>
                   <div className="analytics-daily-bar analytics-daily-bar--new" style={{ height: `${Math.round((d.newUsers / maxNewUsers) * 100)}%` }} />
-                  <span>{d.day.slice(5)}</span>
+                  <span>{ejeX(d.day, anual)}</span>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="analytics-card">
-            <h3>Pageviews por día <HelpTip tip="Total de páginas cargadas por día. Un usuario puede generar varias pageviews en una sesión" /></h3>
+            <h3>Pageviews {anual ? "por mes" : "por día"} <HelpTip tip="Total de páginas cargadas por día. Un usuario puede generar varias pageviews en una sesión" /></h3>
             <div className="analytics-daily-chart analytics-daily-chart--tall">
-              {data.dailyViews.map((d) => (
+              {vistasDia.map((d) => (
                 <div key={d.day} className="analytics-daily-col">
                   <span className="analytics-daily-number">{d.pageviews}</span>
                   <div className="analytics-daily-bar" style={{ height: `${Math.round((d.pageviews / maxDaily) * 100)}%` }} />
-                  <span>{d.day.slice(5)}</span>
+                  <span>{ejeX(d.day, anual)}</span>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="analytics-card">
-            <h3>Pico concurrentes por día <HelpTip tip="Máximo de usuarios activos al mismo tiempo en una hora, para cada día del periodo" /></h3>
+            <h3>Pico concurrentes {anual ? "por mes" : "por día"} <HelpTip tip="Máximo de usuarios activos al mismo tiempo en una hora, para cada día del periodo" /></h3>
             <div className="analytics-daily-chart analytics-daily-chart--tall">
-              {data.peakConcurrentDaily.map((d) => (
+              {picoDia.map((d) => (
                 <div key={d.day} className="analytics-daily-col">
                   <span className="analytics-daily-number">{d.peak}</span>
                   <div className="analytics-daily-bar analytics-daily-bar--peak" style={{ height: `${Math.round((d.peak / maxPeak) * 100)}%` }} />
-                  <span>{d.day.slice(5)}</span>
+                  <span>{ejeX(d.day, anual)}</span>
                 </div>
               ))}
             </div>
