@@ -407,12 +407,10 @@ export default function AnalyticsManager({ esAdmin }: { esAdmin: boolean }) {
   // Vista anual → series por mes (más perspectiva). Resto → por día.
   const anual = periodo === "anio";
   const vistasDia = anual ? agregarPorMes(data.dailyViews, ["pageviews", "visitors"]) : data.dailyViews;
-  const nuevosDia = anual ? agregarPorMes(data.newUsersDaily, ["newUsers"]) : data.newUsersDaily;
   const picoDia = anual ? agregarPorMes(data.peakConcurrentDaily, ["peak"], "max") : data.peakConcurrentDaily;
   const nvrDia = anual ? agregarPorMes(data.newVsReturn, ["newUsers", "returning"]) : data.newVsReturn;
 
   const maxDaily = Math.max(1, ...vistasDia.map((d) => d.pageviews));
-  const maxNewUsers = Math.max(1, ...nuevosDia.map((d) => d.newUsers));
   const maxSource = Math.max(1, ...data.sources.map((s) => s.visits));
   const maxCountry = Math.max(1, ...data.countries.map((c) => c.visits));
   const peakAll = Math.max(0, ...picoDia.map((d) => d.peak));
@@ -571,17 +569,10 @@ export default function AnalyticsManager({ esAdmin }: { esAdmin: boolean }) {
             </div>
           </div>
 
-          <div className="analytics-card">
-            <h3>Usuarios nuevos {anual ? "por mes" : "por día"} <HelpTip tip="Número de personas que visitan la web por primera vez cada día" /></h3>
-            <div className="analytics-daily-chart analytics-daily-chart--tall">
-              {nuevosDia.map((d) => (
-                <div key={d.day} className="analytics-daily-col">
-                  <span className="analytics-daily-number">{d.newUsers}</span>
-                  <div className="analytics-daily-bar analytics-daily-bar--new" style={{ height: `${Math.round((d.newUsers / maxNewUsers) * 100)}%` }} />
-                  <span>{ejeX(d.day, anual)}</span>
-                </div>
-              ))}
-            </div>
+          <div className="analytics-card" style={{ border: "1px dashed #e5e7eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ color: "#cbd5e1", fontSize: 13, textAlign: "center" }}>
+              Espacio reservado para una métrica próxima
+            </span>
           </div>
 
           <div className="analytics-card">
