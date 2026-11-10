@@ -42,7 +42,7 @@ export default async function CatalogoPage() {
             <div className="cv-banner">
               <div className="cv-banner-main">
                 <div className="cv-banner-text">
-                  <span className="cv-banner-eyebrow">★ Compraventa de inmuebles</span>
+                  <span className="cv-banner-eyebrow">Compraventa de inmuebles</span>
                   <h2>¿Quieres comprar o invertir en Murcia?</h2>
                   <p>
                     Pisos, locales y oportunidades de inversión con la rentabilidad calculada.
