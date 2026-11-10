@@ -181,10 +181,16 @@ nav {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 50%;
 }
+.cv-banner-main {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .cv-banner-text {
   position: relative;
   z-index: 1;
-  max-width: 660px;
+  max-width: 560px;
 }
 .cv-banner-eyebrow {
   display: inline-block;
@@ -215,9 +221,71 @@ nav {
   position: relative;
   z-index: 1;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  flex-direction: row;
+  align-items: center;
+  gap: 18px;
   flex: 0 0 auto;
+  margin-top: 20px;
+}
+
+/* Miniaturas de compraventas a la derecha (solo ordenador) */
+.cv-banner-thumbs {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+.cv-thumb {
+  display: flex;
+  flex-direction: column;
+  width: 130px;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 12px 26px -14px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s ease;
+}
+.cv-thumb:hover {
+  transform: translateY(-4px);
+}
+.cv-thumb-img {
+  position: relative;
+  width: 100%;
+  height: 90px;
+  background: var(--orange-light);
+}
+.cv-thumb-estado {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+.cv-thumb-price {
+  padding: 8px 10px;
+  font-weight: 800;
+  color: var(--orange-dark);
+  font-size: 0.95rem;
+  text-align: center;
+}
+/* Solo ordenador: por debajo de 1024px se ocultan las miniaturas */
+@media (max-width: 1024px) {
+  .cv-banner-thumbs {
+    display: none;
+  }
+}
+/* En pantallas intermedias mostramos como mucho 3 para que quepan */
+@media (max-width: 1200px) {
+  .cv-thumb:nth-child(4) {
+    display: none;
+  }
 }
 .cv-banner-btn {
   background: #fff;
@@ -253,7 +321,10 @@ nav {
     padding: 30px 26px;
   }
   .cv-banner-cta {
+    flex-direction: column;
+    align-items: stretch;
     width: 100%;
+    gap: 12px;
   }
   .cv-banner-btn {
     width: 100%;

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { zonas, getPisos, resumenZona } from "../../lib/pisos";
 import Reveal, { RevealStagger } from "../../components/Reveal";
 import PisoCard from "../../components/PisoCard";
@@ -17,6 +18,10 @@ export default async function CatalogoPage() {
   const publicados = pisos.filter((p) => p.estado !== "proximamente" && p.estado !== "no_disponible");
   const alquileres = publicados.filter((p) => p.categoria === "alquiler");
   const compraventas = publicados.filter((p) => p.categoria === "compraventa");
+  // Para el banner: TODAS las compraventas, en cualquier estado, con foto.
+  const compraventasBanner = pisos
+    .filter((p) => p.categoria === "compraventa" && p.imageUrl)
+    .slice(0, 4);
 
   return (
     <>
@@ -64,18 +69,41 @@ export default async function CatalogoPage() {
         <div className="wrap">
           <Reveal direction="up">
             <div className="cv-banner">
-              <div className="cv-banner-text">
-                <span className="cv-banner-eyebrow">★ Compraventa de inmuebles</span>
-                <h2>¿Quieres comprar o invertir en Murcia?</h2>
-                <p>
-                  Pisos, locales y oportunidades de inversión con la rentabilidad calculada.
-                  Te acompañamos en toda la operación: de la primera visita a la firma ante notario.
-                </p>
+              <div className="cv-banner-main">
+                <div className="cv-banner-text">
+                  <span className="cv-banner-eyebrow">★ Compraventa de inmuebles</span>
+                  <h2>¿Quieres comprar o invertir en Murcia?</h2>
+                  <p>
+                    Pisos, locales y oportunidades de inversión con la rentabilidad calculada.
+                    Te acompañamos de la primera visita a la firma ante notario.
+                  </p>
+                </div>
+                <div className="cv-banner-cta">
+                  <Link href="#compraventa" className="cv-banner-btn">Ver compraventas →</Link>
+                  <Link href="/inversores" className="cv-banner-link">Soy inversor</Link>
+                </div>
               </div>
-              <div className="cv-banner-cta">
-                <Link href="#compraventa" className="cv-banner-btn">Ver compraventas →</Link>
-                <Link href="/inversores" className="cv-banner-link">Soy inversor</Link>
-              </div>
+              {compraventasBanner.length > 0 && (
+                <div className="cv-banner-thumbs">
+                  {compraventasBanner.map((p) => (
+                    <Link
+                      href={`/habitaciones/${p.zona}/${p.slug}`}
+                      className="cv-thumb"
+                      key={p.id}
+                    >
+                      <div className="cv-thumb-img">
+                        <Image src={p.imageUrl as string} alt={p.titulo} fill sizes="130px" style={{ objectFit: "cover" }} loading="lazy" />
+                        {p.estado !== "disponible" && (
+                          <span className="cv-thumb-estado">
+                            {p.estado === "reservada" ? "Reservada" : p.estado === "vendida" ? "Vendida" : p.estado === "proximamente" ? "Próx." : "No disp."}
+                          </span>
+                        )}
+                      </div>
+                      <span className="cv-thumb-price">{p.precioMes.toLocaleString("es-ES")}€</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           </Reveal>
         </div>
