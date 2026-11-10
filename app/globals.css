@@ -228,64 +228,98 @@ nav {
   margin-top: 20px;
 }
 
-/* Miniaturas de compraventas a la derecha (solo ordenador) */
-.cv-banner-thumbs {
+/* Tarjeta grande de compraventa (rotatoria con fundido) a la derecha */
+.cv-feat-wrap {
   position: relative;
   z-index: 1;
-  display: flex;
-  gap: 12px;
   flex: 0 0 auto;
-}
-.cv-thumb {
   display: flex;
   flex-direction: column;
-  width: 130px;
+  align-items: center;
+  gap: 10px;
+}
+.cv-feat-card {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
   background: #fff;
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 12px 26px -14px rgba(0, 0, 0, 0.5);
-  transition: transform 0.15s ease;
+  box-shadow: 0 18px 38px -16px rgba(0, 0, 0, 0.55);
+  transition: opacity 0.42s ease, transform 0.42s ease;
 }
-.cv-thumb:hover {
-  transform: translateY(-4px);
+.cv-feat-card.is-fading {
+  opacity: 0;
+  transform: translateY(8px);
 }
-.cv-thumb-img {
+.cv-feat-img {
   position: relative;
   width: 100%;
-  height: 90px;
+  height: 150px;
   background: var(--orange-light);
 }
-.cv-thumb-estado {
+.cv-feat-estado {
   position: absolute;
-  top: 6px;
-  left: 6px;
-  font-size: 0.6rem;
+  top: 8px;
+  left: 8px;
+  font-size: 0.64rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.62);
   color: #fff;
-  padding: 2px 7px;
+  padding: 3px 9px;
   border-radius: 999px;
 }
-.cv-thumb-price {
-  padding: 8px 10px;
+.cv-feat-body {
+  padding: 12px 15px 14px;
+  color: var(--ink);
+}
+.cv-feat-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  line-height: 1.25;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cv-feat-loc {
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin: 2px 0 8px;
+}
+.cv-feat-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+.cv-feat-price {
   font-weight: 800;
   color: var(--orange-dark);
-  font-size: 0.95rem;
-  text-align: center;
+  font-size: 1.1rem;
 }
-/* Solo ordenador: por debajo de 1024px se ocultan las miniaturas */
-@media (max-width: 1024px) {
-  .cv-banner-thumbs {
-    display: none;
-  }
+.cv-feat-arrow {
+  color: var(--orange);
+  font-weight: 700;
+  font-size: 1.1rem;
 }
-/* En pantallas intermedias mostramos como mucho 3 para que quepan */
-@media (max-width: 1200px) {
-  .cv-thumb:nth-child(4) {
-    display: none;
-  }
+.cv-feat-dots {
+  display: flex;
+  gap: 6px;
+}
+.cv-feat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+.cv-feat-dot.is-active {
+  background: #fff;
+  transform: scale(1.25);
 }
 .cv-banner-btn {
   background: #fff;
