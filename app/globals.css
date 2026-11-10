@@ -143,6 +143,123 @@ nav {
   margin: 0 auto;
 }
 
+/* Banner-anuncio de compraventas (catálogo, antes de Alquileres) */
+.cv-banner-wrap {
+  padding: 28px 0;
+}
+.cv-banner {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 36px;
+  background: linear-gradient(135deg, var(--orange), var(--orange-dark) 140%);
+  border-radius: 22px;
+  padding: 40px 48px;
+  color: #fff;
+  box-shadow: 0 22px 46px -20px color-mix(in srgb, var(--orange-dark) 75%, transparent);
+}
+/* Círculos decorativos para que respire como un anuncio */
+.cv-banner::after {
+  content: "";
+  position: absolute;
+  right: -70px;
+  top: -70px;
+  width: 240px;
+  height: 240px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+}
+.cv-banner::before {
+  content: "";
+  position: absolute;
+  right: 90px;
+  bottom: -110px;
+  width: 180px;
+  height: 180px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+}
+.cv-banner-text {
+  position: relative;
+  z-index: 1;
+  max-width: 660px;
+}
+.cv-banner-eyebrow {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 6px 14px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+}
+.cv-banner-text h2 {
+  font-size: clamp(1.6rem, 2.7vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  color: #fff;
+  margin: 0 0 10px;
+}
+.cv-banner-text p {
+  font-size: 1.04rem;
+  line-height: 1.5;
+  opacity: 0.96;
+  margin: 0;
+}
+.cv-banner-cta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+.cv-banner-btn {
+  background: #fff;
+  color: var(--orange-dark);
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 15px 30px;
+  border-radius: 999px;
+  white-space: nowrap;
+  text-align: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.cv-banner-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px -8px rgba(0, 0, 0, 0.4);
+}
+.cv-banner-link {
+  color: #fff;
+  text-align: center;
+  font-size: 0.92rem;
+  text-decoration: underline;
+  opacity: 0.9;
+}
+.cv-banner-link:hover {
+  opacity: 1;
+}
+
+@media (max-width: 760px) {
+  .cv-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 22px;
+    padding: 30px 26px;
+  }
+  .cv-banner-cta {
+    width: 100%;
+  }
+  .cv-banner-btn {
+    width: 100%;
+  }
+}
+
 .hero {
   padding: 90px 0 70px;
 }

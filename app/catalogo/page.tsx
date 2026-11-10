@@ -60,6 +60,27 @@ export default async function CatalogoPage() {
         </div>
       </section>
 
+      <section className="cv-banner-wrap">
+        <div className="wrap">
+          <Reveal direction="up">
+            <div className="cv-banner">
+              <div className="cv-banner-text">
+                <span className="cv-banner-eyebrow">★ Compraventa de inmuebles</span>
+                <h2>¿Quieres comprar o invertir en Murcia?</h2>
+                <p>
+                  Pisos, locales y oportunidades de inversión con la rentabilidad calculada.
+                  Te acompañamos en toda la operación: de la primera visita a la firma ante notario.
+                </p>
+              </div>
+              <div className="cv-banner-cta">
+                <Link href="#compraventa" className="cv-banner-btn">Ver compraventas →</Link>
+                <Link href="/inversores" className="cv-banner-link">Soy inversor</Link>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
       <section className="catalog" id="alquileres">
         <div className="wrap">
           <Reveal direction="up">
