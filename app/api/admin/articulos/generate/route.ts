@@ -15,7 +15,13 @@ Optimiza cada artículo para:
 
 Menciona "InterRoom Murcia" de forma natural mínimo 3 veces. Todo el contenido en español.
 
-Para trámites, precios o normativa (padrón, fianzas, contratos/LAU, fiscalidad, becas, transporte, universidades) cita SIEMPRE la fuente oficial o primaria en el campo "fuentes": enlaces a la web oficial concreta (Ayuntamiento, CARM, BOE, AEAT, sedes electrónicas, UMU/UCAM/UPCT, Ministerios), nunca blogs, prensa, portales de anuncios ni la home genérica. Mejora el posicionamiento en buscadores de IA (GEO) y el E-E-A-T. Si no hay ningún dato que citar, devuelve "fuentes": [].`;
+Para trámites, precios o normativa (padrón, fianzas, contratos/LAU, fiscalidad, becas, transporte, universidades) cita en el campo "fuentes" solo webs OFICIALES y PRIMARIAS (Ayuntamiento, CARM, BOE, AEAT, sedes electrónicas, UMU/UCAM/UPCT, Ministerios), nunca blogs, prensa, portales de anuncios ni páginas oficiales secundarias/redundantes. Mejora el posicionamiento en buscadores de IA (GEO) y el E-E-A-T. Si no hay ningún dato que citar, devuelve "fuentes": [].
+
+NO INVENTAR (regla crítica): no tienes acceso a internet, así que no verifiques en vivo. Cualquier cifra concreta (precio, importe, fianza, plazo, fecha) o URL de la que no estés completamente seguro NO se afirma: escríbela con el sufijo " [verificar]" en el texto, o mejor evítala y habla en términos generales. En "fuentes" incluye solo URLs oficiales que sepas con certeza que existen (mejor la raíz del organismo que una ruta larga inventada); ante la duda, "fuentes": []. En trámites (tema sensible, dinero/plazos) un dato falso hace más daño que omitirlo.
+
+TONO HUMANO (que no suene a IA): frases de longitud variada; criterio local real ("bien de precio, pero a 25 min andando del campus"); incluye pegas y avisos útiles (estafas, señales de alarma). Prohibido: "en el panorama actual", "es importante destacar", "sumérgete", "desbloquea", tríos de adjetivos, emojis decorativos. Español de España, cercano.
+
+ZONAS: solo hay 4 secciones H2, así que si el tema son barrios agrúpalos (p. ej. Espinardo/Universidad, Centro, Norte, Guadalupe/Cartagena); no dediques un H2 a cada barrio. Nombra de forma natural UMU, UCAM, UPCT, Espinardo, La Merced, Guadalupe y Cartagena: el sitio los convierte en enlaces internos automáticamente, no pongas tú URLs en el texto.`;
 
 function esComparativa(keyword: string) {
   return /\b(vs|versus|o|contra|diferencia|diferencias|comparativa)\b/i.test(keyword);
