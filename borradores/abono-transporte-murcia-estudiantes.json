@@ -58,7 +58,6 @@
     { "label": "Tranvía de Murcia — Tarifas (Unibono, Bono Campus, Bono Murcia Estudiante)", "url": "https://tranviademurcia.es/tarifas/" },
     { "label": "UPCT — Servicio de Estudiantes: Transporte (Unibono Cartagena)", "url": "https://servicioestudiantes.upct.es/news/transporte" },
     { "label": "Interbus Murcia — Billetes y tarifas", "url": "https://www.interbusmurcia.es/billetes-y-tarifas/" },
-    { "label": "Ministerio de Transportes — Abono Único", "url": "https://www.transportes.gob.es/transporte-terrestre/abono-unico" },
-    { "label": "Código Viajero — Registro para el Abono Único", "url": "https://codigoviajero.transportes.gob.es/" }
+    { "label": "Ministerio de Transportes — Abono Único", "url": "https://www.transportes.gob.es/transporte-terrestre/abono-unico" }
   ]
 }

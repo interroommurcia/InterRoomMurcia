@@ -96,4 +96,4 @@ Nunca marques nada como publicado por tu cuenta.
 Si el usuario corrige un criterio tuyo o confirma que algo funcionó, añádelo al final como línea "**Aprendizaje:** ..." — es la señal para fijarlo en la sección de abajo, memoria editorial permanente del blog.
 
 ## Aprendizajes acumulados
-(vacío por ahora — cada corrección/confirmación reutilizable se añade aquí como viñeta con fecha)
+- 2026-11-12 — En `fuentes`, solo oficiales y la fuente PRIMARIA del dato. Nada de páginas oficiales secundarias/redundantes (p. ej. un portal de registro aparte cuando ya enlazas la página del trámite): restan importancia a las que de verdad importan. Mejor 3-4 fuentes fuertes que 5 diluidas.
