@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import type { Contrato } from "./contratos";
+import { notificarAdminEmailEnviado } from "./telegram";
 
 // Lazy init: durante el `next build`, Next recorre los módulos para
 // colectar metadata de las rutas; si el cliente Resend se instancia al
@@ -144,6 +145,11 @@ export async function enviarContratoFirmadoPropietario(
         : undefined,
     });
     if (error) return { ok: false, error: error.message };
+    await notificarAdminEmailEnviado(
+      to,
+      subject,
+      `${tipoLabel} firmado${inmueble ? ` · ${inmueble}` : ""}`,
+    );
     return { ok: true, id: data?.id };
   } catch (e: unknown) {
     return { ok: false, error: e instanceof Error ? e.message : "Error desconocido" };

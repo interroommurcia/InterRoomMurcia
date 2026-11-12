@@ -43,3 +43,32 @@ export async function telegramSendPhoto(
   const res = await fetch(apiUrl("sendPhoto"), { method: "POST", body: form });
   if (!res.ok) throw new Error(`Telegram sendPhoto falló: ${await res.text()}`);
 }
+
+/**
+ * Avisa al admin (TELEGRAM_CHAT_ID) por Telegram de que se ha enviado
+ * con éxito un email desde la web, para que revise la bandeja de entrada.
+ * No lanza: los fallos de Telegram nunca deben romper el envío del email.
+ */
+export async function notificarAdminEmailEnviado(
+  destinatario: string | string[],
+  asunto: string,
+  contexto?: string,
+): Promise<void> {
+  // Registrar en BD para el aviso de la home de admin (silencioso si falla:
+  // puede faltar la migración o Supabase estar caído, y no queremos romper el envío).
+  try {
+    const { registrarEmailEnviado } = await import("./emailsAdmin");
+    await registrarEmailEnviado(destinatario, asunto, contexto);
+  } catch {
+    // intencional: el aviso en Telegram sigue adelante
+  }
+
+  const chatIds = (process.env.TELEGRAM_CHAT_ID ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!chatIds.length) return;
+  const to = Array.isArray(destinatario) ? destinatario.join(", ") : destinatario;
+  const texto = `📧 Email enviado desde la web\n\nPara: ${to}\nAsunto: ${asunto}${contexto ? `\n${contexto}` : ""}\n\nRevisa tu bandeja de entrada.`;
+  await Promise.all(chatIds.map((id) => telegramSendMessage(id, texto).catch(() => undefined)));
+}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AdminNav } from "../../components/AdminNav";
+import { AvisoEmailsEnviados } from "./_components/AvisoEmailsEnviados";
 import { calcularPendientes } from "../../lib/secretaria";
 import { listarTareasEntreFechas } from "../../lib/mesaTrabajo";
 import { listarConversaciones } from "../../lib/chat";
@@ -45,6 +46,8 @@ export default async function AdminHome() {
           <h2>Hoy en InterRoom</h2>
           <p>Resumen de lo que necesita tu atención</p>
         </div>
+
+        <AvisoEmailsEnviados />
 
         <div className="analytics-stat-row" style={{ marginBottom: 24 }}>
           <div className="analytics-stat">

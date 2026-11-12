@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { notificarAdminEmailEnviado } from "./telegram";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -106,14 +107,16 @@ export async function enviarEmailBienvenida(
 </body>
 </html>`;
 
+  const subject = `Bienvenido/a a InterRoom Murcia — Tu cuenta de ${rolLabel}`;
   const { error } = await resend.emails.send({
     from: FROM,
     to: destinatario,
-    subject: `Bienvenido/a a InterRoom Murcia — Tu cuenta de ${rolLabel}`,
+    subject,
     html,
   });
 
   if (error) throw new Error(`Error enviando email: ${error.message}`);
+  await notificarAdminEmailEnviado(destinatario, subject, `Alta de cuenta ${rolLabel} para ${nombre}`);
 }
 
 export async function enviarEmailReset(destinatario: string, resetUrl: string) {
@@ -167,12 +170,14 @@ export async function enviarEmailReset(destinatario: string, resetUrl: string) {
 </body>
 </html>`;
 
+  const subject = "Restablecer contraseña — InterRoom Murcia";
   const { error } = await resend.emails.send({
     from: FROM,
     to: destinatario,
-    subject: "Restablecer contraseña — InterRoom Murcia",
+    subject,
     html,
   });
 
   if (error) throw new Error(`Error enviando email: ${error.message}`);
+  await notificarAdminEmailEnviado(destinatario, subject, "Reset de contraseña del panel");
 }
