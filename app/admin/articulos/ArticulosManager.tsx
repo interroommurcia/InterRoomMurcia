@@ -8,6 +8,7 @@ const SITE_HOST = SITE_URL.replace(/^https?:\/\//, "");
 
 type Section = { h2: string; content: string; highlight: string | null; imagePrompt?: string; image?: string };
 type FAQ = { question: string; answer: string };
+type Fuente = { label: string; url: string };
 
 type DraftArticle = {
   slug: string;
@@ -18,6 +19,7 @@ type DraftArticle = {
   sections: Section[];
   cta: string;
   faq: FAQ[];
+  fuentes?: Fuente[];
   heroImage?: string;
   heroImageThumb?: string;
   heroImagePrompt?: string;
@@ -94,6 +96,7 @@ async function saveAndPublish(
       sections: article.sections,
       cta: article.cta,
       faq: article.faq,
+      fuentes: article.fuentes ?? [],
       hero_image: article.heroImage ?? null,
       hero_image_thumb: article.heroImageThumb ?? null,
       keyword,
@@ -199,6 +202,7 @@ export default function ArticulosManager() {
       sections: data.sections ?? [],
       cta: data.cta,
       faq: data.faq ?? [],
+      fuentes: data.fuentes ?? [],
       keyword: data.keyword ?? null,
       hero_image: data.hero_image ?? null,
       mostrar_en_listado: data.mostrar_en_listado ?? true,
@@ -291,6 +295,7 @@ export default function ArticulosManager() {
         sections: article.sections,
         cta: article.cta,
         faq: article.faq,
+        fuentes: article.fuentes ?? [],
         hero_image: article.heroImage ?? null,
         hero_image_thumb: article.heroImageThumb ?? null,
         keyword: keyword.trim(),

@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   const supabaseAdmin = getSupabaseAdmin();
   const body = await req.json();
   const {
-    slug, meta_title, meta_description, h1, intro, sections, cta, faq,
+    slug, meta_title, meta_description, h1, intro, sections, cta, faq, fuentes,
     hero_image, hero_image_thumb, hero_image_credit, hero_image_credit_url,
     hero_image_source, keyword, mostrar_en_listado, template,
   } = body;
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
         slug, meta_title, meta_description, h1, intro,
         sections: sections ?? [], cta,
         faq: faq ?? [],
+        fuentes: fuentes ?? [],
         hero_image, hero_image_thumb, hero_image_credit,
         hero_image_credit_url, hero_image_source, keyword,
         estado: "borrador",

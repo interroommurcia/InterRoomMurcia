@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 
 type Section = { h2: string; content: string; highlight: string | null; image?: string; video?: string };
 type FAQ = { question: string; answer: string };
+type Fuente = { label: string; url: string };
 
 export type EditableArticle = {
   id: string;
@@ -15,6 +16,7 @@ export type EditableArticle = {
   sections: Section[];
   cta: string;
   faq: FAQ[];
+  fuentes: Fuente[];
   keyword: string | null;
   hero_image: string | null;
   mostrar_en_listado: boolean;
@@ -109,6 +111,15 @@ export function ArticleEditor({
   function removeFaq(i: number) {
     setArt((a) => ({ ...a, faq: a.faq.filter((_, idx) => idx !== i) }));
   }
+  function setFuente(i: number, key: keyof Fuente, val: string) {
+    setArt((a) => ({ ...a, fuentes: a.fuentes.map((f, idx) => (idx === i ? { ...f, [key]: val } : f)) }));
+  }
+  function addFuente() {
+    setArt((a) => ({ ...a, fuentes: [...a.fuentes, { label: "", url: "" }] }));
+  }
+  function removeFuente(i: number) {
+    setArt((a) => ({ ...a, fuentes: a.fuentes.filter((_, idx) => idx !== i) }));
+  }
 
   async function handleHeroUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -175,6 +186,7 @@ export function ArticleEditor({
           sections: art.sections,
           cta: art.cta,
           faq: art.faq,
+          fuentes: art.fuentes,
           keyword: art.keyword,
           hero_image: art.hero_image,
           mostrar_en_listado: art.mostrar_en_listado,
@@ -341,6 +353,27 @@ export function ArticleEditor({
                 </div>
                 <input value={f.question} onChange={(e) => setFaq(i, "question", e.target.value)} placeholder="Pregunta…" />
                 <textarea rows={2} value={f.answer} onChange={(e) => setFaq(i, "answer", e.target.value)} placeholder="Respuesta…" />
+              </div>
+            ))}
+          </div>
+
+          <div className="editor-section-list">
+            <div className="editor-section-list-head">
+              <span className="editor-label">Fuentes oficiales ({art.fuentes.length})</span>
+              <button type="button" className="btn-ghost" onClick={addFuente}>
+                + Añadir fuente
+              </button>
+            </div>
+            {art.fuentes.map((f, i) => (
+              <div className="editor-block" key={i}>
+                <div className="editor-block-head">
+                  <span>Fuente {i + 1}</span>
+                  <button type="button" className="editor-remove" onClick={() => removeFuente(i)}>
+                    ✕
+                  </button>
+                </div>
+                <input value={f.label} onChange={(e) => setFuente(i, "label", e.target.value)} placeholder="Nombre (p. ej. Ayuntamiento de Murcia — Padrón)…" />
+                <input value={f.url} onChange={(e) => setFuente(i, "url", e.target.value)} placeholder="https://url-oficial-concreta…" />
               </div>
             ))}
           </div>

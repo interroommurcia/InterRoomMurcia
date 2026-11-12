@@ -12,6 +12,7 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 
 export type ArticuloSection = { h2: string; content: string; highlight: string | null; image?: string; video?: string };
 export type ArticuloFAQ = { question: string; answer: string };
+export type ArticuloFuente = { label: string; url: string };
 
 export type ArticuloResumen = {
   id: string;
@@ -35,6 +36,7 @@ export type Articulo = ArticuloResumen & {
   heroImageCredit: string | null;
   heroImageCreditUrl: string | null;
   template: ArticuloTemplate;
+  fuentes: ArticuloFuente[];
 };
 
 type ArticuloRow = {
@@ -54,6 +56,7 @@ type ArticuloRow = {
   hero_image_credit_url: string | null;
   created_at: string;
   template: ArticuloTemplate;
+  fuentes: ArticuloFuente[] | null;
 };
 
 function mapArticulo(row: ArticuloRow): Articulo {
@@ -74,6 +77,7 @@ function mapArticulo(row: ArticuloRow): Articulo {
     heroImageCreditUrl: row.hero_image_credit_url,
     createdAt: row.created_at,
     template: row.template,
+    fuentes: row.fuentes ?? [],
   };
 }
 

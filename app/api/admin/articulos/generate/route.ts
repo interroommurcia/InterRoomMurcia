@@ -13,7 +13,9 @@ Optimiza cada artículo para:
 - Bing/ChatGPT indexing: estructura Q&A clara, menciones explícitas de entidades (barrios, universidades)
 - LLM indexing: preguntas redactadas como las haría un estudiante real en ChatGPT
 
-Menciona "InterRoom Murcia" de forma natural mínimo 3 veces. Todo el contenido en español.`;
+Menciona "InterRoom Murcia" de forma natural mínimo 3 veces. Todo el contenido en español.
+
+Para trámites, precios o normativa (padrón, fianzas, contratos/LAU, fiscalidad, becas, transporte, universidades) cita SIEMPRE la fuente oficial o primaria en el campo "fuentes": enlaces a la web oficial concreta (Ayuntamiento, CARM, BOE, AEAT, sedes electrónicas, UMU/UCAM/UPCT, Ministerios), nunca blogs, prensa, portales de anuncios ni la home genérica. Mejora el posicionamiento en buscadores de IA (GEO) y el E-E-A-T. Si no hay ningún dato que citar, devuelve "fuentes": [].`;
 
 function esComparativa(keyword: string) {
   return /\b(vs|versus|o|contra|diferencia|diferencias|comparativa)\b/i.test(keyword);
@@ -46,10 +48,13 @@ ${material ? `MATERIAL DE REFERENCIA:\n${material}\n\n` : ""}Devuelve ÚNICAMENT
       "answer": "Respuesta concisa, útil y con mención natural a InterRoom Murcia cuando aplique"
     }
   ],
+  "fuentes": [
+    { "label": "Nombre del organismo o web oficial citada", "url": "https://url-oficial-concreta-del-dato" }
+  ],
   "heroImagePrompt": "Stunning photorealistic hero image prompt in English. MUST be anchored in a REAL, iconic location of Murcia or Cartagena that fits the article (Murcia cathedral square, Cartagena Roman theatre, UCAM Guadalupe campus, UMU Espinardo campus, UPCT Cartagena buildings, Segura river promenade, palm-lined Murcia streets, Mediterranean rooftops). Warm golden-hour Mediterranean light, terracotta and ochre palette, ultra high quality 8K, no text, no logos, no visible faces."
 }
 
-Requisitos ESTRICTOS: exactamente 4 secciones H2 (ni más ni menos), exactamente 5 preguntas FAQ (ni más ni menos), menciona "InterRoom Murcia" al menos 3 veces. Cada sección: content máximo 120 palabras, párrafos de 2-3 líneas. imagePrompt breve (máximo 20 palabras). Respuestas FAQ máximo 60 palabras. Sé conciso.`;
+Requisitos ESTRICTOS: exactamente 4 secciones H2 (ni más ni menos), exactamente 5 preguntas FAQ (ni más ni menos), menciona "InterRoom Murcia" al menos 3 veces. Cada sección: content máximo 120 palabras, párrafos de 2-3 líneas. imagePrompt breve (máximo 20 palabras). Respuestas FAQ máximo 60 palabras. "fuentes": de 2 a 5 webs oficiales con URL concreta y verificable (o [] si no hay dato que citar). Sé conciso.`;
 }
 
 function buildPromptComparativa(keyword: string, tone: string, material: string | null) {
@@ -93,10 +98,13 @@ ${material ? `MATERIAL DE REFERENCIA:\n${material}\n\n` : ""}Devuelve ÚNICAMENT
   "faq": [
     { "question": "Pregunta real que haría un estudiante indeciso entre A y B", "answer": "Respuesta concreta, menciona InterRoom cuando aporte." }
   ],
+  "fuentes": [
+    { "label": "Nombre del organismo o web oficial citada", "url": "https://url-oficial-concreta-del-dato" }
+  ],
   "heroImagePrompt": "Prompt fotográfico en inglés anclado en Murcia o Cartagena, evocando decisión entre dos opciones (por ejemplo, calle con dos caminos, mirador de la ciudad, ambiente universitario). Luz mediterránea dorada, paleta terracota, 8K, no text, no logos, no visible faces."
 }
 
-Requisitos ESTRICTOS: exactamente 4 secciones H2 con esos títulos, exactamente 5 preguntas FAQ, menciona "InterRoom Murcia" al menos 3 veces. Sé concreto: nombres reales, precios orientativos, nunca genéricos. Cada sección máximo 130 palabras.`;
+Requisitos ESTRICTOS: exactamente 4 secciones H2 con esos títulos, exactamente 5 preguntas FAQ, menciona "InterRoom Murcia" al menos 3 veces. Sé concreto: nombres reales, precios orientativos, nunca genéricos. Cada sección máximo 130 palabras. "fuentes": de 2 a 5 webs oficiales con URL concreta y verificable (o [] si no hay dato que citar).`;
 }
 
 export async function POST(req: NextRequest) {

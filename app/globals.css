@@ -4733,6 +4733,39 @@ button {
   line-height: 1.7;
 }
 
+.article-fuentes {
+  margin-top: 40px;
+  padding-top: 30px;
+  border-top: 1px solid rgba(26, 26, 26, 0.08);
+}
+
+.article-fuentes h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.article-fuentes ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.article-fuentes li {
+  padding: 7px 0;
+  font-size: 0.9rem;
+}
+
+.article-fuentes a {
+  color: var(--orange);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.article-fuentes a:hover {
+  text-decoration: underline;
+}
+
 /* Plantilla: Minimalista — mucho blanco, tipografía grande, sin cajas */
 .article-minimalista .article-wrap {
   max-width: 640px;

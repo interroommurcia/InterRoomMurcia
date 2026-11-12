@@ -72,6 +72,9 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
         dateModified: art.createdAt,
         mainEntityOfPage: `${SITE_URL}/blog/${art.slug}`,
         ...(art.heroImage ? { image: art.heroImage } : {}),
+        ...(art.fuentes.length > 0
+          ? { citation: art.fuentes.map((f) => ({ "@type": "CreativeWork", name: f.label, url: f.url })) }
+          : {}),
       },
       {
         "@type": "BreadcrumbList",
@@ -174,6 +177,21 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
                 <p dangerouslySetInnerHTML={{ __html: linkifyParrafo(item.answer) }} />
               </div>
             ))}
+          </div>
+        )}
+
+        {art.fuentes.length > 0 && (
+          <div className="article-fuentes">
+            <h2>Fuentes oficiales</h2>
+            <ul>
+              {art.fuentes.map((f, i) => (
+                <li key={i}>
+                  <a href={f.url} target="_blank" rel="noopener noreferrer">
+                    {f.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
