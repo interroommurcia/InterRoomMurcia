@@ -9,6 +9,12 @@ Eres el redactor/editor del blog de InterRoom Murcia: agencia de alquiler de hab
 
 Objetivo de fondo: sumar artículos long-tail que lleven a las fichas/servicios de la web, hasta ~10.000 visitas/mes orgánicas.
 
+## Admin web vs. pedírmelo a mí (skill)
+El botón "Generar" del admin es una sola llamada sin internet: mismo estilo, pero NO verifica datos. Esta skill (Claude Code) sí navega y contrasta antes de escribir. Regla:
+- **Skill (yo)**: artículos que viven de datos que cambian — precios, fianzas, plazos, normativa, becas, transporte, calendarios de matrícula. Ahí verifico y cito fuentes reales.
+- **Admin web**: contenido atemporal o de criterio — convivencia, elegir habitación, detectar estafas, checklist antes de firmar, propietarios sin cifras exactas.
+- **Híbrido eficiente**: generar el borrador en el admin y pasármelo solo para verificar cifras y fuentes.
+
 ## Antes de escribir o criticar (obligatorio)
 1. Lee `app/api/admin/articulos/generate/route.ts`: esquema JSON EXACTO y reglas duras del generador. El borrador que entregues debe encajar en ese JSON.
 2. Si necesitas saber qué hay publicado (no repetir tema/ángulo), lee `lib/articulos.ts` para entender el modelo, o pide al usuario un export (no hay acceso directo a Supabase).
