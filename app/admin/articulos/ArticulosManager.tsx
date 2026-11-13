@@ -136,6 +136,8 @@ type ArticleStats = {
   utmCampaigns: Bucket[];
   utmSources: Bucket[];
   dailyViews: { date: string; views: number }[];
+  linkClicks?: Bucket[];
+  linkClicksTotal?: number;
 };
 
 export default function ArticulosManager() {
@@ -742,6 +744,9 @@ function ArticleStatsPanel({ stats, views, ctaClicks }: { stats?: ArticleStats; 
         <StatKpi label="Nuevos" value={stats.newVisitors.toLocaleString("es-ES")} />
         <StatKpi label="Recurrentes" value={stats.returning.toLocaleString("es-ES")} />
         <StatKpi label="Clicks CTA" value={`${ctaClicks} · ${ctr}%`} />
+        {(stats.linkClicksTotal ?? 0) > 0 && (
+          <StatKpi label="Clicks en enlaces" value={(stats.linkClicksTotal ?? 0).toLocaleString("es-ES")} />
+        )}
         {stats.aiTraffic && <StatKpi label="Tráfico de IA" value={`${stats.aiTraffic.total} · ${stats.aiTraffic.pct}%`} />}
         {stats.bots > 0 && <StatKpi label="Bots / IA crawlers" value={stats.bots.toLocaleString("es-ES")} tone="muted" />}
       </div>
@@ -777,6 +782,12 @@ function ArticleStatsPanel({ stats, views, ctaClicks }: { stats?: ArticleStats; 
         {stats.referrers.length > 0 && <StatBlock title="Webs concretas (referrer)" rows={stats.referrers} empty="Ninguna" />}
         {stats.utmCampaigns.length > 0 && <StatBlock title="Campañas UTM" rows={stats.utmCampaigns} empty="Ninguna" />}
       </div>
+
+      {(stats.linkClicks ?? []).length > 0 && (
+        <div className="articulos-stats-grid articulos-stats-links">
+          <StatBlock title="Enlaces pulsados (texto → destino)" rows={stats.linkClicks ?? []} empty="Ninguno" />
+        </div>
+      )}
     </div>
   );
 }

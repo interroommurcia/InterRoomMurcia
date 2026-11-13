@@ -3463,6 +3463,22 @@ button {
   color: #374151;
 }
 
+/* Bloque de enlaces pulsados: a todo lo ancho y etiquetas largas legibles. */
+.articulos-stats-links {
+  grid-template-columns: 1fr;
+  margin-top: 10px;
+}
+.articulos-stats-links .articulos-stats-bar-row {
+  grid-template-columns: minmax(0, 2.6fr) 1fr auto;
+  align-items: start;
+}
+.articulos-stats-links .articulos-stats-bar-label {
+  white-space: normal;
+  overflow: visible;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
 .articulos-stats-bar-track {
   height: 6px;
   background: #f3f4f6;

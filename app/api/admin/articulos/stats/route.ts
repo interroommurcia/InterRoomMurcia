@@ -184,6 +184,38 @@ export async function GET(req: NextRequest) {
 
   const dailyViews = bucketByDay(humanRows, 30);
 
+  // Clics en enlaces concretos del artículo: se guardan con slug sintético
+  // __link__<slug>, el destino en `path` y el texto del enlace en `referrer`.
+  // Los bots ya se descartan al insertar, así que aquí todo es humano.
+  const { data: linkData } = await supabaseAdmin
+    .from("articulos_views")
+    .select("path, referrer")
+    .eq("slug", `__link__${slug}`)
+    .limit(5000);
+  const linkRows = (linkData ?? []) as { path: string | null; referrer: string | null }[];
+  const linkCounts = new Map<string, { count: number; text: string }>();
+  let linkTotal = 0;
+  for (const r of linkRows) {
+    if (!r.path) continue;
+    linkTotal++;
+    const prev = linkCounts.get(r.path);
+    linkCounts.set(r.path, { count: (prev?.count ?? 0) + 1, text: prev?.text || (r.referrer ?? "") });
+  }
+  const linkClicks = Array.from(linkCounts.entries())
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 20)
+    .map(([path, v]) => {
+      let dest = path;
+      try {
+        const u = new URL(path);
+        dest = u.hostname.replace(/^www\./, "") + u.pathname;
+      } catch {
+        /* path no es URL absoluta */
+      }
+      const label = v.text ? `${v.text} → ${dest}` : dest;
+      return { key: path, label, count: v.count, pct: linkTotal > 0 ? Math.round((v.count / linkTotal) * 100) : 0 };
+    });
+
   const totalHuman = humanRows.length;
   const botCount = rows.length - totalHuman;
 
@@ -205,6 +237,8 @@ export async function GET(req: NextRequest) {
     utmCampaigns,
     utmSources,
     dailyViews,
+    linkClicks,
+    linkClicksTotal: linkTotal,
     // compat con la UI anterior:
     sourcesLegacy: legacySources,
   });
