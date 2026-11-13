@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { ArticlePreview } from "./ArticlePreview";
 
 type Section = { h2: string; content: string; highlight: string | null; image?: string; video?: string };
 type FAQ = { question: string; answer: string };
@@ -46,6 +47,7 @@ export function ArticleEditor({
   onSaved: () => void;
 }) {
   const [art, setArt] = useState<EditableArticle>(initial);
+  const [mode, setMode] = useState<"editar" | "previa">("editar");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState<string | null>(null);
@@ -214,6 +216,9 @@ export function ArticleEditor({
           <span className="editor-title">Editar artículo</span>
           <div className="editor-header-actions">
             {error && <span className="editor-error">{error}</span>}
+            <button type="button" className="btn-ghost" onClick={() => setMode((m) => (m === "previa" ? "editar" : "previa"))}>
+              {mode === "previa" ? "Editar" : "Vista previa"}
+            </button>
             <button type="button" className="btn-ghost" onClick={revisar} disabled={revisando || saving}>
               {revisando ? "Revisando…" : "Revisar con IA"}
             </button>
@@ -227,6 +232,23 @@ export function ArticleEditor({
         </div>
 
         <div className="editor-body">
+          {mode === "previa" ? (
+            <ArticlePreview
+              data={{
+                h1: art.h1,
+                intro: art.intro,
+                keyword: art.keyword,
+                heroImage: art.hero_image,
+                sections: art.sections,
+                cta: art.cta,
+                faq: art.faq,
+                fuentes: art.fuentes,
+              }}
+              template={art.template}
+              onTemplateChange={(t) => setField("template", t)}
+            />
+          ) : (
+          <>
           {revision && (
             <div className="editor-revision">
               <div className="editor-revision-head">
@@ -377,6 +399,8 @@ export function ArticleEditor({
               </div>
             ))}
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>

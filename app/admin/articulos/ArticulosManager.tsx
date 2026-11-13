@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ArticleEditor, type EditableArticle } from "./ArticleEditor";
+import { ArticlePreview } from "./ArticlePreview";
 import { SITE_URL } from "../../../lib/site";
 
 const SITE_HOST = SITE_URL.replace(/^https?:\/\//, "");
@@ -141,6 +142,7 @@ export default function ArticulosManager() {
   const [keyword, setKeyword] = useState("");
   const [tone, setTone] = useState<"cercano" | "profesional">("cercano");
   const [material, setMaterial] = useState("");
+  const [pasteJson, setPasteJson] = useState("");
   const [template, setTemplate] = useState<"clasico" | "minimalista" | "revista">("clasico");
   const [loading, setLoading] = useState(false);
   const [loadingImages, setLoadingImages] = useState(false);
@@ -220,6 +222,38 @@ export default function ArticulosManager() {
   useEffect(() => {
     loadList();
   }, [loadList]);
+
+  function loadFromPaste() {
+    setError("");
+    let parsed: Partial<DraftArticle> & { keyword?: string };
+    try {
+      parsed = JSON.parse(pasteJson);
+    } catch {
+      setError("No se pudo leer el JSON pegado. Revisa que esté completo.");
+      return;
+    }
+    if (!parsed || !parsed.h1 || !Array.isArray(parsed.sections)) {
+      setError("El JSON no parece un artículo (faltan 'h1' o 'sections').");
+      return;
+    }
+    setArticle({
+      slug: parsed.slug ?? "",
+      metaTitle: parsed.metaTitle ?? "",
+      metaDescription: parsed.metaDescription ?? "",
+      h1: parsed.h1,
+      intro: parsed.intro ?? "",
+      sections: parsed.sections ?? [],
+      cta: parsed.cta ?? "",
+      faq: parsed.faq ?? [],
+      fuentes: parsed.fuentes ?? [],
+      heroImage: parsed.heroImage,
+      heroImageThumb: parsed.heroImageThumb,
+      heroImagePrompt: parsed.heroImagePrompt,
+    });
+    if (parsed.keyword) setKeyword(parsed.keyword);
+    setSavedId(null);
+    setSavedEstado(null);
+  }
 
   async function generate() {
     if (!keyword.trim()) {
@@ -395,7 +429,25 @@ export default function ArticulosManager() {
           </div>
         </div>
 
+        <div className="piso-form">
+          <label>
+            …o pega el JSON de un artículo para previsualizarlo
+            <textarea
+              rows={4}
+              value={pasteJson}
+              onChange={(e) => setPasteJson(e.target.value)}
+              placeholder={'{"slug":"...","h1":"...","intro":"...","sections":[...],"faq":[...]}'}
+            />
+          </label>
+          <div className="lead-form-actions">
+            <button type="button" className="btn-ghost" onClick={loadFromPaste} disabled={!pasteJson.trim()}>
+              Cargar y previsualizar
+            </button>
+          </div>
+        </div>
+
         {article && (
+          <>
           <div className="articulos-meta-card">
             <div className="articulos-meta-label">Meta título ({article.metaTitle.length}/60)</div>
             <div className="articulos-meta-value">{article.metaTitle}</div>
@@ -443,6 +495,21 @@ export default function ArticulosManager() {
               )}
             </div>
           </div>
+          <ArticlePreview
+            data={{
+              h1: article.h1,
+              intro: article.intro,
+              keyword: keyword || null,
+              heroImage: article.heroImage ?? null,
+              sections: article.sections,
+              cta: article.cta,
+              faq: article.faq,
+              fuentes: article.fuentes ?? [],
+            }}
+            template={template}
+            onTemplateChange={setTemplate}
+          />
+          </>
         )}
       </div>
 
