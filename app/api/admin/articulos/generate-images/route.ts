@@ -18,13 +18,13 @@ async function generateImageGemini(prompt: string): Promise<{ buffer: Buffer | n
   const styledPrompt = `${prompt}. ${STYLE_SUFFIX}`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: `Generate a photorealistic image: ${styledPrompt}` }] }],
-        generationConfig: { responseModalities: ["IMAGE"] },
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
       }),
     }
   );
