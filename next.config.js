@@ -15,6 +15,19 @@ const nextConfig = {
   // (Brave, Safari/Firefox con anti-tracking, uBlock) no pueden cortarlos y
   // no perdemos visitas. EU cloud → assets en eu-assets, resto en eu.i.
   skipTrailingSlashRedirect: true,
+  // El dominio *.vercel.app sirve el mismo sitio → contenido duplicado para
+  // Google. Lo redirigimos 301 al dominio real para que no compita en SEO.
+  // Solo afecta al alias de producción; los previews (…-git-….vercel.app) no.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "inter-room-murcia.vercel.app" }],
+        destination: "https://interroommurcia.com/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     return [
       { source: "/ingest/static/:path*", destination: "https://eu-assets.i.posthog.com/static/:path*" },
