@@ -39,6 +39,7 @@ type SavedArticle = {
   cta_clicks: number | null;
   mostrar_en_listado: boolean;
   template: "clasico" | "minimalista" | "revista";
+  origen_generacion?: "unitario" | "masa" | null;
 };
 
 async function generateArticleFromKeyword(keyword: string, tone: string, material: string | null): Promise<DraftArticle> {
@@ -83,7 +84,8 @@ async function saveAndPublish(
   article: DraftArticle,
   keyword: string,
   mostrarEnListado: boolean,
-  template: "clasico" | "minimalista" | "revista"
+  template: "clasico" | "minimalista" | "revista",
+  origen: "unitario" | "masa" = "unitario"
 ): Promise<string> {
   const res = await fetch("/api/admin/articulos", {
     method: "POST",
@@ -103,6 +105,7 @@ async function saveAndPublish(
       keyword,
       mostrar_en_listado: mostrarEnListado,
       template,
+      origen_generacion: origen,
     }),
   });
   const data = await res.json();
@@ -140,6 +143,16 @@ type ArticleStats = {
   linkClicksTotal?: number;
 };
 
+type GroupResumen = { articulos: number; views: number; ctaClicks: number; ctr: number; viewsMedia: number };
+type GroupStats = {
+  masa: GroupResumen;
+  unitario: GroupResumen;
+  ranking: { slug: string; h1: string; keyword: string | null; views: number; ctaClicks: number; ctr: number }[];
+  temas: Bucket[];
+  linkClicks: Bucket[];
+  linkClicksTotal: number;
+};
+
 export default function ArticulosManager() {
   const [keyword, setKeyword] = useState("");
   const [tone, setTone] = useState<"cercano" | "profesional">("cercano");
@@ -164,6 +177,22 @@ export default function ArticulosManager() {
   const [bulkItems, setBulkItems] = useState<BulkItem[]>([]);
   const [bulkRunning, setBulkRunning] = useState(false);
 
+  const [grupoStats, setGrupoStats] = useState<GroupStats | null>(null);
+  const [grupoOpen, setGrupoOpen] = useState(false);
+  const [loadingGrupo, setLoadingGrupo] = useState(false);
+
+  async function toggleGrupoStats() {
+    if (grupoOpen) {
+      setGrupoOpen(false);
+      return;
+    }
+    setGrupoOpen(true);
+    setLoadingGrupo(true);
+    const res = await fetch("/api/admin/articulos/stats-grupo");
+    if (res.ok) setGrupoStats(await res.json());
+    setLoadingGrupo(false);
+  }
+
   async function runBulkGenerate() {
     const keywords = bulkKeywords
       .split("\n")
@@ -179,7 +208,7 @@ export default function ArticulosManager() {
       setBulkItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, status: "generando" } : it)));
       try {
         const draft = await generateArticleFromKeyword(keywords[i], bulkTone, null);
-        await saveAndPublish(draft, keywords[i], false, bulkTemplate);
+        await saveAndPublish(draft, keywords[i], false, bulkTemplate, "masa");
         setBulkItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, status: "hecho" } : it)));
       } catch (e: unknown) {
         setBulkItems((prev) =>
@@ -190,6 +219,11 @@ export default function ArticulosManager() {
 
     setBulkRunning(false);
     await loadList();
+    // Si el panel de grupo está abierto, refréscalo con la nueva tanda.
+    if (grupoOpen) {
+      const res = await fetch("/api/admin/articulos/stats-grupo");
+      if (res.ok) setGrupoStats(await res.json());
+    }
   }
 
   async function openEditor(id: string) {
@@ -571,6 +605,19 @@ export default function ArticulosManager() {
             ))}
           </div>
         )}
+
+        <div className="articulos-grupo">
+          <button type="button" className="btn-ghost" onClick={toggleGrupoStats}>
+            {grupoOpen ? "Ocultar rendimiento del grupo" : "📊 Rendimiento: masa vs unitario"}
+          </button>
+          {grupoOpen && (
+            loadingGrupo || !grupoStats ? (
+              <div className="articulos-stats-box">Cargando…</div>
+            ) : (
+              <GrupoStatsPanel stats={grupoStats} />
+            )
+          )}
+        </div>
       </div>
 
       {loading && <div className="admin-empty">Claude está redactando el artículo... suele tardar 20-40s.</div>}
@@ -698,6 +745,7 @@ function ArticleRow({
             <span className="editor-badge-hidden"> · oculto del listado</span>
           )}
           {art.template !== "clasico" && <span> · {art.template}</span>}
+          {art.origen_generacion === "masa" && <span className="articulos-badge-masa"> · masa</span>}
         </div>
         {expanded && (
           <ArticleStatsPanel stats={stats} views={art.views ?? 0} ctaClicks={art.cta_clicks ?? 0} />
@@ -787,6 +835,62 @@ function ArticleStatsPanel({ stats, views, ctaClicks }: { stats?: ArticleStats; 
         <div className="articulos-stats-grid articulos-stats-links">
           <StatBlock title="Enlaces pulsados (texto → destino)" rows={stats.linkClicks ?? []} empty="Ninguno" />
         </div>
+      )}
+    </div>
+  );
+}
+
+function GrupoStatsPanel({ stats }: { stats: GroupStats }) {
+  const { masa, unitario } = stats;
+  const fmt = (n: number) => n.toLocaleString("es-ES");
+  const maxRankViews = Math.max(1, ...stats.ranking.map((r) => r.views));
+  return (
+    <div className="articulos-stats-wrap">
+      {/* Comparador masa vs unitario */}
+      <div className="articulos-grupo-compare">
+        {([
+          { titulo: "Generación en masa", d: masa, destacado: true },
+          { titulo: "Unitarios", d: unitario, destacado: false },
+        ] as const).map(({ titulo, d, destacado }) => (
+          <div key={titulo} className={`articulos-grupo-col${destacado ? " destacado" : ""}`}>
+            <div className="articulos-grupo-col-title">{titulo}</div>
+            <div className="articulos-stats-kpis">
+              <StatKpi label="Artículos" value={fmt(d.articulos)} />
+              <StatKpi label="Vistas totales" value={fmt(d.views)} />
+              <StatKpi label="Vistas / artículo" value={fmt(d.viewsMedia)} />
+              <StatKpi label="Clicks CTA" value={`${fmt(d.ctaClicks)} · ${d.ctr}%`} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {masa.articulos === 0 ? (
+        <div className="articulos-stats-box">Aún no hay artículos generados en masa. Genera una tanda arriba y vuelve aquí.</div>
+      ) : (
+        <>
+          {/* Ranking: qué artículo de la masa funciona mejor */}
+          <div className="articulos-stats-block">
+            <div className="articulos-stats-block-title">Mejores artículos del grupo masivo (por vistas)</div>
+            {stats.ranking.map((r, i) => (
+              <div key={r.slug} className="articulos-stats-bar-row">
+                <div className="articulos-stats-bar-label" title={r.h1}>
+                  {i + 1}. {r.h1}
+                </div>
+                <div className="articulos-stats-bar-track">
+                  <div className="articulos-stats-bar-fill" style={{ width: `${(r.views / maxRankViews) * 100}%` }} />
+                </div>
+                <div className="articulos-stats-bar-val">{r.views}<span>·{r.ctr}% CTR</span></div>
+              </div>
+            ))}
+          </div>
+
+          <div className="articulos-stats-grid">
+            <StatBlock title="Temas que mejor funcionan (vistas)" rows={stats.temas} empty="Sin datos" />
+            {stats.linkClicks.length > 0 && (
+              <StatBlock title="Enlaces más pulsados del grupo" rows={stats.linkClicks} empty="Ninguno" />
+            )}
+          </div>
+        </>
       )}
     </div>
   );

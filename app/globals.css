@@ -4202,6 +4202,48 @@ button {
   color: #c0392b;
 }
 
+.articulos-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.articulos-grupo-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .articulos-grupo-compare {
+    grid-template-columns: 1fr;
+  }
+}
+
+.articulos-grupo-col {
+  border: 1px solid rgba(26, 26, 26, 0.1);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--paper-dim);
+}
+
+.articulos-grupo-col.destacado {
+  border-color: rgba(47, 125, 50, 0.4);
+  background: rgba(47, 125, 50, 0.06);
+}
+
+.articulos-grupo-col-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+}
+
+.articulos-badge-masa {
+  color: #2f7d32;
+  font-weight: 600;
+}
+
 .admin-table-wrap {
   overflow-x: auto;
   border: 1px solid rgba(26, 26, 26, 0.1);
