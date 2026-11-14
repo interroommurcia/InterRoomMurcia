@@ -10,6 +10,18 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["@sparticuz/chromium-min", "puppeteer-core"],
   },
+  // Reverse proxy de PostHog: los eventos salen por nuestro propio dominio
+  // (/ingest/*) en vez de eu.i.posthog.com, así los bloqueadores de anuncios
+  // (Brave, Safari/Firefox con anti-tracking, uBlock) no pueden cortarlos y
+  // no perdemos visitas. EU cloud → assets en eu-assets, resto en eu.i.
+  skipTrailingSlashRedirect: true,
+  async rewrites() {
+    return [
+      { source: "/ingest/static/:path*", destination: "https://eu-assets.i.posthog.com/static/:path*" },
+      { source: "/ingest/:path*", destination: "https://eu.i.posthog.com/:path*" },
+      { source: "/ingest/flags", destination: "https://eu.i.posthog.com/flags" },
+    ];
+  },
   images: {
     remotePatterns: [
       {

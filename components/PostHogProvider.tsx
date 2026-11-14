@@ -5,7 +5,11 @@ import { usePathname, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY ?? "";
-const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com";
+// Reverse proxy: la ingesta va por nuestro dominio (/ingest → rewrites en
+// next.config.js) para esquivar los bloqueadores. ui_host apunta al panel real
+// de PostHog para que los enlaces "ver grabación" sigan funcionando.
+const POSTHOG_HOST = "/ingest";
+const POSTHOG_UI_HOST = "https://eu.posthog.com";
 
 // Mismo literal que ExitIntent.EXIT_INTENT_FLAG. No lo importamos para
 // que PostHogProvider no arrastre la landing a su bundle.
@@ -74,8 +78,12 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     if (!POSTHOG_KEY) return;
     posthog.init(POSTHOG_KEY, {
       api_host: POSTHOG_HOST,
+      ui_host: POSTHOG_UI_HOST,
       capture_pageview: false,
       capture_pageleave: true,
+      // Core Web Vitals (LCP, INP, CLS): experiencia real de usuario; Google
+      // los usa para posicionar, así que nos sirven también para SEO.
+      capture_performance: { web_vitals: true },
       session_recording: {
         maskAllInputs: true,
         maskInputOptions: { password: true, email: true },
