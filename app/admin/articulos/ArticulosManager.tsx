@@ -259,13 +259,13 @@ export default function ArticulosManager() {
     loadList();
   }, [loadList]);
 
-  function loadFromPaste() {
+  function loadFromText(raw: string) {
     setError("");
     let parsed: Partial<DraftArticle> & { keyword?: string };
     try {
-      parsed = JSON.parse(pasteJson);
+      parsed = JSON.parse(raw);
     } catch {
-      setError("No se pudo leer el JSON pegado. Revisa que esté completo.");
+      setError("No se pudo leer el JSON. Revisa que esté completo.");
       return;
     }
     if (!parsed || !parsed.h1 || !Array.isArray(parsed.sections)) {
@@ -289,6 +289,23 @@ export default function ArticulosManager() {
     if (parsed.keyword) setKeyword(parsed.keyword);
     setSavedId(null);
     setSavedEstado(null);
+  }
+
+  function loadFromPaste() {
+    loadFromText(pasteJson);
+  }
+
+  async function handleUploadJson(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite volver a subir el mismo archivo
+    if (!file) return;
+    try {
+      const text = await file.text();
+      setPasteJson(text);
+      loadFromText(text);
+    } catch {
+      setError("No se pudo leer el archivo.");
+    }
   }
 
   async function generate() {
@@ -467,7 +484,7 @@ export default function ArticulosManager() {
 
         <div className="piso-form">
           <label>
-            …o pega el JSON de un artículo para previsualizarlo
+            …o pega el JSON de un artículo, o sube un archivo .json
             <textarea
               rows={4}
               value={pasteJson}
@@ -476,6 +493,10 @@ export default function ArticulosManager() {
             />
           </label>
           <div className="lead-form-actions">
+            <label className="btn-ghost" style={{ cursor: "pointer" }}>
+              Subir .json
+              <input type="file" accept=".json,application/json" onChange={handleUploadJson} style={{ display: "none" }} />
+            </label>
             <button type="button" className="btn-ghost" onClick={loadFromPaste} disabled={!pasteJson.trim()}>
               Cargar y previsualizar
             </button>
