@@ -50,6 +50,21 @@ export default function DocumentosPage() {
               Abrir calculadora →
             </span>
           </Link>
+
+          <Link
+            href="/rentabilidad/express"
+            className="analytics-card"
+            style={{ display: "block", textDecoration: "none", color: "inherit" }}
+          >
+            <h3>⚡ Rentabilidad express</h3>
+            <p style={{ margin: "8px 0 14px", fontSize: "0.9rem", opacity: 0.75, lineHeight: 1.5 }}>
+              Versión escueta para clientes: precio por habitación, limpieza sí/no
+              y suministros incluidos sí/no. Informe estimado en PDF.
+            </p>
+            <span style={{ fontSize: "0.85rem", color: "var(--orange-dark)", fontWeight: 500 }}>
+              Abrir informe →
+            </span>
+          </Link>
         </div>
       </div>
     </section>
