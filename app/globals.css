@@ -3318,6 +3318,37 @@ button {
   background: var(--paper);
 }
 
+/* En el preview del panel el raíl no debe colapsar tan pronto; se marca con
+   borde discontinuo y etiqueta para que se vea dónde irán los anuncios. */
+.articulos-preview .article-layout {
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 24px;
+}
+
+.articulos-preview-rail {
+  border: 2px dashed color-mix(in srgb, var(--orange) 55%, transparent);
+  border-radius: 14px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--orange-light) 50%, transparent);
+  align-self: start;
+}
+
+.articulos-preview-rail-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--orange-dark);
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .articulos-preview .article-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .articulos-list-section {
   display: flex;
   flex-direction: column;

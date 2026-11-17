@@ -880,7 +880,10 @@ function DraftPreview({ draft, template }: { draft: DraftArticle; template: stri
       <div className="articulos-preview">
         <div className="article-layout">
           <div className="article-wrap">{cuerpo}</div>
-          <ArticleRail texto={texto} demo />
+          <div className="articulos-preview-rail">
+            <div className="articulos-preview-rail-label">📢 Aquí van los anuncios (raíl lateral)</div>
+            <ArticleRail texto={texto} demo />
+          </div>
         </div>
       </div>
     );
