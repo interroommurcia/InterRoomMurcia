@@ -183,6 +183,8 @@ export default function ArticulosManager() {
   const [loadingList, setLoadingList] = useState(true);
   const [expandedStats, setExpandedStats] = useState<string | null>(null);
   const [statsData, setStatsData] = useState<Record<string, ArticleStats>>({});
+  const [listTab, setListTab] = useState<"publicados" | "borradores">("publicados");
+  const [origenFiltro, setOrigenFiltro] = useState<"todos" | "unitario" | "masa">("todos");
   const [editingArticle, setEditingArticle] = useState<EditableArticle | null>(null);
   const [bulkKeywords, setBulkKeywords] = useState("");
   const [bulkTone, setBulkTone] = useState<"cercano" | "profesional">("cercano");
@@ -479,6 +481,13 @@ export default function ArticulosManager() {
 
   const borradores = savedArticles.filter((a) => a.estado === "borrador");
   const publicados = savedArticles.filter((a) => a.estado === "publicado");
+  const publicadosFiltrados = publicados.filter((a) =>
+    origenFiltro === "todos"
+      ? true
+      : origenFiltro === "masa"
+        ? a.origen_generacion === "masa"
+        : a.origen_generacion !== "masa"
+  );
 
   return (
     <div className="articulos-manager">
@@ -741,48 +750,77 @@ export default function ArticulosManager() {
       )}
 
       <div className="articulos-list-section">
-        <div className="section-head">
-          <h2>Artículos publicados ({publicados.length})</h2>
+        <div className="articulos-tabs">
+          <button
+            type="button"
+            className={`articulos-tab ${listTab === "publicados" ? "activa" : ""}`}
+            onClick={() => setListTab("publicados")}
+          >
+            Publicados ({publicados.length})
+          </button>
+          <button
+            type="button"
+            className={`articulos-tab ${listTab === "borradores" ? "activa" : ""}`}
+            onClick={() => setListTab("borradores")}
+          >
+            Borradores ({borradores.length})
+          </button>
         </div>
-        {loadingList ? (
-          <p className="admin-empty">Cargando...</p>
-        ) : publicados.length === 0 ? (
-          <p className="admin-empty">No hay artículos publicados aún.</p>
-        ) : (
-          publicados.map((a) => (
-            <ArticleRow
-              key={a.id}
-              art={a}
-              expanded={expandedStats === a.slug}
-              stats={statsData[a.slug]}
-              onToggleStats={() => toggleStats(a.slug)}
-              onToggleEstado={() => toggleEstado(a.id, "borrador")}
-              onDelete={() => deleteArticle(a.id)}
-              onEdit={() => openEditor(a.id)}
-            />
-          ))
+
+        {listTab === "publicados" && (
+          <>
+            <div className="articulos-filtro">
+              {(["todos", "unitario", "masa"] as const).map((o) => (
+                <button
+                  type="button"
+                  key={o}
+                  className={`articulos-filtro-btn ${origenFiltro === o ? "activa" : ""}`}
+                  onClick={() => setOrigenFiltro(o)}
+                >
+                  {o === "todos" ? "Todos" : o === "unitario" ? "Unitario" : "Masa"}
+                </button>
+              ))}
+            </div>
+            {loadingList ? (
+              <p className="admin-empty">Cargando...</p>
+            ) : publicadosFiltrados.length === 0 ? (
+              <p className="admin-empty">No hay artículos publicados{origenFiltro !== "todos" ? ` (${origenFiltro})` : ""}.</p>
+            ) : (
+              publicadosFiltrados.map((a) => (
+                <ArticleRow
+                  key={a.id}
+                  art={a}
+                  expanded={expandedStats === a.slug}
+                  stats={statsData[a.slug]}
+                  onToggleStats={() => toggleStats(a.slug)}
+                  onToggleEstado={() => toggleEstado(a.id, "borrador")}
+                  onDelete={() => deleteArticle(a.id)}
+                  onEdit={() => openEditor(a.id)}
+                />
+              ))
+            )}
+          </>
         )}
 
-        <div className="section-head" style={{ marginTop: 30 }}>
-          <h2>Borradores ({borradores.length})</h2>
-        </div>
-        {loadingList ? (
-          <p className="admin-empty">Cargando...</p>
-        ) : borradores.length === 0 ? (
-          <p className="admin-empty">No hay borradores.</p>
-        ) : (
-          borradores.map((a) => (
-            <ArticleRow
-              key={a.id}
-              art={a}
-              expanded={expandedStats === a.slug}
-              stats={statsData[a.slug]}
-              onToggleStats={() => toggleStats(a.slug)}
-              onToggleEstado={() => toggleEstado(a.id, "publicado")}
-              onDelete={() => deleteArticle(a.id)}
-              onEdit={() => openEditor(a.id)}
-            />
-          ))
+        {listTab === "borradores" && (
+          loadingList ? (
+            <p className="admin-empty">Cargando...</p>
+          ) : borradores.length === 0 ? (
+            <p className="admin-empty">No hay borradores.</p>
+          ) : (
+            borradores.map((a) => (
+              <ArticleRow
+                key={a.id}
+                art={a}
+                expanded={expandedStats === a.slug}
+                stats={statsData[a.slug]}
+                onToggleStats={() => toggleStats(a.slug)}
+                onToggleEstado={() => toggleEstado(a.id, "publicado")}
+                onDelete={() => deleteArticle(a.id)}
+                onEdit={() => openEditor(a.id)}
+              />
+            ))
+          )
         )}
       </div>
     </div>
