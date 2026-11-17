@@ -1,5 +1,7 @@
 "use client";
 
+import { esInterno } from "../../lib/interno";
+
 type Aparicion = {
   medio: string;
   logo: string;
@@ -22,14 +24,15 @@ export default function PrensaCard({ a }: { a: Aparicion }) {
       target="_blank"
       rel="noopener noreferrer"
       className="prensa-card"
-      onClick={() =>
+      onClick={() => {
+        if (esInterno()) return; // mis propios clics no cuentan
         fetch("/api/blog/track", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ slug: medioSlug(a.medio), event: "prensa_click", url: typeof window !== "undefined" ? window.location.href : null }),
           keepalive: true,
-        }).catch(() => {})
-      }
+        }).catch(() => {});
+      }}
     >
       <div className="prensa-card-badge" style={{ backgroundImage: `url(${a.logo})` }} aria-label={a.medio} />
       <div className="prensa-card-body">

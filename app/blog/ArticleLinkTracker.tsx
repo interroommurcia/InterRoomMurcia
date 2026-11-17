@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { esInterno } from "../../lib/interno";
 
 /**
  * Registra, por delegación, el clic en CUALQUIER enlace dentro del artículo
@@ -18,6 +19,7 @@ export default function ArticleLinkTracker({ slug }: { slug: string }) {
     let ultimoTs = 0;
 
     function onClick(e: Event) {
+      if (esInterno()) return; // mis propios clics no cuentan
       const a = (e.target as HTMLElement | null)?.closest?.("a") as HTMLAnchorElement | null;
       if (!a) return;
       const href = a.href || "";

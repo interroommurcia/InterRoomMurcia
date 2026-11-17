@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import { esInterno } from "../../lib/interno";
 
 export function ViewTracker({ slug }: { slug: string }) {
   useEffect(() => {
+    if (esInterno()) return; // mis propias visitas no cuentan
     fetch("/api/blog/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -36,13 +38,14 @@ export function CtaLink({
       target="_blank"
       rel="noopener noreferrer"
       className={className}
-      onClick={() =>
+      onClick={() => {
+        if (esInterno()) return; // mis propias visitas no cuentan
         fetch("/api/blog/track", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ slug, event: "cta_click" }),
-        })
-      }
+        });
+      }}
     >
       {children}
     </a>

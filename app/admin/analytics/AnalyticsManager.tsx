@@ -321,11 +321,12 @@ export default function AnalyticsManager({ esAdmin }: { esAdmin: boolean }) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     resumen: true,
     leads: true,
-    audiencia: true,
-    trafico: true,
-    contenido: true,
-    blog: true,
-    estrategia: true,
+    venta: false,
+    trafico: false,
+    contenido: false,
+    blog: false,
+    audiencia: false,
+    estrategia: false,
   });
 
   const loadData = useCallback(() => {
@@ -540,95 +541,12 @@ export default function AnalyticsManager({ esAdmin }: { esAdmin: boolean }) {
         </>
       )}
 
-      {/* ── Audiencia ── */}
-      <SectionHead id="audiencia" title="Audiencia" tip="Quiénes son tus visitantes: nuevos vs recurrentes, dispositivos, países y tendencias diarias" />
-      {openSections.audiencia && (
-        <div className="analytics-grid">
-          <div className="analytics-card">
-            <h3>Nuevos vs recurrentes {anual ? "por mes" : "por día"} <HelpTip tip="Comparativa diaria entre usuarios que visitan por primera vez y los que ya habían visitado antes" /></h3>
-            <div style={{ display: "flex", gap: 16, fontSize: 12, marginBottom: 8, color: "#6b7280" }}>
-              <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#22c55e", marginRight: 4 }} />Nuevos</span>
-              <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#6366f1", marginRight: 4 }} />Recurrentes</span>
-            </div>
-            <div className="analytics-daily-chart analytics-daily-chart--tall">
-              {nvrDia.map((d) => {
-                const total = d.newUsers + d.returning;
-                const pctNew = maxNvR > 0 ? Math.round((d.newUsers / maxNvR) * 100) : 0;
-                const pctRet = maxNvR > 0 ? Math.round((d.returning / maxNvR) * 100) : 0;
-                return (
-                  <div key={d.day} className="analytics-daily-col">
-                    <span className="analytics-daily-number">{total}</span>
-                    <div style={{ width: "100%", display: "flex", flexDirection: "column", justifyContent: "flex-end", flex: 1 }}>
-                      <div className="analytics-daily-bar" style={{ height: `${pctRet}%`, background: "#6366f1", borderRadius: "3px 3px 0 0", minHeight: d.returning > 0 ? 2 : 0 }} />
-                      <div className="analytics-daily-bar analytics-daily-bar--new" style={{ height: `${pctNew}%`, borderRadius: d.returning > 0 ? "0" : "3px 3px 0 0", minHeight: d.newUsers > 0 ? 2 : 0 }} />
-                    </div>
-                    <span>{ejeX(d.day, anual)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="analytics-card" style={{ border: "1px dashed #e5e7eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "#cbd5e1", fontSize: 13, textAlign: "center" }}>
-              Espacio reservado para una métrica próxima
-            </span>
-          </div>
-
-          <div className="analytics-card">
-            <h3>Pageviews {anual ? "por mes" : "por día"} <HelpTip tip="Total de páginas cargadas por día. Un usuario puede generar varias pageviews en una sesión" /></h3>
-            <div className="analytics-daily-chart analytics-daily-chart--tall">
-              {vistasDia.map((d) => (
-                <div key={d.day} className="analytics-daily-col">
-                  <span className="analytics-daily-number">{d.pageviews}</span>
-                  <div className="analytics-daily-bar" style={{ height: `${Math.round((d.pageviews / maxDaily) * 100)}%` }} />
-                  <span>{ejeX(d.day, anual)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="analytics-card">
-            <h3>Pico concurrentes {anual ? "por mes" : "por día"} <HelpTip tip="Máximo de usuarios activos al mismo tiempo en una hora, para cada día del periodo" /></h3>
-            <div className="analytics-daily-chart analytics-daily-chart--tall">
-              {picoDia.map((d) => (
-                <div key={d.day} className="analytics-daily-col">
-                  <span className="analytics-daily-number">{d.peak}</span>
-                  <div className="analytics-daily-bar analytics-daily-bar--peak" style={{ height: `${Math.round((d.peak / maxPeak) * 100)}%` }} />
-                  <span>{ejeX(d.day, anual)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="analytics-card">
-            <h3>Dispositivos <HelpTip tip="Tipo de dispositivo usado: móvil, escritorio o tablet" /></h3>
-            {(() => {
-              const es: Record<string, string> = {
-                Desktop: "💻 Escritorio", Mobile: "📱 Móvil", Tablet: "📲 Tablet",
-                Console: "🎮 Consola", Unknown: "Desconocido",
-              };
-              // Siempre mostrar los 3 principales (aunque sean 0), y añadir el
-              // resto que PostHog devuelva. Ordenado por visitas desc.
-              const byDevice = new Map(data.devices.map((d) => [d.device, d.visits]));
-              const fijos = ["Desktop", "Mobile", "Tablet"];
-              const extras = data.devices.map((d) => d.device).filter((d) => !fijos.includes(d));
-              return [...fijos, ...extras]
-                .map((dev) => ({ dev, visits: byDevice.get(dev) ?? 0 }))
-                .sort((a, b) => b.visits - a.visits)
-                .map(({ dev, visits }) => (
-                  <div key={dev} className="analytics-row"><span>{es[dev] || dev}</span><span>{visits}</span></div>
-                ));
-            })()}
-          </div>
-
-          <div className="analytics-card">
-            <h3>Países <HelpTip tip="País desde el que acceden los visitantes, basado en su dirección IP" /></h3>
-            {data.countries.map((c) => (
-              <Bar key={c.country} label={c.country} value={c.visits} max={maxCountry} />
-            ))}
-          </div>
-        </div>
+      {/* ── Conversión Vende tu Casa ── */}
+      {data.venta && (
+        <>
+          <SectionHead id="venta" title="Conversión · Vende tu Casa" tip="Funnel, exit intent, scroll depth y canales de conversión de la página /venta" />
+          {openSections.venta && <VentaConversionBlock v={data.venta} />}
+        </>
       )}
 
       {/* ── De dónde vienen ── */}
@@ -749,6 +667,97 @@ export default function AnalyticsManager({ esAdmin }: { esAdmin: boolean }) {
       <SectionHead id="blog" title="Blog" tip="Rendimiento del blog: artículos más leídos, clics en sus enlaces, de dónde entran los lectores (directo, inicio, buscadores, IA) y clics en las notas de prensa" />
       {openSections.blog && <BlogBlock />}
 
+      {/* ── Audiencia ── */}
+      <SectionHead id="audiencia" title="Audiencia" tip="Quiénes son tus visitantes: nuevos vs recurrentes, dispositivos, países y tendencias diarias" />
+      {openSections.audiencia && (
+        <div className="analytics-grid">
+          <div className="analytics-card">
+            <h3>Nuevos vs recurrentes {anual ? "por mes" : "por día"} <HelpTip tip="Comparativa diaria entre usuarios que visitan por primera vez y los que ya habían visitado antes" /></h3>
+            <div style={{ display: "flex", gap: 16, fontSize: 12, marginBottom: 8, color: "#6b7280" }}>
+              <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#22c55e", marginRight: 4 }} />Nuevos</span>
+              <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#6366f1", marginRight: 4 }} />Recurrentes</span>
+            </div>
+            <div className="analytics-daily-chart analytics-daily-chart--tall">
+              {nvrDia.map((d) => {
+                const total = d.newUsers + d.returning;
+                const pctNew = maxNvR > 0 ? Math.round((d.newUsers / maxNvR) * 100) : 0;
+                const pctRet = maxNvR > 0 ? Math.round((d.returning / maxNvR) * 100) : 0;
+                return (
+                  <div key={d.day} className="analytics-daily-col">
+                    <span className="analytics-daily-number">{total}</span>
+                    <div style={{ width: "100%", display: "flex", flexDirection: "column", justifyContent: "flex-end", flex: 1 }}>
+                      <div className="analytics-daily-bar" style={{ height: `${pctRet}%`, background: "#6366f1", borderRadius: "3px 3px 0 0", minHeight: d.returning > 0 ? 2 : 0 }} />
+                      <div className="analytics-daily-bar analytics-daily-bar--new" style={{ height: `${pctNew}%`, borderRadius: d.returning > 0 ? "0" : "3px 3px 0 0", minHeight: d.newUsers > 0 ? 2 : 0 }} />
+                    </div>
+                    <span>{ejeX(d.day, anual)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="analytics-card" style={{ border: "1px dashed #e5e7eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ color: "#cbd5e1", fontSize: 13, textAlign: "center" }}>
+              Espacio reservado para una métrica próxima
+            </span>
+          </div>
+
+          <div className="analytics-card">
+            <h3>Pageviews {anual ? "por mes" : "por día"} <HelpTip tip="Total de páginas cargadas por día. Un usuario puede generar varias pageviews en una sesión" /></h3>
+            <div className="analytics-daily-chart analytics-daily-chart--tall">
+              {vistasDia.map((d) => (
+                <div key={d.day} className="analytics-daily-col">
+                  <span className="analytics-daily-number">{d.pageviews}</span>
+                  <div className="analytics-daily-bar" style={{ height: `${Math.round((d.pageviews / maxDaily) * 100)}%` }} />
+                  <span>{ejeX(d.day, anual)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="analytics-card">
+            <h3>Pico concurrentes {anual ? "por mes" : "por día"} <HelpTip tip="Máximo de usuarios activos al mismo tiempo en una hora, para cada día del periodo" /></h3>
+            <div className="analytics-daily-chart analytics-daily-chart--tall">
+              {picoDia.map((d) => (
+                <div key={d.day} className="analytics-daily-col">
+                  <span className="analytics-daily-number">{d.peak}</span>
+                  <div className="analytics-daily-bar analytics-daily-bar--peak" style={{ height: `${Math.round((d.peak / maxPeak) * 100)}%` }} />
+                  <span>{ejeX(d.day, anual)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="analytics-card">
+            <h3>Dispositivos <HelpTip tip="Tipo de dispositivo usado: móvil, escritorio o tablet" /></h3>
+            {(() => {
+              const es: Record<string, string> = {
+                Desktop: "💻 Escritorio", Mobile: "📱 Móvil", Tablet: "📲 Tablet",
+                Console: "🎮 Consola", Unknown: "Desconocido",
+              };
+              // Siempre mostrar los 3 principales (aunque sean 0), y añadir el
+              // resto que PostHog devuelva. Ordenado por visitas desc.
+              const byDevice = new Map(data.devices.map((d) => [d.device, d.visits]));
+              const fijos = ["Desktop", "Mobile", "Tablet"];
+              const extras = data.devices.map((d) => d.device).filter((d) => !fijos.includes(d));
+              return [...fijos, ...extras]
+                .map((dev) => ({ dev, visits: byDevice.get(dev) ?? 0 }))
+                .sort((a, b) => b.visits - a.visits)
+                .map(({ dev, visits }) => (
+                  <div key={dev} className="analytics-row"><span>{es[dev] || dev}</span><span>{visits}</span></div>
+                ));
+            })()}
+          </div>
+
+          <div className="analytics-card">
+            <h3>Países <HelpTip tip="País desde el que acceden los visitantes, basado en su dirección IP" /></h3>
+            {data.countries.map((c) => (
+              <Bar key={c.country} label={c.country} value={c.visits} max={maxCountry} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Estrategia: SEO / SEM / GEO ── */}
       <SectionHead id="estrategia" title="Estrategia · SEO · SEM · GEO" tip="Clasifica tu tráfico en canales estratégicos (orgánico, pagado, IA generativa, social, directo) y propone acciones concretas basadas en tus números reales" />
       {openSections.estrategia && (
@@ -761,14 +770,6 @@ export default function AnalyticsManager({ esAdmin }: { esAdmin: boolean }) {
           totalVisits={data.stats.sessions}
           leads30d={leads?.total30d ?? null}
         />
-      )}
-
-      {/* ── Conversión Vende tu Casa ── */}
-      {data.venta && (
-        <>
-          <SectionHead id="venta" title="Conversión · Vende tu Casa" tip="Funnel, exit intent, scroll depth y canales de conversión de la página /venta" />
-          {openSections.venta && <VentaConversionBlock v={data.venta} />}
-        </>
       )}
 
       {/* ── Grabaciones de sesión (solo admin) ── */}
