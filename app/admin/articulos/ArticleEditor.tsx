@@ -21,7 +21,7 @@ export type EditableArticle = {
   keyword: string | null;
   hero_image: string | null;
   mostrar_en_listado: boolean;
-  template: "clasico" | "minimalista" | "revista";
+  template: "clasico" | "minimalista" | "revista" | "con-anuncios";
 };
 
 async function uploadFile(slug: string, file: File): Promise<string> {

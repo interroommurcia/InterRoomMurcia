@@ -22,12 +22,13 @@ export type PreviewData = {
   fuentes: { label: string; url: string }[];
 };
 
-type TemplateKey = "clasico" | "minimalista" | "revista";
+type TemplateKey = "clasico" | "minimalista" | "revista" | "con-anuncios";
 
 const TEMPLATES: { key: TemplateKey; label: string }[] = [
   { key: "clasico", label: "Clásico" },
   { key: "minimalista", label: "Minimalista" },
   { key: "revista", label: "Revista" },
+  { key: "con-anuncios", label: "Con anuncios" },
 ];
 
 // Vista previa fiel de cómo se verá el artículo publicado. Replica el markup y

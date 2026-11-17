@@ -98,6 +98,49 @@ export const RECURSOS: Recurso[] = [
     tipo: "afiliado",
     temas: ["mudanza"],
   },
+  // --- PRODUCTOS GENÉRICOS DE AMAZON (sin `temas` = valen en CUALQUIER artículo) ---
+  // Recomendaciones impersonales de buen margen para captar clics de afiliado.
+  // Pega tu enlace de afiliado de Amazon (con tu tag) en cada `url`.
+  {
+    id: "sabanas",
+    titulo: "Juego de sábanas para tu cama",
+    descripcion: "Sábanas suaves y transpirables para la habitación, en varias medidas.",
+    cta: "Ver en Amazon",
+    url: null, // ← pega tu enlace de afiliado de Amazon
+    tipo: "afiliado",
+  },
+  {
+    id: "ollas",
+    titulo: "Batería de cocina (ollas y sartenes)",
+    descripcion: "Set básico de ollas y sartenes para empezar en el piso compartido.",
+    cta: "Ver en Amazon",
+    url: null, // ← pega tu enlace de afiliado de Amazon
+    tipo: "afiliado",
+  },
+  {
+    id: "nordico",
+    titulo: "Edredón nórdico y funda",
+    descripcion: "Nórdico calentito y funda a juego para el invierno de Murcia.",
+    cta: "Ver en Amazon",
+    url: null, // ← pega tu enlace de afiliado de Amazon
+    tipo: "afiliado",
+  },
+  {
+    id: "escritorio",
+    titulo: "Flexo y organización de escritorio",
+    descripcion: "Lámpara de estudio y orden para rendir en época de exámenes.",
+    cta: "Ver en Amazon",
+    url: null, // ← pega tu enlace de afiliado de Amazon
+    tipo: "afiliado",
+  },
+  {
+    id: "menaje",
+    titulo: "Menaje básico de cocina",
+    descripcion: "Vajilla, cubiertos y lo imprescindible para el día a día.",
+    cta: "Ver en Amazon",
+    url: null, // ← pega tu enlace de afiliado de Amazon
+    tipo: "afiliado",
+  },
 ];
 
 export function temaDelArticulo(texto: string): "inquilino" | "propietario" | "mudanza" {

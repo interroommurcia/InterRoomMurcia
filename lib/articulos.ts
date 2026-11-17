@@ -25,7 +25,7 @@ export type ArticuloResumen = {
   createdAt: string;
 };
 
-export type ArticuloTemplate = "clasico" | "minimalista" | "revista";
+export type ArticuloTemplate = "clasico" | "minimalista" | "revista" | "con-anuncios";
 
 export type Articulo = ArticuloResumen & {
   intro: string;

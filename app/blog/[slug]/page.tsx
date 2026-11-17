@@ -6,6 +6,7 @@ import { linkifyParrafo, detectarZona, ctaZona, ctaIntencion } from "../../../li
 import { recursosParaArticulo } from "../../../lib/afiliados";
 import RecursosAfiliados from "../../../components/RecursosAfiliados";
 import AdSlot from "../../../components/AdSlot";
+import ArticleRail from "../../../components/ArticleRail";
 import { ViewTracker, CtaLink } from "../ViewTracker";
 import ArticleLinkTracker from "../ArticleLinkTracker";
 
@@ -51,6 +52,7 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
   });
 
   const animated = art.template !== "clasico";
+  const conAnuncios = art.template === "con-anuncios";
   const Block = ({ className, children }: { className?: string; children: React.ReactNode }) =>
     animated ? <Reveal className={className}>{children}</Reveal> : <div className={className}>{children}</div>;
 
@@ -99,12 +101,8 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
     ],
   };
 
-  return (
-    <section className={`section article article-${art.template}`}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <ViewTracker slug={art.slug} />
-      <ArticleLinkTracker slug={art.slug} />
-      <div className="wrap article-wrap">
+  const contenido = (
+    <>
         <nav className="article-breadcrumb" aria-label="Breadcrumb">
           <Link href="/">Inicio</Link> · <Link href="/blog">Blog</Link> · <span>{art.h1}</span>
         </nav>
@@ -215,7 +213,22 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
             </div>
           </div>
         )}
-      </div>
+    </>
+  );
+
+  return (
+    <section className={`section article article-${art.template}`}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <ViewTracker slug={art.slug} />
+      <ArticleLinkTracker slug={art.slug} />
+      {conAnuncios ? (
+        <div className="wrap article-layout">
+          <div className="article-wrap">{contenido}</div>
+          <ArticleRail texto={textoIntencion} />
+        </div>
+      ) : (
+        <div className="wrap article-wrap">{contenido}</div>
+      )}
     </section>
   );
 }

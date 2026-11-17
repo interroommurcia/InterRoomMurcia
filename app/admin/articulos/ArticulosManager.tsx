@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArticleEditor, type EditableArticle } from "./ArticleEditor";
 import { ArticlePreview } from "./ArticlePreview";
+import ArticleRail from "../../../components/ArticleRail";
+import RecursosAfiliados from "../../../components/RecursosAfiliados";
+import { recursosParaArticulo, RECURSOS } from "../../../lib/afiliados";
 import { SITE_URL } from "../../../lib/site";
 
 const SITE_HOST = SITE_URL.replace(/^https?:\/\//, "");
@@ -38,7 +41,7 @@ type SavedArticle = {
   views: number | null;
   cta_clicks: number | null;
   mostrar_en_listado: boolean;
-  template: "clasico" | "minimalista" | "revista";
+  template: "clasico" | "minimalista" | "revista" | "con-anuncios";
   origen_generacion?: "unitario" | "masa" | null;
 };
 
@@ -84,8 +87,9 @@ async function saveAndPublish(
   article: DraftArticle,
   keyword: string,
   mostrarEnListado: boolean,
-  template: "clasico" | "minimalista" | "revista",
-  origen: "unitario" | "masa" = "unitario"
+  template: "clasico" | "minimalista" | "revista" | "con-anuncios",
+  origen: "unitario" | "masa" = "unitario",
+  publish = true
 ): Promise<string> {
   const res = await fetch("/api/admin/articulos", {
     method: "POST",
@@ -111,17 +115,26 @@ async function saveAndPublish(
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Error guardando artículo");
 
-  const pub = await fetch("/api/admin/articulos", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id: data.id, estado: "publicado" }),
-  });
-  if (!pub.ok) throw new Error("Guardado pero no se pudo publicar");
+  if (publish) {
+    const pub = await fetch("/api/admin/articulos", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: data.id, estado: "publicado" }),
+    });
+    if (!pub.ok) throw new Error("Guardado pero no se pudo publicar");
+  }
 
   return data.id as string;
 }
 
-type BulkItem = { keyword: string; status: "pendiente" | "generando" | "hecho" | "error"; message?: string };
+type BulkItem = {
+  keyword: string;
+  status: "pendiente" | "generando" | "hecho" | "error";
+  message?: string;
+  draft?: DraftArticle;
+  id?: string;
+  publicado?: boolean;
+};
 
 type Bucket = { key: string; label: string; count: number; pct: number };
 type ArticleStats = {
@@ -158,7 +171,7 @@ export default function ArticulosManager() {
   const [tone, setTone] = useState<"cercano" | "profesional">("cercano");
   const [material, setMaterial] = useState("");
   const [pasteJson, setPasteJson] = useState("");
-  const [template, setTemplate] = useState<"clasico" | "minimalista" | "revista">("clasico");
+  const [template, setTemplate] = useState<"clasico" | "minimalista" | "revista" | "con-anuncios">("clasico");
   const [loading, setLoading] = useState(false);
   const [loadingImages, setLoadingImages] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -173,9 +186,12 @@ export default function ArticulosManager() {
   const [editingArticle, setEditingArticle] = useState<EditableArticle | null>(null);
   const [bulkKeywords, setBulkKeywords] = useState("");
   const [bulkTone, setBulkTone] = useState<"cercano" | "profesional">("cercano");
-  const [bulkTemplate, setBulkTemplate] = useState<"clasico" | "minimalista" | "revista">("clasico");
+  const [bulkTemplate, setBulkTemplate] = useState<"clasico" | "minimalista" | "revista" | "con-anuncios">("clasico");
   const [bulkItems, setBulkItems] = useState<BulkItem[]>([]);
   const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkAutoPublish, setBulkAutoPublish] = useState(false);
+  const [previewDraft, setPreviewDraft] = useState<{ draft: DraftArticle; template: string } | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
 
   const [grupoStats, setGrupoStats] = useState<GroupStats | null>(null);
   const [grupoOpen, setGrupoOpen] = useState(false);
@@ -208,8 +224,10 @@ export default function ArticulosManager() {
       setBulkItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, status: "generando" } : it)));
       try {
         const draft = await generateArticleFromKeyword(keywords[i], bulkTone, null);
-        await saveAndPublish(draft, keywords[i], false, bulkTemplate, "masa");
-        setBulkItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, status: "hecho" } : it)));
+        const id = await saveAndPublish(draft, keywords[i], false, bulkTemplate, "masa", bulkAutoPublish);
+        setBulkItems((prev) =>
+          prev.map((it, idx) => (idx === i ? { ...it, status: "hecho", draft, id, publicado: bulkAutoPublish } : it))
+        );
       } catch (e: unknown) {
         setBulkItems((prev) =>
           prev.map((it, idx) => (idx === i ? { ...it, status: "error", message: e instanceof Error ? e.message : "Error" } : it))
@@ -223,6 +241,30 @@ export default function ArticulosManager() {
     if (grupoOpen) {
       const res = await fetch("/api/admin/articulos/stats-grupo");
       if (res.ok) setGrupoStats(await res.json());
+    }
+  }
+
+  async function publishBulkItem(i: number) {
+    const item = bulkItems[i];
+    if (!item?.id || item.publicado) return;
+    setPublishingId(item.id);
+    const res = await fetch("/api/admin/articulos", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: item.id, estado: "publicado" }),
+    });
+    if (res.ok) {
+      setBulkItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, publicado: true } : it)));
+      await loadList();
+    }
+    setPublishingId(null);
+  }
+
+  async function publishAllBulk() {
+    for (let i = 0; i < bulkItems.length; i++) {
+      if (bulkItems[i].status === "hecho" && bulkItems[i].id && !bulkItems[i].publicado) {
+        await publishBulkItem(i);
+      }
     }
   }
 
@@ -467,6 +509,7 @@ export default function ArticulosManager() {
                 <option value="clasico">Clásico</option>
                 <option value="minimalista">Minimalista</option>
                 <option value="revista">Revista</option>
+                <option value="con-anuncios">Con anuncios (raíl lateral)</option>
               </select>
             </label>
           </div>
@@ -600,9 +643,19 @@ export default function ArticulosManager() {
                 <option value="clasico">Clásico</option>
                 <option value="minimalista">Minimalista</option>
                 <option value="revista">Revista</option>
+                <option value="con-anuncios">Con anuncios (raíl lateral)</option>
               </select>
             </label>
           </div>
+          <label className="articulos-bulk-check">
+            <input
+              type="checkbox"
+              checked={bulkAutoPublish}
+              onChange={(e) => setBulkAutoPublish(e.target.checked)}
+              disabled={bulkRunning}
+            />
+            Publicar automáticamente al generar (si no, se quedan en borrador para revisarlos)
+          </label>
           <div className="lead-form-actions">
             <button type="button" className="btn-primary" onClick={runBulkGenerate} disabled={bulkRunning || !bulkKeywords.trim()}>
               {bulkRunning ? "Generando en lote…" : "Generar en lote"}
@@ -612,6 +665,14 @@ export default function ArticulosManager() {
 
         {bulkItems.length > 0 && (
           <div className="articulos-bulk-progress">
+            {bulkItems.some((it) => it.status === "hecho" && it.id && !it.publicado) && (
+              <div className="articulos-bulk-toolbar">
+                <span>Revisa los borradores y publícalos cuando quieras.</span>
+                <button type="button" className="btn-ghost" onClick={publishAllBulk} disabled={!!publishingId}>
+                  Publicar todos
+                </button>
+              </div>
+            )}
             {bulkItems.map((it, i) => (
               <div key={i} className="articulos-bulk-row">
                 <span className={`articulos-bulk-status ${it.status}`}>
@@ -622,6 +683,29 @@ export default function ArticulosManager() {
                 </span>
                 <span className="articulos-bulk-keyword">{it.keyword}</span>
                 {it.message && <span className="articulos-bulk-message">{it.message}</span>}
+                {it.status === "hecho" && it.draft && (
+                  <span className="articulos-bulk-actions">
+                    <button
+                      type="button"
+                      className="btn-ghost btn-mini"
+                      onClick={() => setPreviewDraft({ draft: it.draft!, template: bulkTemplate })}
+                    >
+                      Leer
+                    </button>
+                    {it.publicado ? (
+                      <span className="articulos-bulk-pub">Publicado ✓</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn-mini btn-primary"
+                        onClick={() => publishBulkItem(i)}
+                        disabled={publishingId === it.id}
+                      >
+                        {publishingId === it.id ? "…" : "Publicar"}
+                      </button>
+                    )}
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -643,42 +727,16 @@ export default function ArticulosManager() {
 
       {loading && <div className="admin-empty">Claude está redactando el artículo... suele tardar 20-40s.</div>}
 
-      {article && (
-        <div className="articulos-preview">
-          <div className="article-meta">Vista previa</div>
-          <h1>{article.h1}</h1>
-          <p className="article-intro">{article.intro}</p>
-          {article.heroImage && (
-            <div className="article-hero">
-              <img src={article.heroImage} alt={article.h1} />
-            </div>
-          )}
-          {article.sections.map((s, i) => (
-            <div className="article-section" key={i}>
-              <h2>{s.h2}</h2>
-              {s.image && <img className="article-section-img" src={s.image} alt={s.h2} />}
-              {s.highlight && <blockquote className="article-highlight">{s.highlight}</blockquote>}
-              {s.content.split("\n\n").map((p, j) => (
-                <p key={j}>{p}</p>
-              ))}
-            </div>
-          ))}
-          {article.cta && (
-            <div className="article-cta">
-              <p>{article.cta}</p>
-            </div>
-          )}
-          {article.faq.length > 0 && (
-            <div className="article-faq">
-              <h2>Preguntas frecuentes</h2>
-              {article.faq.map((f, i) => (
-                <div className="article-faq-item" key={i}>
-                  <h3>{f.question}</h3>
-                  <p>{f.answer}</p>
-                </div>
-              ))}
-            </div>
-          )}
+      {article && <DraftPreview draft={article} template={template} />}
+
+      {previewDraft && (
+        <div className="articulos-preview-modal" onClick={() => setPreviewDraft(null)}>
+          <div className="articulos-preview-modal-inner" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="articulos-preview-close" onClick={() => setPreviewDraft(null)}>
+              Cerrar ✕
+            </button>
+            <DraftPreview draft={previewDraft.draft} template={previewDraft.template} />
+          </div>
         </div>
       )}
 
@@ -729,6 +787,68 @@ export default function ArticulosManager() {
       </div>
     </div>
   );
+}
+
+// Vista previa fiel de un borrador: muestra el artículo y, si la plantilla es
+// "con-anuncios", lo envuelve con el raíl lateral (en demo) y el bloque de
+// recursos recomendados para ver exactamente cómo quedará antes de publicar.
+function DraftPreview({ draft, template }: { draft: DraftArticle; template: string }) {
+  const conAnuncios = template === "con-anuncios";
+  const texto = `${draft.h1} ${draft.intro}`;
+  const demoRecursos = RECURSOS.filter((r) => r.tipo === "afiliado" && !r.temas).slice(0, 4);
+
+  const cuerpo = (
+    <>
+      <div className="article-meta">Vista previa{conAnuncios ? " · con anuncios" : ""}</div>
+      <h1>{draft.h1}</h1>
+      <p className="article-intro">{draft.intro}</p>
+      {draft.heroImage && (
+        <div className="article-hero">
+          <img src={draft.heroImage} alt={draft.h1} />
+        </div>
+      )}
+      {draft.sections.map((s, i) => (
+        <div className="article-section" key={i}>
+          <h2>{s.h2}</h2>
+          {s.image && <img className="article-section-img" src={s.image} alt={s.h2} />}
+          {s.highlight && <blockquote className="article-highlight">{s.highlight}</blockquote>}
+          {s.content.split("\n\n").map((p, j) => (
+            <p key={j}>{p}</p>
+          ))}
+        </div>
+      ))}
+      {draft.cta && (
+        <div className="article-cta">
+          <p>{draft.cta}</p>
+        </div>
+      )}
+      {draft.faq.length > 0 && (
+        <div className="article-faq">
+          <h2>Preguntas frecuentes</h2>
+          {draft.faq.map((f, i) => (
+            <div className="article-faq-item" key={i}>
+              <h3>{f.question}</h3>
+              <p>{f.answer}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      <RecursosAfiliados recursos={conAnuncios ? demoRecursos : recursosParaArticulo(texto, 4)} />
+    </>
+  );
+
+  if (conAnuncios) {
+    return (
+      <div className="articulos-preview">
+        <div className="article-layout">
+          <div className="article-wrap">{cuerpo}</div>
+          <ArticleRail texto={texto} demo />
+        </div>
+      </div>
+    );
+  }
+
+  return <div className="articulos-preview">{cuerpo}</div>;
 }
 
 function ArticleRow({

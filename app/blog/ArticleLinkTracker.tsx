@@ -10,7 +10,9 @@ import { useEffect } from "react";
  */
 export default function ArticleLinkTracker({ slug }: { slug: string }) {
   useEffect(() => {
-    const cont = document.querySelector(".article-wrap");
+    // En la plantilla con raíl lateral los enlaces de los anuncios viven fuera
+    // de .article-wrap; .article-layout los engloba a ambos. Fallback al wrap.
+    const cont = document.querySelector(".article-layout") || document.querySelector(".article-wrap");
     if (!cont) return;
     let ultimo = ""; // dedupe de dobles disparos del mismo enlace
     let ultimoTs = 0;
