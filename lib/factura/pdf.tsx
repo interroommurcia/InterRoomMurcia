@@ -56,10 +56,11 @@ const s = StyleSheet.create({
   payTag: { fontSize: 8, letterSpacing: 1.5, color: ACCENT_DARK, fontFamily: "Helvetica-Bold", marginBottom: 6 },
   payLine: { fontSize: 9.5, color: INK_SOFT, marginBottom: 2 },
   iban: { fontSize: 12, fontFamily: "Helvetica-Bold", color: INK, marginTop: 2 },
-  qrRow: { flexDirection: "row", alignItems: "center", marginTop: 14 },
-  qrBox: { width: 70, height: 70, marginRight: 10 },
+  qrRow: { flexDirection: "row", alignItems: "center", marginTop: 24 },
+  qrBox: { width: 78, height: 78, marginRight: 10 },
   qrVisit: { fontSize: 10, letterSpacing: 1, color: ACCENT_DARK, fontFamily: "Helvetica-Bold" },
   qrUrl: { fontSize: 9, color: INK_SOFT },
+  qrClaim: { fontSize: 7.5, color: "#a8a29e", marginTop: 8 },
 
   totals: { width: 220 },
   totLine: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: LINE },
@@ -156,6 +157,7 @@ function FacturaDoc({ f, qrDataUrl }: { f: Factura; qrDataUrl: string | null }) 
                   <Text style={s.qrUrl}>{EMISOR.web}</Text>
                 </View>
               </View>
+              <Text style={s.qrClaim}>Vendemos tu vivienda por el 1,5% de comisión.</Text>
             </View>
             <View style={s.totals}>
               <View style={s.totLine}><Text style={s.totK}>Subtotal (base)</Text><Text style={s.totV}>{euro(f.base)}</Text></View>

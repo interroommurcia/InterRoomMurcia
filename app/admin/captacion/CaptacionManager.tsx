@@ -312,9 +312,7 @@ export default function CaptacionManager({ pisos }: { pisos: PisoOpcion[] }) {
                 <thead>
                   <tr>
                     <th className={styles.rutaNum}>#</th>
-                    <th>Nombre</th>
-                    <th>Teléfono</th>
-                    <th>Zona</th>
+                    <th style={{ width: "28%" }}>Nombre</th>
                     <th>Notas</th>
                     {!pdfBusy ? <th style={{ width: 28 }} /> : null}
                   </tr>
@@ -322,7 +320,7 @@ export default function CaptacionManager({ pisos }: { pisos: PisoOpcion[] }) {
                 <tbody>
                   {visibles.length === 0 ? (
                     <tr>
-                      <td colSpan={pdfBusy ? 5 : 6} className={styles.rutaEmpty}>
+                      <td colSpan={pdfBusy ? 3 : 4} className={styles.rutaEmpty}>
                         Pulsa “+ Añadir línea” para empezar.
                       </td>
                     </tr>
@@ -330,17 +328,19 @@ export default function CaptacionManager({ pisos }: { pisos: PisoOpcion[] }) {
                     visibles.map((c, i) => (
                       <tr key={c.id}>
                         <td className={styles.rutaNum}>{i + 1}</td>
-                        <td className={styles.rutaNm} style={{ minWidth: 120 }}>
+                        <td className={styles.rutaNm} style={{ minWidth: 140, verticalAlign: "top" }}>
                           <input type="text" value={c.nombre} placeholder="Nombre" onChange={(e) => editarCampo(c.id, "nombre", e.target.value)} style={{ ...cellStyle, fontWeight: 700 }} />
                         </td>
-                        <td style={{ minWidth: 110 }}>
-                          <input type="text" inputMode="tel" value={c.telefono} placeholder="—" onChange={(e) => editarCampo(c.id, "telefono", e.target.value)} style={cellStyle} />
-                        </td>
-                        <td style={{ minWidth: 100 }}>
-                          <input type="text" value={c.zona} placeholder="—" onChange={(e) => editarCampo(c.id, "zona", e.target.value)} style={cellStyle} />
-                        </td>
-                        <td className={styles.rutaNotas} style={{ minWidth: 180 }}>
-                          <textarea rows={1} value={c.descripcion} placeholder="—" onChange={(e) => editarCampo(c.id, "descripcion", e.target.value)} onInput={autoGrow} style={cellStyle} />
+                        <td className={styles.rutaNotas} style={{ minWidth: 260 }}>
+                          <textarea
+                            rows={1}
+                            value={c.descripcion}
+                            placeholder="Notas: situación, miembros, ingresos, lo que diga…"
+                            ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
+                            onChange={(e) => editarCampo(c.id, "descripcion", e.target.value)}
+                            onInput={autoGrow}
+                            style={cellStyle}
+                          />
                         </td>
                         {!pdfBusy ? (
                           <td style={{ textAlign: "center" }}>
