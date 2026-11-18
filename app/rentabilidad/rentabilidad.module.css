@@ -29,6 +29,13 @@
   font: inherit; font-size: 1.2rem; font-weight: 700; color: var(--ink);
   width: 100%; appearance: none; -webkit-appearance: none; cursor: pointer;
 }
+.field textarea {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+  font: inherit; font-size: 1rem; font-weight: 600; color: var(--ink);
+  width: 100%; resize: vertical; line-height: 1.55; min-height: 96px;
+}
+.field input[type="text"]:not([inputmode]) { font-size: 1.05rem; }
+.fieldFull { grid-column: 1 / -1; }
 .field input::-webkit-outer-spin-button, .field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .field input[type="number"] { -moz-appearance: textfield; }
 .unit { font-size: 0.85rem; font-weight: 600; color: var(--ink-soft); }
@@ -95,6 +102,46 @@
   transition: 0.2s; text-decoration: none; white-space: nowrap;
 }
 .ctaVenta a:hover { background: #fff; color: var(--orange); }
+
+/* Hoja de captación — venta 1,5% */
+.heroVenta {
+  display: grid; grid-template-columns: 1fr auto; gap: 28px; align-items: center;
+  background: linear-gradient(135deg, var(--ink) 0%, #2b2b2b 100%);
+  color: #fff; border-radius: 24px; padding: 34px 38px; margin: 24px 0 8px;
+  box-shadow: var(--shadow);
+}
+@media (max-width: 640px) { .heroVenta { grid-template-columns: 1fr; text-align: center; justify-items: center; } }
+.heroVentaL h2 { font-size: clamp(1.5rem, 2.8vw, 2.2rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.12; }
+.heroPct { color: var(--orange); }
+.heroVentaL p { margin-top: 12px; color: rgba(255, 255, 255, 0.82); font-size: 1.02rem; max-width: 440px; line-height: 1.5; }
+.heroQr { background: #fff; padding: 12px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.heroQr img { width: 146px; height: 146px; display: block; }
+.heroQr span { font-size: 0.68rem; font-weight: 700; color: var(--ink); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.sheetMeta { display: flex; flex-wrap: wrap; gap: 18px 28px; padding: 18px 0 2px; }
+.sheetMetaItem { font-size: 0.95rem; }
+.sheetMetaItem .k { display: block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 3px; }
+.sheetMetaItem .val { font-weight: 700; color: var(--ink); font-size: 1.1rem; }
+.sheetDesc { white-space: pre-wrap; line-height: 1.6; font-size: 1rem; color: var(--ink); }
+
+/* Renglones editables de contactados */
+.rutaCard { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; position: relative; }
+.rutaCardHead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.rutaCardHead h3 { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--orange-dark); }
+.rmRow { background: transparent; border: 1px solid var(--line); color: var(--ink-soft); font-family: inherit; font-weight: 600; font-size: 0.72rem; padding: 4px 11px; border-radius: 999px; cursor: pointer; transition: 0.2s; }
+.rmRow:hover { border-color: #b91c1c; color: #b91c1c; }
+.addRow { width: 100%; background: transparent; border: 1.5px dashed var(--orange); color: var(--orange-dark); font-family: inherit; font-weight: 700; font-size: 0.88rem; padding: 13px; border-radius: 14px; cursor: pointer; transition: 0.2s; }
+.addRow:hover { background: var(--orange-light); }
+
+/* Tabla impresa de la hoja de ruta */
+.rutaTable { width: 100%; border-collapse: collapse; margin-top: 6px; }
+.rutaTable th { text-align: left; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); padding: 8px 10px; border-bottom: 2px solid var(--line); }
+.rutaTable td { font-size: 0.9rem; padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink); line-height: 1.45; }
+.rutaTable tr { break-inside: avoid; page-break-inside: avoid; }
+.rutaNum { color: var(--orange-dark); font-weight: 800; width: 26px; }
+.rutaNm { font-weight: 700; white-space: nowrap; }
+.rutaNotas { color: var(--ink-soft); }
+.rutaEmpty { text-align: center; color: var(--ink-soft); font-size: 0.9rem; padding: 18px; }
 
 /* Page breaks para el PDF */
 .card, .compare, .panel, .cta, .ctaVenta, .pdfFooter {

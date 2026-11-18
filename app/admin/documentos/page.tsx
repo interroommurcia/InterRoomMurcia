@@ -52,6 +52,21 @@ export default function DocumentosPage() {
           </Link>
 
           <Link
+            href="/admin/captacion"
+            className="analytics-card"
+            style={{ display: "block", textDecoration: "none", color: "inherit" }}
+          >
+            <h3>🏷️ Hoja de ruta de contactados</h3>
+            <p style={{ margin: "8px 0 14px", fontSize: "0.9rem", opacity: 0.75, lineHeight: 1.5 }}>
+              Una hoja de contacto por cada casa (1,5%): nombre, descripción y
+              estado de seguimiento. Se guarda sola y la vas actualizando. QR y PDF.
+            </p>
+            <span style={{ fontSize: "0.85rem", color: "var(--orange-dark)", fontWeight: 500 }}>
+              Abrir hoja de ruta →
+            </span>
+          </Link>
+
+          <Link
             href="/rentabilidad/express"
             className="analytics-card"
             style={{ display: "block", textDecoration: "none", color: "inherit" }}
