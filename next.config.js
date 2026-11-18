@@ -9,6 +9,17 @@ const nextConfig = {
   // bundelar bin/*.br via outputFileTracingIncludes.
   experimental: {
     serverComponentsExternalPackages: ["@sparticuz/chromium-min", "puppeteer-core"],
+    // @react-pdf/renderer carga las fuentes estándar de pdfkit (Helvetica, etc.)
+    // con un require dinámico que el file-tracing de Next no detecta, así que en
+    // el serverless de Vercel faltan los .cjs/.afm y la factura peta con
+    // "Cannot find module .../pdfkit/js/standard-fonts/Helvetica.cjs".
+    // Los forzamos al bundle de todas las funciones de /api.
+    outputFileTracingIncludes: {
+      "/api/**/*": [
+        "./node_modules/pdfkit/js/standard-fonts/**/*",
+        "./node_modules/pdfkit/js/data/**/*",
+      ],
+    },
   },
   // Reverse proxy de PostHog: los eventos salen por nuestro propio dominio
   // (/ingest/*) en vez de eu.i.posthog.com, así los bloqueadores de anuncios
