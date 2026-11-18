@@ -15,6 +15,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (typeof body.estado === "string" && ESTADOS_CASA.includes(body.estado as EstadoCasa)) {
     patch.estado = body.estado;
   }
+  if ("piso_id" in body) {
+    patch.piso_id = typeof body.piso_id === "string" && body.piso_id ? body.piso_id : null;
+  }
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: "sin cambios" }, { status: 400 });
   try {
     await actualizarCasa(params.id, patch);

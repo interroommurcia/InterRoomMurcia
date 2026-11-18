@@ -21,3 +21,9 @@ alter table public.captacion_casas enable row level security;
 
 create index if not exists captacion_casas_estado_idx on public.captacion_casas (estado);
 create index if not exists captacion_casas_created_idx on public.captacion_casas (created_at desc);
+
+-- Vínculo opcional con una propiedad del catálogo (tabla pisos). Si se borra
+-- el piso del catálogo, la hoja de contacto se conserva sin vínculo.
+alter table public.captacion_casas
+  add column if not exists piso_id uuid references public.pisos(id) on delete set null;
+create index if not exists captacion_casas_piso_idx on public.captacion_casas (piso_id);

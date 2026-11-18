@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import styles from "../../rentabilidad/rentabilidad.module.css";
 
+export type PisoOpcion = { id: string; titulo: string; barrio: string; categoria: string };
+
 type Estado = "contactado" | "seguimiento" | "captado" | "descartado";
+type PisoRef = { id: string; slug: string; titulo: string; barrio: string; categoria: string; image_url: string | null };
 type Casa = {
   id: string;
   nombre: string;
@@ -12,6 +16,8 @@ type Casa = {
   direccion: string;
   descripcion: string;
   estado: Estado;
+  piso_id: string | null;
+  piso: PisoRef | null;
   created_at: string;
   updated_at: string;
 };
@@ -43,7 +49,7 @@ function loadScript(src: string): Promise<void> {
 const CAMPOS = ["nombre", "telefono", "zona", "direccion", "descripcion"] as const;
 type Campo = (typeof CAMPOS)[number];
 
-export default function CaptacionManager() {
+export default function CaptacionManager({ pisos }: { pisos: PisoOpcion[] }) {
   const [casas, setCasas] = useState<Casa[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<"todas" | Estado>("todas");
@@ -74,7 +80,7 @@ export default function CaptacionManager() {
     })();
   }, []);
 
-  async function patch(id: string, body: Partial<Record<Campo, string> & { estado: Estado }>) {
+  async function patch(id: string, body: Partial<Record<Campo, string> & { estado: Estado; piso_id: string | null }>) {
     setGuardados((g) => ({ ...g, [id]: "guardando" }));
     try {
       await fetch(`/api/admin/captacion/${id}`, {
@@ -99,6 +105,22 @@ export default function CaptacionManager() {
   function cambiarEstado(id: string, estado: Estado) {
     setCasas((prev) => prev.map((c) => (c.id === id ? { ...c, estado } : c)));
     patch(id, { estado });
+  }
+
+  function vincularPiso(id: string, pisoId: string) {
+    const opt = pisos.find((p) => p.id === pisoId) ?? null;
+    setCasas((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              piso_id: pisoId || null,
+              piso: opt ? { id: opt.id, slug: "", titulo: opt.titulo, barrio: opt.barrio, categoria: opt.categoria, image_url: null } : null,
+            }
+          : c
+      )
+    );
+    patch(id, { piso_id: pisoId || null });
   }
 
   async function nuevaCasa() {
@@ -216,6 +238,30 @@ export default function CaptacionManager() {
                     placeholder="Piso 3 hab, a reformar. Quiere vender antes de verano. Volver a llamar la semana que viene…"
                     style={{ width: "100%", resize: "vertical", minHeight: 64, fontFamily: "inherit", fontSize: 14, padding: 8, border: "1px solid #e5e7eb", borderRadius: 8 }}
                   />
+                </div>
+
+                <div style={{ marginTop: 8 }}>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#6b7280", marginBottom: 3 }}>
+                    Vincular al catálogo (opcional)
+                  </label>
+                  <select
+                    value={c.piso_id ?? ""}
+                    onChange={(e) => vincularPiso(c.id, e.target.value)}
+                    style={{ width: "100%", fontSize: 14, padding: "7px 9px", border: "1px solid #e5e7eb", borderRadius: 8, fontFamily: "inherit", background: "#fff" }}
+                  >
+                    <option value="">Sin vincular</option>
+                    {pisos.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.titulo} — {p.barrio} ({p.categoria})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+                  <Link href={`/admin/captacion/${c.id}`} className="btn-ghost" style={{ fontSize: 13, textDecoration: "none" }}>
+                    Ver hoja de ruta →
+                  </Link>
                 </div>
               </div>
             );
