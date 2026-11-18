@@ -55,7 +55,7 @@ const s = StyleSheet.create({
   pay: { flex: 1, paddingRight: 20 },
   payTag: { fontSize: 8, letterSpacing: 1.5, color: ACCENT_DARK, fontFamily: "Helvetica-Bold", marginBottom: 6 },
   payLine: { fontSize: 9.5, color: INK_SOFT, marginBottom: 2 },
-  iban: { fontSize: 12, fontFamily: "Helvetica-Bold", color: INK, marginTop: 2 },
+  iban: { fontSize: 15, fontFamily: "Helvetica-Bold", color: INK, marginTop: 2 },
   qrRow: { flexDirection: "row", alignItems: "center", marginTop: 24 },
   qrBox: { width: 78, height: 78, marginRight: 10 },
   qrVisit: { fontSize: 10, letterSpacing: 1, color: ACCENT_DARK, fontFamily: "Helvetica-Bold" },
