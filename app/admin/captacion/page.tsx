@@ -17,6 +17,7 @@ export default async function CaptacionPage() {
     titulo: p.titulo,
     barrio: p.barrio,
     categoria: p.categoria,
+    image_url: p.imageUrl,
   }));
 
   return (

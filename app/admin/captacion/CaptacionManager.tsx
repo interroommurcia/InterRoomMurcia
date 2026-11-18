@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import styles from "../../rentabilidad/rentabilidad.module.css";
 
-export type PisoOpcion = { id: string; titulo: string; barrio: string; categoria: string };
+export type PisoOpcion = { id: string; titulo: string; barrio: string; categoria: string; image_url: string | null };
 
 type Estado = "contactado" | "seguimiento" | "captado" | "descartado";
 type PisoRef = { id: string; slug: string; titulo: string; barrio: string; categoria: string; image_url: string | null };
@@ -46,14 +45,28 @@ function loadScript(src: string): Promise<void> {
   });
 }
 
-const CAMPOS = ["nombre", "telefono", "zona", "direccion", "descripcion"] as const;
+const CAMPOS = ["nombre", "telefono", "zona", "descripcion"] as const;
 type Campo = (typeof CAMPOS)[number];
+
+const cellStyle: React.CSSProperties = {
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  font: "inherit",
+  fontSize: "0.9rem",
+  color: "var(--ink, #1a1a1a)",
+  padding: "2px 0",
+  outline: "none",
+  resize: "none",
+  overflow: "hidden",
+  lineHeight: 1.4,
+};
 
 export default function CaptacionManager({ pisos }: { pisos: PisoOpcion[] }) {
   const [casas, setCasas] = useState<Casa[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"tarjetas" | "hoja">("tarjetas");
   const [filtro, setFiltro] = useState<"todas" | Estado>("todas");
-  const [guardados, setGuardados] = useState<Record<string, "guardando" | "guardado">>({});
   const [qrData, setQrData] = useState("");
   const [pdfBusy, setPdfBusy] = useState(false);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -81,25 +94,21 @@ export default function CaptacionManager({ pisos }: { pisos: PisoOpcion[] }) {
   }, []);
 
   async function patch(id: string, body: Partial<Record<Campo, string> & { estado: Estado; piso_id: string | null }>) {
-    setGuardados((g) => ({ ...g, [id]: "guardando" }));
     try {
       await fetch(`/api/admin/captacion/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      setGuardados((g) => ({ ...g, [id]: "guardado" }));
-      setTimeout(() => setGuardados((g) => (g[id] === "guardado" ? { ...g, [id]: undefined as never } : g)), 1600);
     } catch {
-      setGuardados((g) => ({ ...g, [id]: undefined as never }));
+      /* se reintenta al siguiente cambio */
     }
   }
 
   function editarCampo(id: string, campo: Campo, valor: string) {
     setCasas((prev) => prev.map((c) => (c.id === id ? { ...c, [campo]: valor } : c)));
-    setGuardados((g) => ({ ...g, [id]: "guardando" }));
-    clearTimeout(timers.current[id]);
-    timers.current[id] = setTimeout(() => patch(id, { [campo]: valor }), 700);
+    clearTimeout(timers.current[id + campo]);
+    timers.current[id + campo] = setTimeout(() => patch(id, { [campo]: valor }), 600);
   }
 
   function cambiarEstado(id: string, estado: Estado) {
@@ -115,7 +124,7 @@ export default function CaptacionManager({ pisos }: { pisos: PisoOpcion[] }) {
           ? {
               ...c,
               piso_id: pisoId || null,
-              piso: opt ? { id: opt.id, slug: "", titulo: opt.titulo, barrio: opt.barrio, categoria: opt.categoria, image_url: null } : null,
+              piso: opt ? { id: opt.id, slug: "", titulo: opt.titulo, barrio: opt.barrio, categoria: opt.categoria, image_url: opt.image_url } : null,
             }
           : c
       )
@@ -125,11 +134,11 @@ export default function CaptacionManager({ pisos }: { pisos: PisoOpcion[] }) {
 
   async function nuevaCasa() {
     const casa = await fetch("/api/admin/captacion", { method: "POST" }).then((r) => r.json());
-    if (casa?.id) setCasas((prev) => [casa, ...prev]);
+    if (casa?.id) setCasas((prev) => [...prev, casa]);
   }
 
   async function eliminarCasa(id: string) {
-    if (!confirm("¿Eliminar esta hoja de contacto? No se puede deshacer.")) return;
+    if (!confirm("¿Eliminar esta casa? No se puede deshacer.")) return;
     await fetch(`/api/admin/captacion/${id}`, { method: "DELETE" });
     setCasas((prev) => prev.filter((c) => c.id !== id));
   }
@@ -137,6 +146,7 @@ export default function CaptacionManager({ pisos }: { pisos: PisoOpcion[] }) {
   async function descargarPdf() {
     if (pdfBusy) return;
     setPdfBusy(true);
+    await new Promise((r) => setTimeout(r, 60)); // deja que se oculte la columna de acciones
     try {
       await loadScript(PDF_CDN);
       const el = document.getElementById("pdf-root");
@@ -162,8 +172,13 @@ export default function CaptacionManager({ pisos }: { pisos: PisoOpcion[] }) {
   }
 
   const visibles = casas.filter((c) => filtro === "todas" || c.estado === filtro);
-  const conDatos = casas.filter((c) => c.nombre.trim() || c.telefono.trim() || c.zona.trim() || c.direccion.trim() || c.descripcion.trim());
   const cuenta = (e: Estado) => casas.filter((c) => c.estado === e).length;
+
+  const autoGrow = (e: React.FormEvent<HTMLTextAreaElement>) => {
+    const t = e.currentTarget;
+    t.style.height = "auto";
+    t.style.height = t.scrollHeight + "px";
+  };
 
   if (loading) return <p className="admin-empty">Cargando...</p>;
 
@@ -180,197 +195,191 @@ export default function CaptacionManager({ pisos }: { pisos: PisoOpcion[] }) {
         ))}
       </div>
 
-      <div className="section-head" style={{ marginTop: 18 }}>
-        <h2 style={{ fontSize: 16 }}>Hojas de contacto ({visibles.length})</h2>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button type="button" className="btn-ghost" onClick={descargarPdf} disabled={pdfBusy}>
-            {pdfBusy ? "Generando PDF..." : "Descargar PDF"}
-          </button>
-          <button type="button" className="btn-primary" onClick={nuevaCasa}>
-            + Nueva casa
-          </button>
-        </div>
-      </div>
-
-      {visibles.length === 0 ? (
-        <p className="admin-empty">
-          {casas.length === 0 ? "Aún no hay casas. Pulsa “+ Nueva casa” para crear la primera hoja." : "No hay casas en este estado."}
-        </p>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14, marginTop: 14 }}>
-          {visibles.map((c) => {
-            const meta = estadoMeta(c.estado);
-            const estado = guardados[c.id];
-            return (
-              <div key={c.id} style={{ border: "1px solid #e5e7eb", borderLeft: `4px solid ${meta.color}`, borderRadius: 12, background: "#fff", padding: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <select
-                    value={c.estado}
-                    onChange={(e) => cambiarEstado(c.id, e.target.value as Estado)}
-                    style={{ padding: "4px 8px", borderRadius: 999, border: `1px solid ${meta.color}`, color: meta.color, fontWeight: 600, fontSize: 13, background: "#fff" }}
-                  >
-                    {ESTADOS.map((e) => (
-                      <option key={e.value} value={e.value}>{e.label}</option>
-                    ))}
-                  </select>
-                  <span style={{ flex: 1, fontSize: 12, color: estado === "guardando" ? "#9ca3af" : "#2f855a", minHeight: 16 }}>
-                    {estado === "guardando" ? "Guardando…" : estado === "guardado" ? "✓ Guardado" : ""}
-                  </span>
-                  <button type="button" onClick={() => eliminarCasa(c.id)} title="Eliminar" style={{ background: "transparent", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 18, lineHeight: 1 }}>
-                    ×
-                  </button>
-                </div>
-
-                <Campo label="Nombre del contactado" value={c.nombre} onChange={(v) => editarCampo(c.id, "nombre", v)} placeholder="Ej. María López" />
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Campo label="Teléfono" value={c.telefono} onChange={(v) => editarCampo(c.id, "telefono", v)} placeholder="600 000 000" />
-                  <Campo label="Zona" value={c.zona} onChange={(v) => editarCampo(c.id, "zona", v)} placeholder="Barrio del Carmen" />
-                </div>
-                <Campo label="Dirección" value={c.direccion} onChange={(v) => editarCampo(c.id, "direccion", v)} placeholder="Calle, nº, piso…" />
-                <div style={{ marginTop: 8 }}>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#6b7280", marginBottom: 3 }}>
-                    Descripción / notas
-                  </label>
-                  <textarea
-                    value={c.descripcion}
-                    onChange={(e) => editarCampo(c.id, "descripcion", e.target.value)}
-                    rows={3}
-                    placeholder="Piso 3 hab, a reformar. Quiere vender antes de verano. Volver a llamar la semana que viene…"
-                    style={{ width: "100%", resize: "vertical", minHeight: 64, fontFamily: "inherit", fontSize: 14, padding: 8, border: "1px solid #e5e7eb", borderRadius: 8 }}
-                  />
-                </div>
-
-                <div style={{ marginTop: 8 }}>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#6b7280", marginBottom: 3 }}>
-                    Vincular al catálogo (opcional)
-                  </label>
-                  <select
-                    value={c.piso_id ?? ""}
-                    onChange={(e) => vincularPiso(c.id, e.target.value)}
-                    style={{ width: "100%", fontSize: 14, padding: "7px 9px", border: "1px solid #e5e7eb", borderRadius: 8, fontFamily: "inherit", background: "#fff" }}
-                  >
-                    <option value="">Sin vincular</option>
-                    {pisos.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.titulo} — {p.barrio} ({p.categoria})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
-                  <Link href={`/admin/captacion/${c.id}`} className="btn-ghost" style={{ fontSize: 13, textDecoration: "none" }}>
-                    Ver hoja de ruta →
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Bloque imprimible (oculto): hero 1,5% + QR + tabla de casas con datos */}
-      <div style={{ position: "absolute", left: -10000, top: 0, width: 800 }} aria-hidden>
-        <div id="pdf-root" className={styles.main}>
-          <div className={styles.title} style={{ paddingTop: 16 }}>
-            <h1>
-              Hoja de ruta de <em>contactados</em>.
-            </h1>
-            <p>Seguimiento de propietarios contactados — InterRoom Murcia.</p>
+      {view === "tarjetas" ? (
+        <>
+          <div className="section-head" style={{ marginTop: 18 }}>
+            <h2 style={{ fontSize: 16 }}>Casas ({visibles.length})</h2>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button type="button" className="btn-ghost" onClick={() => setView("hoja")}>
+                Ver hoja de ruta →
+              </button>
+              <button type="button" className="btn-primary" onClick={nuevaCasa}>
+                + Nueva casa
+              </button>
+            </div>
           </div>
 
-          <section className={styles.heroVenta}>
-            <div className={styles.heroVentaL}>
-              <h2>
-                Vendemos tu casa por solo el <span className={styles.heroPct}>1,5% de comisión</span>.
-              </h2>
-              <p>Fotografía profesional, publicación en los principales portales y gestión completa hasta la firma en notaría.</p>
+          {visibles.length === 0 ? (
+            <p className="admin-empty">
+              {casas.length === 0 ? "Aún no hay casas. Pulsa “+ Nueva casa” para crear la primera." : "No hay casas en este estado."}
+            </p>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16, marginTop: 14 }}>
+              {visibles.map((c) => {
+                const meta = estadoMeta(c.estado);
+                const titulo = c.piso?.titulo || c.nombre.trim() || "Casa sin vincular";
+                const img = c.piso?.image_url;
+                return (
+                  <div key={c.id} style={{ border: "1px solid #e5e7eb", borderTop: `4px solid ${meta.color}`, borderRadius: 12, background: "#fff", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                    <div style={{ height: 130, background: "#f3f4f6", position: "relative" }}>
+                      {img ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={img} alt={titulo} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: 32 }}>🏠</div>
+                      )}
+                      <button type="button" onClick={() => eliminarCasa(c.id)} title="Eliminar" style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.55)", color: "#fff", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>
+                        ×
+                      </button>
+                    </div>
+                    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{titulo}</div>
+                      <select
+                        value={c.estado}
+                        onChange={(e) => cambiarEstado(c.id, e.target.value as Estado)}
+                        style={{ padding: "5px 8px", borderRadius: 999, border: `1px solid ${meta.color}`, color: meta.color, fontWeight: 600, fontSize: 12, background: "#fff" }}
+                      >
+                        {ESTADOS.map((e) => (
+                          <option key={e.value} value={e.value}>{e.label}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={c.piso_id ?? ""}
+                        onChange={(e) => vincularPiso(c.id, e.target.value)}
+                        style={{ fontSize: 12, padding: "5px 8px", border: "1px solid #e5e7eb", borderRadius: 8, background: "#fff" }}
+                      >
+                        <option value="">Sin vincular al catálogo</option>
+                        {pisos.map((p) => (
+                          <option key={p.id} value={p.id}>{p.titulo} — {p.barrio}</option>
+                        ))}
+                      </select>
+                      <button type="button" className="btn-ghost" onClick={() => setView("hoja")} style={{ marginTop: "auto", fontSize: 13 }}>
+                        Ver hoja de ruta →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            {qrData ? (
-              <div className={styles.heroQr}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrData} alt="QR a interroommurcia.com" />
-                <span>Escanea y visítanos</span>
-              </div>
-            ) : null}
-          </section>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="section-head" style={{ marginTop: 18 }}>
+            <h2 style={{ fontSize: 16 }}>Hoja de ruta — edición en vivo</h2>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button type="button" className="btn-ghost" onClick={() => setView("tarjetas")}>
+                ← Tarjetas
+              </button>
+              <button type="button" className="btn-ghost" onClick={nuevaCasa}>
+                + Añadir línea
+              </button>
+              <button type="button" className="btn-primary" onClick={descargarPdf} disabled={pdfBusy}>
+                {pdfBusy ? "Generando PDF..." : "Descargar PDF"}
+              </button>
+            </div>
+          </div>
 
-          <section className={styles.panel} style={{ margin: "20px 0 8px" }}>
-            <div className={styles.panelHead}>
-              <h2>Contactados</h2>
+          <div id="pdf-root" className={styles.main} style={{ marginTop: 8 }}>
+            <div className={styles.title} style={{ paddingTop: 16 }}>
+              <h1>
+                Hoja de ruta de <em>contactados</em>.
+              </h1>
+              <p>Seguimiento de propietarios contactados — InterRoom Murcia.</p>
             </div>
-            <table className={styles.rutaTable}>
-              <thead>
-                <tr>
-                  <th className={styles.rutaNum}>#</th>
-                  <th>Nombre</th>
-                  <th>Teléfono</th>
-                  <th>Zona</th>
-                  <th>Estado</th>
-                  <th>Notas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {conDatos.length === 0 ? (
+
+            <section className={styles.heroVenta}>
+              <div className={styles.heroVentaL}>
+                <h2>
+                  Vendemos tu casa por solo el <span className={styles.heroPct}>1,5% de comisión</span>.
+                </h2>
+                <p>Fotografía profesional, publicación en los principales portales y gestión completa hasta la firma en notaría.</p>
+              </div>
+              {qrData ? (
+                <div className={styles.heroQr}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={qrData} alt="QR a interroommurcia.com" />
+                  <span>Escanea y visítanos</span>
+                </div>
+              ) : null}
+            </section>
+
+            <section className={styles.panel} style={{ margin: "20px 0 8px" }}>
+              <div className={styles.panelHead}>
+                <h2>Contactados</h2>
+              </div>
+              <table className={styles.rutaTable}>
+                <thead>
                   <tr>
-                    <td colSpan={6} className={styles.rutaEmpty}>Sin contactados todavía.</td>
+                    <th className={styles.rutaNum}>#</th>
+                    <th>Nombre</th>
+                    <th>Teléfono</th>
+                    <th>Zona</th>
+                    <th>Notas</th>
+                    {!pdfBusy ? <th style={{ width: 28 }} /> : null}
                   </tr>
-                ) : (
-                  conDatos.map((c, i) => (
-                    <tr key={c.id}>
-                      <td className={styles.rutaNum}>{i + 1}</td>
-                      <td className={styles.rutaNm}>{c.nombre.trim() || "—"}</td>
-                      <td>{c.telefono.trim() || "—"}</td>
-                      <td>{[c.zona.trim(), c.direccion.trim()].filter(Boolean).join(" · ") || "—"}</td>
-                      <td>{estadoMeta(c.estado).label}</td>
-                      <td className={styles.rutaNotas}>{c.descripcion.trim() || "—"}</td>
+                </thead>
+                <tbody>
+                  {visibles.length === 0 ? (
+                    <tr>
+                      <td colSpan={pdfBusy ? 5 : 6} className={styles.rutaEmpty}>
+                        Pulsa “+ Añadir línea” para empezar.
+                      </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </section>
+                  ) : (
+                    visibles.map((c, i) => (
+                      <tr key={c.id}>
+                        <td className={styles.rutaNum}>{i + 1}</td>
+                        <td className={styles.rutaNm} style={{ minWidth: 120 }}>
+                          <input type="text" value={c.nombre} placeholder="Nombre" onChange={(e) => editarCampo(c.id, "nombre", e.target.value)} style={{ ...cellStyle, fontWeight: 700 }} />
+                        </td>
+                        <td style={{ minWidth: 110 }}>
+                          <input type="text" inputMode="tel" value={c.telefono} placeholder="—" onChange={(e) => editarCampo(c.id, "telefono", e.target.value)} style={cellStyle} />
+                        </td>
+                        <td style={{ minWidth: 100 }}>
+                          <input type="text" value={c.zona} placeholder="—" onChange={(e) => editarCampo(c.id, "zona", e.target.value)} style={cellStyle} />
+                        </td>
+                        <td className={styles.rutaNotas} style={{ minWidth: 180 }}>
+                          <textarea rows={1} value={c.descripcion} placeholder="—" onChange={(e) => editarCampo(c.id, "descripcion", e.target.value)} onInput={autoGrow} style={cellStyle} />
+                        </td>
+                        {!pdfBusy ? (
+                          <td style={{ textAlign: "center" }}>
+                            <button type="button" onClick={() => eliminarCasa(c.id)} title="Eliminar" style={{ background: "transparent", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 16, lineHeight: 1 }}>
+                              ×
+                            </button>
+                          </td>
+                        ) : null}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </section>
 
-          <section className={styles.ctaVenta}>
-            <div className={styles.ctaL}>
-              ¿Hablamos de <b>tu vivienda</b>? Valoración gratis en 48 h.
-            </div>
-            <a href="tel:+34613096518">Llamar 613 096 518</a>
-          </section>
-
-          <section className={styles.pdfFooter}>
-            <div className={styles.pdfFooterLogo}>
-              Inter<span>Room</span> Murcia
-            </div>
-            <div className={styles.pdfFooterText}>Gestión inmobiliaria integral en Murcia y Cartagena</div>
-            {qrData ? (
-              <div className={styles.pdfFooterQrWrap}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrData} alt="QR a interroommurcia.com" className={styles.pdfFooterQr} />
-                <div className={styles.pdfFooterQrCap}>Escanea para visitarnos</div>
+            <section className={styles.ctaVenta}>
+              <div className={styles.ctaL}>
+                ¿Hablamos de <b>tu vivienda</b>? Valoración gratis en 48 h.
               </div>
-            ) : null}
-            <a href={SITE_URL} className={styles.pdfFooterLink}>interroommurcia.com</a>
-          </section>
-        </div>
-      </div>
-    </div>
-  );
-}
+              <a href="tel:+34613096518">Llamar 613 096 518</a>
+            </section>
 
-function Campo({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
-  return (
-    <div style={{ marginTop: 8, flex: 1, minWidth: 0 }}>
-      <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#6b7280", marginBottom: 3 }}>
-        {label}
-      </label>
-      <input
-        type="text"
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        style={{ width: "100%", fontSize: 14, padding: "7px 9px", border: "1px solid #e5e7eb", borderRadius: 8, fontFamily: "inherit" }}
-      />
+            <section className={styles.pdfFooter}>
+              <div className={styles.pdfFooterLogo}>
+                Inter<span>Room</span> Murcia
+              </div>
+              <div className={styles.pdfFooterText}>Gestión inmobiliaria integral en Murcia y Cartagena</div>
+              {qrData ? (
+                <div className={styles.pdfFooterQrWrap}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={qrData} alt="QR a interroommurcia.com" className={styles.pdfFooterQr} />
+                  <div className={styles.pdfFooterQrCap}>Escanea para visitarnos</div>
+                </div>
+              ) : null}
+              <a href={SITE_URL} className={styles.pdfFooterLink}>interroommurcia.com</a>
+            </section>
+          </div>
+        </>
+      )}
     </div>
   );
 }
