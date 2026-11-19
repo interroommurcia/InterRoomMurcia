@@ -120,9 +120,20 @@ export async function descargarFacturaPdf(id: string): Promise<{ nombre: string;
   return { nombre, buffer: await renderFacturaPdf(factura) };
 }
 
+// Tabla de contabilidad que respalda cada origen de factura. Al marcar la
+// factura como cobrada se propaga el cobro a su pago de origen (y viceversa),
+// para no tener que marcarlo dos veces.
+const TABLA_POR_ORIGEN: Record<string, string> = {
+  ingreso: "cliente_ingresos",
+  compraventa: "operaciones_compraventa",
+  alquiler_comision: "operaciones_alquiler_comision",
+  credito: "operaciones_creditos",
+};
+
 // Marca/desmarca una factura como cobrada. Al marcarla se guarda la fecha de
 // cobro (hoy); al desmarcarla se limpia. Esto es lo que la hace entrar en la
-// ficha del cliente y en el archivo trimestral.
+// ficha del cliente y en el archivo trimestral. Además sincroniza el estado de
+// cobro del pago de origen en contabilidad.
 export async function marcarCobrada(id: string, cobrada: boolean): Promise<Factura | null> {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
@@ -132,7 +143,19 @@ export async function marcarCobrada(id: string, cobrada: boolean): Promise<Factu
     .select()
     .maybeSingle();
   if (error) throw error;
-  return data ? rowToFactura(data) : null;
+  if (!data) return null;
+  const factura = rowToFactura(data);
+
+  // Propaga el cobro a contabilidad (el origen manual/subido no tiene tabla).
+  const tabla = TABLA_POR_ORIGEN[factura.origen];
+  if (tabla && factura.origen_id) {
+    try {
+      await admin.from(tabla).update({ cobrado: cobrada }).eq("id", factura.origen_id);
+    } catch {
+      // No bloquea el marcado de la factura si el origen ya no existe.
+    }
+  }
+  return factura;
 }
 
 export async function eliminarFactura(id: string): Promise<void> {

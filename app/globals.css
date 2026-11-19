@@ -4648,6 +4648,44 @@ button {
   }
 }
 
+/* Menú admin como barra lateral izquierda siempre desplegada (desktop). */
+@media (min-width: 861px) {
+  .admin-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 212px;
+    margin-bottom: 0;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 4px;
+    padding: 18px 12px;
+    overflow-y: auto;
+    background: #ffffff;
+    border-right: 1px solid #e7e2db;
+    z-index: 50;
+  }
+  .admin-nav-item {
+    width: 100%;
+    justify-content: flex-start;
+    min-height: 40px;
+  }
+  .admin-nav-user {
+    margin-left: 0;
+    margin-top: auto;
+    padding-top: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    border-top: 1px solid #e7e2db;
+  }
+  .section.admin {
+    padding-left: 212px;
+  }
+}
+
 /* ============================================================
    BLOG
    ============================================================ */
