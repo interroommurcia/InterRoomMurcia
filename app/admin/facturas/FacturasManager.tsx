@@ -27,8 +27,12 @@ type Factura = {
   fecha: string;
   concepto: string;
   cliente_nombre: string;
+  base: number;
+  iva_importe: number;
   total: number;
   es_empresa: boolean;
+  cobrada: boolean;
+  cobrada_fecha: string | null;
 };
 
 type Pendiente = {
@@ -76,6 +80,11 @@ export default function FacturasManager() {
   const [cargando, setCargando] = useState(false);
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState("");
+
+  // Filtros del listado
+  const [fEstado, setFEstado] = useState<"todas" | "cobradas" | "pendientes">("todas");
+  const [fMes, setFMes] = useState("");
+  const [fBusqueda, setFBusqueda] = useState("");
 
   // Formulario de factura
   const [numero, setNumero] = useState("");
@@ -213,6 +222,19 @@ export default function FacturasManager() {
     cargarFacturas();
   }
 
+  async function toggleCobrada(f: Factura) {
+    // Optimista: refleja el cambio ya y confirma contra el servidor.
+    setFacturas((prev) => prev.map((x) => (x.id === f.id ? { ...x, cobrada: !x.cobrada } : x)));
+    const res = await fetch(`/api/admin/facturas/${f.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cobrada: !f.cobrada }),
+    });
+    if (!res.ok) { cargarFacturas(); return; }
+    const actualizada = await res.json();
+    setFacturas((prev) => prev.map((x) => (x.id === f.id ? { ...x, ...actualizada } : x)));
+  }
+
   async function abrirPendientes() {
     setVerPendientes(true);
     setCargandoPendientes(true);
@@ -293,6 +315,27 @@ export default function FacturasManager() {
   }, [bulkModal, seleccionados.size]);
 
   const faltanDatos = !cNif || !cDir;
+
+  const facturasFiltradas = useMemo(() => {
+    const q = fBusqueda.trim().toLowerCase();
+    return facturas.filter((f) => {
+      if (fEstado === "cobradas" && !f.cobrada) return false;
+      if (fEstado === "pendientes" && f.cobrada) return false;
+      if (fMes && !(f.fecha || "").startsWith(fMes)) return false;
+      if (q && !(`${f.numero} ${f.cliente_nombre} ${f.concepto}`.toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }, [facturas, fEstado, fMes, fBusqueda]);
+
+  const totalesLista = useMemo(() => ({
+    base: facturasFiltradas.reduce((s, f) => s + (f.base || 0), 0),
+    iva: facturasFiltradas.reduce((s, f) => s + (f.iva_importe || 0), 0),
+    total: facturasFiltradas.reduce((s, f) => s + (f.total || 0), 0),
+    cobradas: facturasFiltradas.filter((f) => f.cobrada).length,
+  }), [facturasFiltradas]);
+
+  const th: React.CSSProperties = { textAlign: "left", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4, color: "#a8a29e", fontWeight: 700, padding: "0 8px 8px" };
+  const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px solid #f0ece6", fontSize: 13, verticalAlign: "middle" };
 
   return (
     <div>
@@ -491,18 +534,84 @@ export default function FacturasManager() {
       )}
 
       <div style={card}>
-        <strong style={{ display: "block", marginBottom: 10 }}>Facturas recientes</strong>
-        {facturas.length === 0 && <p style={{ color: "#57534e" }}>Todavía no hay facturas.</p>}
-        {facturas.map((f) => (
-          <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #f0ece6" }}>
-            <span style={{ fontWeight: 700, width: 90 }}>{f.numero}</span>
-            <span style={{ flex: 1 }}>{f.cliente_nombre} · {f.concepto}</span>
-            <span style={{ fontSize: 11, color: "#57534e" }}>{f.es_empresa ? "Empresa" : "Cliente"}</span>
-            <span style={{ fontWeight: 700 }}>{euro(f.total)}</span>
-            <a className="btn-ghost" href={`/api/admin/facturas/${f.id}`} target="_blank" rel="noreferrer">PDF</a>
-            <button type="button" onClick={() => borrarFactura(f.id)} style={{ ...input, cursor: "pointer", width: 40 }}>×</button>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+          <strong>Facturas emitidas <span style={{ color: "#a8a29e", fontWeight: 400 }}>({facturasFiltradas.length})</span></strong>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <input style={{ ...input, minWidth: 170 }} placeholder="Buscar Nº / cliente / concepto…" value={fBusqueda} onChange={(e) => setFBusqueda(e.target.value)} />
+            <input style={{ ...input, width: 150 }} type="month" value={fMes} onChange={(e) => setFMes(e.target.value)} />
+            <select style={input} value={fEstado} onChange={(e) => setFEstado(e.target.value as typeof fEstado)}>
+              <option value="todas">Todas</option>
+              <option value="cobradas">Cobradas</option>
+              <option value="pendientes">Pendientes de cobro</option>
+            </select>
           </div>
-        ))}
+        </div>
+
+        {facturas.length === 0 && <p style={{ color: "#57534e" }}>Todavía no hay facturas.</p>}
+        {facturas.length > 0 && facturasFiltradas.length === 0 && <p style={{ color: "#57534e" }}>Ninguna factura con esos filtros.</p>}
+
+        {facturasFiltradas.length > 0 && (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+              <thead>
+                <tr>
+                  <th style={th}>Nº</th>
+                  <th style={th}>Fecha</th>
+                  <th style={th}>Cliente</th>
+                  <th style={{ ...th, textAlign: "right" }}>Base</th>
+                  <th style={{ ...th, textAlign: "right" }}>IVA</th>
+                  <th style={{ ...th, textAlign: "right" }}>Total</th>
+                  <th style={{ ...th, textAlign: "center" }}>Cobrada</th>
+                  <th style={{ ...th, textAlign: "right" }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {facturasFiltradas.map((f) => (
+                  <tr key={f.id}>
+                    <td style={{ ...td, fontWeight: 700, whiteSpace: "nowrap" }}>{f.numero}</td>
+                    <td style={{ ...td, color: "#57534e", whiteSpace: "nowrap" }}>{f.fecha}</td>
+                    <td style={td}>
+                      {f.cliente_nombre}
+                      <span style={{ display: "block", fontSize: 11, color: "#a8a29e" }}>{f.concepto} · {f.es_empresa ? "Empresa" : "Cliente"}</span>
+                    </td>
+                    <td style={{ ...td, textAlign: "right", color: "#57534e", whiteSpace: "nowrap" }}>{euro(f.base)}</td>
+                    <td style={{ ...td, textAlign: "right", color: "#57534e", whiteSpace: "nowrap" }}>{euro(f.iva_importe)}</td>
+                    <td style={{ ...td, textAlign: "right", fontWeight: 700, whiteSpace: "nowrap" }}>{euro(f.total)}</td>
+                    <td style={{ ...td, textAlign: "center" }}>
+                      <button
+                        type="button"
+                        onClick={() => toggleCobrada(f)}
+                        title={f.cobrada ? `Cobrada el ${f.cobrada_fecha ?? ""}` : "Marcar como cobrada"}
+                        style={{
+                          cursor: "pointer", border: "1px solid", borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 700,
+                          background: f.cobrada ? "#d1fae5" : "#fff", color: f.cobrada ? "#065f46" : "#92400e",
+                          borderColor: f.cobrada ? "#6ee7b7" : "#fcd34d",
+                        }}
+                      >
+                        {f.cobrada ? "✓ Cobrada" : "Pendiente"}
+                      </button>
+                    </td>
+                    <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
+                      <a className="btn-ghost" style={{ fontSize: 12 }} href={`/api/admin/facturas/${f.id}`} target="_blank" rel="noreferrer">PDF</a>
+                      <button type="button" onClick={() => borrarFactura(f.id)} style={{ ...input, cursor: "pointer", width: 34, padding: "4px 0", marginLeft: 8 }}>×</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td style={{ ...td, borderBottom: "none", fontWeight: 700 }} colSpan={3}>
+                    Totales <span style={{ color: "#a8a29e", fontWeight: 400 }}>· {totalesLista.cobradas}/{facturasFiltradas.length} cobradas</span>
+                  </td>
+                  <td style={{ ...td, borderBottom: "none", textAlign: "right", fontWeight: 700 }}>{euro(totalesLista.base)}</td>
+                  <td style={{ ...td, borderBottom: "none", textAlign: "right", fontWeight: 700 }}>{euro(totalesLista.iva)}</td>
+                  <td style={{ ...td, borderBottom: "none", textAlign: "right", fontWeight: 700, color: "#c2410c" }}>{euro(totalesLista.total)}</td>
+                  <td style={{ ...td, borderBottom: "none" }} colSpan={2} />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

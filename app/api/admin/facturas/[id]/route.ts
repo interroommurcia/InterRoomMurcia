@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { descargarFacturaPdf, eliminarFactura } from "../../../../../lib/factura/facturas";
+import { descargarFacturaPdf, eliminarFactura, marcarCobrada } from "../../../../../lib/factura/facturas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +15,20 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
         "Content-Disposition": `inline; filename="${doc.nombre}"`,
       },
     });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Error desconocido" }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const body = await req.json().catch(() => ({}));
+    if (typeof body?.cobrada !== "boolean") {
+      return NextResponse.json({ error: "Falta 'cobrada' (boolean)" }, { status: 400 });
+    }
+    const factura = await marcarCobrada(params.id, body.cobrada);
+    if (!factura) return NextResponse.json({ error: "Factura no encontrada" }, { status: 404 });
+    return NextResponse.json(factura);
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error desconocido" }, { status: 500 });
   }

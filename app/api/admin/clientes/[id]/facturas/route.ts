@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const facturas = await listarFacturas(params.id);
-    const limpio = facturas.map((f) => ({
+    // Solo las cobradas entran en la ficha del cliente.
+    const limpio = facturas.filter((f) => f.cobrada).map((f) => ({
       id: f.id,
       numero: f.numero,
       fecha: f.fecha,

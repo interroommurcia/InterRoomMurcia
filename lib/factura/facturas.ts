@@ -31,6 +31,8 @@ function rowToFactura(r: Record<string, unknown>): Factura {
     irpf_importe: Number(r.irpf_importe),
     total: Number(r.total),
     lineas: (r.lineas as Factura["lineas"]) ?? [],
+    cobrada: Boolean(r.cobrada),
+    cobrada_fecha: (r.cobrada_fecha as string | null) ?? null,
   };
 }
 
@@ -118,6 +120,21 @@ export async function descargarFacturaPdf(id: string): Promise<{ nombre: string;
   return { nombre, buffer: await renderFacturaPdf(factura) };
 }
 
+// Marca/desmarca una factura como cobrada. Al marcarla se guarda la fecha de
+// cobro (hoy); al desmarcarla se limpia. Esto es lo que la hace entrar en la
+// ficha del cliente y en el archivo trimestral.
+export async function marcarCobrada(id: string, cobrada: boolean): Promise<Factura | null> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("facturas")
+    .update({ cobrada, cobrada_fecha: cobrada ? new Date().toISOString().slice(0, 10) : null })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return data ? rowToFactura(data) : null;
+}
+
 export async function eliminarFactura(id: string): Promise<void> {
   const admin = getSupabaseAdmin();
   const factura = await getFactura(id);
@@ -128,21 +145,9 @@ export async function eliminarFactura(id: string): Promise<void> {
   if (error) throw error;
 }
 
-// Borra facturas (fila + PDF) con más de 6 meses. Usado por el cron.
+// Autoborrado DESACTIVADO: el archivo de facturas es permanente (fiscal).
+// Se conserva la función como no-op por si el cron de Vercel sigue llamándola
+// hasta que se despliegue la retirada del cron en vercel.json.
 export async function limpiarFacturasAntiguas(): Promise<number> {
-  const admin = getSupabaseAdmin();
-  const limite = new Date();
-  limite.setMonth(limite.getMonth() - 6);
-  const { data, error } = await admin
-    .from("facturas")
-    .select("id, storage_path")
-    .lt("created_at", limite.toISOString());
-  if (error) throw error;
-  const filas = data ?? [];
-  const paths = filas.map((f) => f.storage_path as string | null).filter((p): p is string => !!p);
-  if (paths.length) await admin.storage.from(BUCKET).remove(paths).catch(() => {});
-  if (filas.length) {
-    await admin.from("facturas").delete().in("id", filas.map((f) => f.id as string));
-  }
-  return filas.length;
+  return 0;
 }

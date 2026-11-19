@@ -13,10 +13,6 @@
       "schedule": "0 6 1 * *"
     },
     {
-      "path": "/api/cron/cleanup-facturas",
-      "schedule": "0 4 * * *"
-    },
-    {
       "path": "/api/cron/cleanup-leads",
       "schedule": "0 5 * * *"
     }

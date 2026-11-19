@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import TrimestralPanel from "./TrimestralPanel";
 
 type Cliente = {
   id: string;
@@ -487,7 +488,7 @@ function añoActual(mes: string) {
 }
 
 export default function ContabilidadManager() {
-  const [tab, setTab] = useState<"metricas" | "creditos" | "alquileres" | "compraventas" | "gastos">("creditos");
+  const [tab, setTab] = useState<"metricas" | "creditos" | "alquileres" | "compraventas" | "gastos" | "trimestral">("creditos");
   const [gastosFijos, setGastosFijos] = useState<GastoFijo[]>([]);
   const [mostrarNuevoFijo, setMostrarNuevoFijo] = useState(false);
   const [nuevoFijo, setNuevoFijo] = useState({ concepto: "", importe_mensual: "", categoria: "otros", tipo: "fijo" as "fijo" | "impuesto" | "anual", fecha_inicio: new Date().toISOString().slice(0, 10), pagado_por: "" });
@@ -1152,7 +1153,12 @@ export default function ContabilidadManager() {
         <button type="button" className={`contabilidad-tab${tab === "gastos" ? " active" : ""}`} onClick={() => setTab("gastos")}>
           Gastos
         </button>
+        <button type="button" className={`contabilidad-tab${tab === "trimestral" ? " active" : ""}`} onClick={() => setTab("trimestral")}>
+          Trimestral
+        </button>
       </div>
+
+      {tab === "trimestral" && <TrimestralPanel />}
 
       {tab === "metricas" && (
         <div className="articulos-list-section" style={{ marginTop: 20 }}>

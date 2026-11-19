@@ -38,6 +38,20 @@ export type Factura = {
   total: number;
   lineas: LineaFactura[];
   storage_path: string | null;
+  cobrada: boolean;
+  cobrada_fecha: string | null;
+  created_at: string;
+};
+
+// Factura subida a mano (recibida / de gasto), archivada por su fecha.
+export type FacturaSubida = {
+  id: string;
+  fecha: string;
+  concepto: string;
+  importe: number | null;
+  notas: string | null;
+  nombre_archivo: string;
+  storage_path: string;
   created_at: string;
 };
 
