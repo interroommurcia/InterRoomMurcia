@@ -16,7 +16,7 @@ export default function FacturasPage() {
         <AdminNav active="/admin/facturas" />
         <div className="section-head">
           <h2>Facturas</h2>
-          <p>Elige un cliente, selecciona el pago pendiente y genera la factura. Se guardan 6 meses.</p>
+          <p>Elige un cliente, selecciona el pago pendiente y genera la factura. Márcala como cobrada para archivarla en el Trimestral. Se guardan de forma permanente.</p>
         </div>
         <FacturasManager />
       </div>
