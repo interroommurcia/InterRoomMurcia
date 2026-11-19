@@ -4648,30 +4648,60 @@ button {
   }
 }
 
-/* Menú admin como barra lateral izquierda siempre desplegada (desktop). */
+/* Agrupación del menú admin en secciones. Las subsecciones van siempre
+   desplegadas; el título de sección solo se muestra en el sidebar (desktop). */
+.admin-nav-section { display: contents; }
+.admin-nav-section-title { display: none; }
+
+/* Menú admin como barra lateral izquierda siempre desplegada (desktop).
+   Arranca bajo la cabecera (74px) para no tapar el logo. */
 @media (min-width: 861px) {
   .admin-nav {
     position: fixed;
-    top: 0;
+    top: 74px;
     left: 0;
     bottom: 0;
-    width: 212px;
+    width: 224px;
     margin-bottom: 0;
     flex-direction: column;
     flex-wrap: nowrap;
     align-items: stretch;
-    gap: 4px;
-    padding: 18px 12px;
+    gap: 2px;
+    padding: 14px 12px 18px;
     overflow-y: auto;
     background: #ffffff;
     border-right: 1px solid #e7e2db;
-    z-index: 50;
+    z-index: 40;
   }
+  .admin-nav-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 14px;
+  }
+  .admin-nav-section:first-child { margin-top: 0; }
+  .admin-nav-section-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 2px 10px 4px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #a8a29e;
+  }
+  .admin-nav-section-emoji { font-size: 0.85rem; line-height: 1; }
   .admin-nav-item {
     width: 100%;
     justify-content: flex-start;
-    min-height: 40px;
+    min-height: 0;
+    padding: 7px 10px 7px 24px;
+    font-size: 0.82rem;
+    border-radius: 8px;
+    opacity: 0.72;
   }
+  .admin-nav-item.active { opacity: 1; }
   .admin-nav-user {
     margin-left: 0;
     margin-top: auto;
@@ -4682,7 +4712,7 @@ button {
     border-top: 1px solid #e7e2db;
   }
   .section.admin {
-    padding-left: 212px;
+    padding-left: 224px;
   }
 }
 
