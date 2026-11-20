@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "../supabaseAdmin";
+import { obtenerSearchConsole, type SearchConsoleEstado } from "./searchConsole";
 
 // ─────────────────────────────────────────────────────────────────
 // Auditoría de contenido (SEO + GEO) sobre los artículos del blog.
@@ -42,7 +43,7 @@ export type AuditoriaContenido = {
   distribucion: { buenos: number; mejorables: number; flojos: number }; // >=80 / 50-79 / <50
   articulos: ArticuloAuditoria[];
   tareas: TareaGlobal[];
-  searchConsole: { conectado: boolean; motivo: string };
+  searchConsole: SearchConsoleEstado;
 };
 
 const PESOS: Record<Severidad, number> = { alta: 18, media: 10, baja: 5 };
@@ -231,7 +232,7 @@ export async function auditarContenido(): Promise<AuditoriaContenido> {
     }))
     .sort((a, b) => ordenSev[a.severidad] - ordenSev[b.severidad] || b.afectados - a.afectados);
 
-  const searchConsole = estadoSearchConsole();
+  const searchConsole = await obtenerSearchConsole();
 
   return { totalArticulos: articulos.length, notaMedia, distribucion, articulos, tareas, searchConsole };
 }
@@ -253,17 +254,4 @@ function tituloTarea(checkId: string, n: number): string {
     imagen: `${plural} sin imagen de portada`,
   };
   return mapa[checkId] || `${plural} a revisar`;
-}
-
-// Google Search Console: queda preparado. Se activará cuando se configuren las
-// credenciales (OAuth / service account) en variables de entorno.
-function estadoSearchConsole(): { conectado: boolean; motivo: string } {
-  const hay =
-    !!process.env.GSC_CLIENT_EMAIL && !!process.env.GSC_PRIVATE_KEY && !!process.env.GSC_SITE_URL;
-  return {
-    conectado: hay,
-    motivo: hay
-      ? "Credenciales detectadas."
-      : "Sin conectar. Da de alta interroommurcia.com en Google Search Console y añade las credenciales (GSC_CLIENT_EMAIL, GSC_PRIVATE_KEY, GSC_SITE_URL) para traer búsquedas reales, posición media y CTR.",
-  };
 }

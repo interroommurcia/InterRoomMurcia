@@ -2028,6 +2028,50 @@ function ContenidoBlock({
               Mientras tanto, la auditoría de arriba se basa en el contenido real de tus artículos.
             </p>
           )}
+          {audit.searchConsole.datos && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, margin: "14px 0 6px" }}>
+                {[
+                  { k: "Clics", v: audit.searchConsole.datos.totales.clicks.toLocaleString("es-ES") },
+                  { k: "Impresiones", v: audit.searchConsole.datos.totales.impressions.toLocaleString("es-ES") },
+                  { k: "CTR medio", v: `${(audit.searchConsole.datos.totales.ctr * 100).toFixed(1)}%` },
+                  { k: "Posición media", v: audit.searchConsole.datos.totales.position.toFixed(1) },
+                ].map((s) => (
+                  <div key={s.k} style={{ padding: 12, background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, textAlign: "center" }}>
+                    <div style={{ fontSize: "1.25rem", fontWeight: 800, color: "#111827" }}>{s.v}</div>
+                    <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{s.k}</div>
+                  </div>
+                ))}
+              </div>
+              {audit.searchConsole.datos.topQueries.length > 0 && (
+                <div style={{ marginTop: 10, overflowX: "auto" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 6 }}>Búsquedas que te traen tráfico</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
+                    <thead>
+                      <tr style={{ textAlign: "left", color: "#6b7280" }}>
+                        <th style={{ padding: "4px 6px" }}>Búsqueda</th>
+                        <th style={{ padding: "4px 6px", textAlign: "right" }}>Clics</th>
+                        <th style={{ padding: "4px 6px", textAlign: "right" }}>Impr.</th>
+                        <th style={{ padding: "4px 6px", textAlign: "right" }}>CTR</th>
+                        <th style={{ padding: "4px 6px", textAlign: "right" }}>Pos.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {audit.searchConsole.datos.topQueries.slice(0, 15).map((q) => (
+                        <tr key={q.query} style={{ borderTop: "1px solid #f0f0f0" }}>
+                          <td style={{ padding: "4px 6px" }}>{q.query}</td>
+                          <td style={{ padding: "4px 6px", textAlign: "right", fontWeight: 600 }}>{q.clicks}</td>
+                          <td style={{ padding: "4px 6px", textAlign: "right", color: "#6b7280" }}>{q.impressions}</td>
+                          <td style={{ padding: "4px 6px", textAlign: "right", color: "#6b7280" }}>{(q.ctr * 100).toFixed(1)}%</td>
+                          <td style={{ padding: "4px 6px", textAlign: "right", color: "#6b7280" }}>{q.position.toFixed(1)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Detalle por artículo */}
