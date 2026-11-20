@@ -119,6 +119,21 @@ export default async function ContratosListPage() {
             >
               + Gestión alquiler
             </Link>
+            <Link
+              href="/admin/documentos/contratos/papelera"
+              style={{
+                background: "#fff",
+                color: "#6b7280",
+                padding: "10px 18px",
+                borderRadius: 8,
+                fontWeight: 500,
+                textDecoration: "none",
+                fontSize: "0.88rem",
+                border: "1px solid #e5e7eb",
+              }}
+            >
+              🗑 Papelera
+            </Link>
           </div>
         </div>
 

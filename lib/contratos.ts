@@ -103,6 +103,7 @@ export type Contrato = {
   email_estado: string | null;
   email_error: string | null;
   email_at: string | null;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -144,6 +145,7 @@ function row(c: Record<string, unknown>): Contrato {
     email_estado: (c.email_estado as string | null) ?? null,
     email_error: (c.email_error as string | null) ?? null,
     email_at: (c.email_at as string | null) ?? null,
+    deleted_at: (c.deleted_at as string | null) ?? null,
     created_at: String(c.created_at),
     updated_at: String(c.updated_at),
   };
@@ -190,7 +192,20 @@ export async function listarContratos(): Promise<Contrato[]> {
   const { data, error } = await admin
     .from("contratos")
     .select("*")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(row);
+}
+
+// Contratos en la papelera (borrados suaves), los más recientes primero.
+export async function listarContratosPapelera(): Promise<Contrato[]> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("contratos")
+    .select("*")
+    .not("deleted_at", "is", null)
+    .order("deleted_at", { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []).map(row);
 }
@@ -291,10 +306,60 @@ export async function cancelarContrato(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+// Borrado suave: va a la papelera. Se puede restaurar hasta que el cron
+// lo purgue a los 90 días.
+export async function moverContratoAPapelera(id: string): Promise<void> {
+  const admin = getSupabaseAdmin();
+  const now = new Date().toISOString();
+  const { error } = await admin
+    .from("contratos")
+    .update({ deleted_at: now, updated_at: now })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function restaurarContrato(id: string): Promise<void> {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin
+    .from("contratos")
+    .update({ deleted_at: null, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+// Borrado definitivo de la fila y su PDF en storage.
 export async function eliminarContrato(id: string): Promise<void> {
   const admin = getSupabaseAdmin();
+  const { data } = await admin.from("contratos").select("pdf_storage_path").eq("id", id).maybeSingle();
+  const path = (data as { pdf_storage_path?: string | null } | null)?.pdf_storage_path;
+  if (path) {
+    await admin.storage.from("contratos").remove([path]).catch(() => {});
+  }
   const { error } = await admin.from("contratos").delete().eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+// Purga definitiva de la papelera: borra los contratos con más de `dias`
+// días en la papelera (por defecto 90), junto con su PDF. Devuelve cuántos.
+export async function purgarPapeleraContratos(dias = 90): Promise<number> {
+  const admin = getSupabaseAdmin();
+  const corte = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await admin
+    .from("contratos")
+    .select("id, pdf_storage_path")
+    .not("deleted_at", "is", null)
+    .lt("deleted_at", corte);
+  if (error) throw new Error(error.message);
+  const filas = (data ?? []) as { id: string; pdf_storage_path: string | null }[];
+  if (filas.length === 0) return 0;
+  const paths = filas.map((f) => f.pdf_storage_path).filter((p): p is string => !!p);
+  if (paths.length) await admin.storage.from("contratos").remove(paths).catch(() => {});
+  const { error: delErr } = await admin
+    .from("contratos")
+    .delete()
+    .in("id", filas.map((f) => f.id));
+  if (delErr) throw new Error(delErr.message);
+  return filas.length;
 }
 
 // ---------------------------------------------------------------

@@ -121,7 +121,7 @@ export default function ContratoAcciones({ contratoId, estado, signingLink, emai
   }
 
   async function eliminarContrato() {
-    if (!confirm("¿Eliminar este contrato de forma permanente? Esta acción no se puede deshacer.")) return;
+    if (!confirm("¿Mover este contrato a la papelera? Podrás restaurarlo durante 90 días; después se borrará solo.")) return;
     setError("");
     setCargando(true);
     try {
@@ -132,7 +132,7 @@ export default function ContratoAcciones({ contratoId, estado, signingLink, emai
       }
       router.push("/admin/documentos/contratos");
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "No se pudo eliminar el contrato");
+      setError(e instanceof Error ? e.message : "No se pudo mover a la papelera");
       setCargando(false);
     }
   }
@@ -459,7 +459,7 @@ export default function ContratoAcciones({ contratoId, estado, signingLink, emai
             opacity: cargando ? 0.6 : 1,
           }}
         >
-          🗑 Eliminar contrato
+          🗑 Mover a papelera
         </button>
       </div>
     </div>

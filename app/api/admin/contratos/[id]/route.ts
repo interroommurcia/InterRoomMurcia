@@ -1,12 +1,16 @@
-import { NextResponse } from "next/server";
-import { eliminarContrato } from "../../../../../lib/contratos";
+import { NextRequest, NextResponse } from "next/server";
+import { moverContratoAPapelera, eliminarContrato } from "../../../../../lib/contratos";
 
 export const dynamic = "force-dynamic";
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+// Por defecto, mover a la papelera (borrado suave). Con ?permanente=1 se
+// borra definitivamente (se usa desde la papelera).
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const permanente = req.nextUrl.searchParams.get("permanente") === "1";
   try {
-    await eliminarContrato(id);
+    if (permanente) await eliminarContrato(id);
+    else await moverContratoAPapelera(id);
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
     return NextResponse.json(
