@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import BotonInterno from "../../../components/BotonInterno";
+import type { AuditoriaContenido, Check, Severidad } from "../../../lib/seo/auditoria";
 
 type PostHogData = {
   stats: { pageviews: number; visitors: number; sessions: number };
@@ -326,7 +327,8 @@ export default function AnalyticsManager({ esAdmin }: { esAdmin: boolean }) {
     contenido: false,
     blog: false,
     audiencia: false,
-    estrategia: false,
+    estrategia: true,
+    contenido_seo: true,
   });
 
   const loadData = useCallback(() => {
@@ -770,6 +772,12 @@ export default function AnalyticsManager({ esAdmin }: { esAdmin: boolean }) {
           totalVisits={data.stats.sessions}
           leads30d={leads?.total30d ?? null}
         />
+      )}
+
+      {/* ── Calidad de contenido: auditoría SEO / GEO ── */}
+      <SectionHead id="contenido_seo" title="Calidad de contenido · SEO · GEO" tip="Audita tus artículos contra las señales que usan el algoritmo de Google y las IAs generativas (keyword en title/meta/H1, profundidad, estructura, FAQ, enlaces internos, fuentes) y te da una lista priorizada de tareas para subir tráfico" />
+      {openSections.contenido_seo && (
+        <ContenidoBlock topPages={data.topPages} aiLandings={data.aiLandings ?? []} />
       )}
 
       {/* ── Grabaciones de sesión (solo admin) ── */}
@@ -1894,6 +1902,192 @@ function generarPropuestas(
   }
 
   return propuestas.slice(0, 7);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Bloque: Calidad de contenido (auditoría SEO / GEO de los artículos)
+// ─────────────────────────────────────────────────────────────────
+
+const SEV_COLOR: Record<Severidad, string> = { alta: "#dc2626", media: "#d97706", baja: "#6b7280" };
+const SEV_LABEL: Record<Severidad, string> = { alta: "Alta", media: "Media", baja: "Baja" };
+
+function notaColor(n: number): string {
+  if (n >= 80) return "#059669";
+  if (n >= 50) return "#d97706";
+  return "#dc2626";
+}
+
+function ContenidoBlock({
+  topPages,
+  aiLandings,
+}: {
+  topPages: { path: string; views: number }[];
+  aiLandings: { engine: string; path: string; sessions: number }[];
+}) {
+  const [audit, setAudit] = useState<AuditoriaContenido | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [abierto, setAbierto] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    let vivo = true;
+    fetch("/api/admin/analytics/contenido")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
+      .then((d) => { if (vivo) setAudit(d); })
+      .catch(() => { if (vivo) setError("No se pudo cargar la auditoría de contenido."); })
+      .finally(() => { if (vivo) setLoading(false); });
+    return () => { vivo = false; };
+  }, []);
+
+  // Tráfico por slug (para marcar artículos huérfanos / citados por IA).
+  const visitasPorSlug = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of topPages) {
+      const slug = p.path.replace(/^\/blog\//, "").replace(/\/$/, "");
+      m.set(slug, (m.get(slug) || 0) + p.views);
+    }
+    return m;
+  }, [topPages]);
+
+  const iaPorSlug = useMemo(() => {
+    const s = new Set<string>();
+    for (const l of aiLandings) s.add(l.path.replace(/^\/blog\//, "").replace(/\/$/, ""));
+    return s;
+  }, [aiLandings]);
+
+  if (loading) return <p className="admin-empty">Auditando contenido…</p>;
+  if (error) return <p className="lead-form-error">{error}</p>;
+  if (!audit) return null;
+
+  if (audit.totalArticulos === 0) {
+    return <p className="admin-empty">No hay artículos publicados que auditar todavía.</p>;
+  }
+
+  const articulosOrden = [...audit.articulos].sort((a, b) => a.nota - b.nota);
+
+  return (
+    <>
+      {/* Resumen de salud del contenido */}
+      <div className="analytics-stat-row" style={{ marginBottom: 16 }}>
+        <div className="analytics-stat">
+          <div className="analytics-stat-value" style={{ color: notaColor(audit.notaMedia) }}>{audit.notaMedia}</div>
+          <div className="analytics-stat-label">Nota media de contenido <HelpTip tip="Media de las notas SEO/GEO de todos tus artículos publicados (0–100). Cada nota mezcla title, meta, H1, profundidad, estructura, FAQ, enlaces y fuentes" /></div>
+        </div>
+        <div className="analytics-stat">
+          <div className="analytics-stat-value">{audit.totalArticulos}</div>
+          <div className="analytics-stat-label">Artículos publicados</div>
+        </div>
+        <div className="analytics-stat">
+          <div className="analytics-stat-value" style={{ color: "#059669" }}>{audit.distribucion.buenos}</div>
+          <div className="analytics-stat-label">Buenos (≥80)</div>
+        </div>
+        <div className="analytics-stat">
+          <div className="analytics-stat-value" style={{ color: "#dc2626" }}>{audit.distribucion.flojos}</div>
+          <div className="analytics-stat-label">Flojos (&lt;50)</div>
+        </div>
+      </div>
+
+      <div className="analytics-grid">
+        {/* Tareas priorizadas */}
+        <div className="analytics-card" style={{ gridColumn: "1 / -1" }}>
+          <h3>✅ Tareas para subir tráfico <HelpTip tip="Lista priorizada por impacto. Cada tarea agrupa cuántos artículos tienen el mismo fallo. Empieza por las de severidad Alta: son las que más pesan en el algoritmo" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 12px" }}>
+            Ordenadas por impacto en buscadores e IA · generadas desde tus artículos reales
+          </p>
+          {audit.tareas.length === 0 ? (
+            <p className="admin-empty">Tu contenido cumple todas las señales revisadas. 👏</p>
+          ) : (
+            <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+              {audit.tareas.map((t, i) => (
+                <li key={i} style={{ display: "flex", gap: 10, padding: 12, background: t.severidad === "alta" ? "#fef2f2" : "#f9fafb", border: `1px solid ${t.severidad === "alta" ? "#fecaca" : "#e5e7eb"}`, borderRadius: 8, alignItems: "flex-start" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "2px 7px", borderRadius: 6, background: SEV_COLOR[t.severidad], color: "#fff", fontSize: 10, fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
+                    {SEV_LABEL[t.severidad]}
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: "0.88rem", marginBottom: 2 }}>{t.titulo}</div>
+                    <div style={{ fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.5 }}>{t.detalle}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Search Console (preparado) */}
+        <div className="analytics-card" style={{ gridColumn: "1 / -1" }}>
+          <h3>🔎 Datos reales de Google · Search Console <HelpTip tip="Cuando conectes Search Console, aquí verás las búsquedas reales por las que apareces, tu posición media, impresiones y CTR: el diagnóstico más fiel al algoritmo" /></h3>
+          <div className="analytics-row">
+            <span>Estado</span>
+            <span style={{ fontWeight: 700, color: audit.searchConsole.conectado ? "#059669" : "#d97706" }}>
+              {audit.searchConsole.conectado ? "Conectado" : "Pendiente de conectar"}
+            </span>
+          </div>
+          <p style={{ fontSize: 12, color: "#4b5563", margin: "8px 0 0", lineHeight: 1.5 }}>{audit.searchConsole.motivo}</p>
+          {!audit.searchConsole.conectado && (
+            <p style={{ fontSize: 11, color: "#9ca3af", margin: "8px 0 0" }}>
+              Mientras tanto, la auditoría de arriba se basa en el contenido real de tus artículos.
+            </p>
+          )}
+        </div>
+
+        {/* Detalle por artículo */}
+        <div className="analytics-card" style={{ gridColumn: "1 / -1" }}>
+          <h3>Diagnóstico por artículo <HelpTip tip="Nota de cada artículo (de menor a mayor). Toca uno para ver exactamente qué le falta y cómo arreglarlo. 📈 = recibe visitas · 🤖 = citado por una IA" /></h3>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 10px" }}>De menor a mayor nota — ataca primero los de abajo del todo</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {articulosOrden.map((a) => {
+              const visitas = visitasPorSlug.get(a.slug) || 0;
+              const citadoIA = iaPorSlug.has(a.slug);
+              const open = !!abierto[a.id];
+              return (
+                <div key={a.id} style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
+                  <button
+                    onClick={() => setAbierto((p) => ({ ...p, [a.id]: !p[a.id] }))}
+                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#fff", border: "none", cursor: "pointer", textAlign: "left" }}
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 8, background: notaColor(a.nota), color: "#fff", fontWeight: 800, fontSize: "0.95rem", flexShrink: 0 }}>
+                      {a.nota}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontWeight: 600, fontSize: "0.85rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.titulo}</span>
+                      <span style={{ display: "block", fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
+                        {a.palabras} palabras · {a.fallos.length} {a.fallos.length === 1 ? "mejora" : "mejoras"}
+                        {visitas > 0 ? ` · 📈 ${visitas}` : " · 😴 sin visitas"}
+                        {citadoIA ? " · 🤖 citado por IA" : ""}
+                      </span>
+                    </span>
+                    <span style={{ fontSize: "0.7rem", opacity: 0.5, flexShrink: 0 }}>{open ? "▼" : "▶"}</span>
+                  </button>
+                  {open && (
+                    <div style={{ padding: "4px 12px 12px", background: "#fafafa", borderTop: "1px solid #f3f4f6" }}>
+                      {a.fallos.length === 0 ? (
+                        <p style={{ fontSize: "0.82rem", color: "#059669", margin: "8px 0" }}>Sin mejoras pendientes: cumple todas las señales. 👏</p>
+                      ) : (
+                        <ul style={{ margin: "8px 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 7 }}>
+                          {a.fallos.map((c: Check) => (
+                            <li key={c.id} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                              <span style={{ width: 8, height: 8, borderRadius: 3, background: SEV_COLOR[c.severidad], marginTop: 6, flexShrink: 0 }} />
+                              <div>
+                                <div style={{ fontWeight: 600, fontSize: "0.82rem" }}>{c.label}</div>
+                                <div style={{ fontSize: "0.8rem", color: "#4b5563", lineHeight: 1.45 }}>{c.fix}</div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <a href={`/blog/${a.slug}`} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 10, fontSize: "0.8rem", fontWeight: 600, color: "#2563eb" }}>
+                        Ver artículo →
+                      </a>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
 function ScrollBar({ label, users, total }: { label: string; users: number; total: number }) {
