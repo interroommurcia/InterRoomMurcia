@@ -44,7 +44,10 @@ export async function listarCasas(): Promise<CasaCaptacion[]> {
   const { data, error } = await admin
     .from("captacion_casas")
     .select(SELECT)
-    .order("created_at", { ascending: false });
+    // Orden por antigüedad: el primer contacto añadido es el nº1 y se queda
+    // fijo; las líneas nuevas se añaden al final (coincide con el append del
+    // cliente). Antes era descendente y descolocaba la numeración al recargar.
+    .order("created_at", { ascending: true });
   if (error) throw error;
   return ((data ?? []) as unknown as CasaRow[]).map(mapRow);
 }
