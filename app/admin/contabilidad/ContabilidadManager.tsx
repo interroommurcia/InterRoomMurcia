@@ -2073,7 +2073,7 @@ export default function ContabilidadManager() {
         }).filter((p) => p.total > 0 || p.liquidado > 0);
 
         const MESES_NOMBRE = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-        type LineaDesglose = { key: string; concepto: string; periodo: string; importe: number; tipo: "fijo" | "puntual" | "pago" };
+        type LineaDesglose = { key: string; concepto: string; periodo: string; importe: number; tipo: "fijo" | "puntual" | "pago"; id?: string };
         function desglosePersona(nombre: string): LineaDesglose[] {
           const lineas: LineaDesglose[] = [];
           for (const g of gastosFijos) {
@@ -2103,7 +2103,7 @@ export default function ContabilidadManager() {
           }
           for (const l of liquidaciones) {
             if (l.persona !== nombre) continue;
-            lineas.push({ key: `liq-${l.id}`, concepto: l.concepto || "Pago", periodo: new Date(l.fecha).toLocaleDateString("es-ES"), importe: -Number(l.importe), tipo: "pago" });
+            lineas.push({ key: `liq-${l.id}`, concepto: l.concepto || "Pago", periodo: new Date(l.fecha).toLocaleDateString("es-ES"), importe: -Number(l.importe), tipo: "pago", id: l.id });
           }
           return lineas;
         }
@@ -2534,13 +2534,22 @@ export default function ContabilidadManager() {
                                         {lineas.map((l) => (
                                           <tr key={l.key} style={{ borderBottom: "1px solid #e0e7ff", background: lineasSeleccionadas.has(l.key) ? "#e0e7ff" : undefined }}>
                                             <td style={{ padding: "4px 0", width: 24 }}>
-                                              {l.tipo !== "pago" && (
+                                              {l.tipo !== "pago" ? (
                                                 <input type="checkbox" checked={lineasSeleccionadas.has(l.key)} onChange={() => {
                                                   const next = new Set(lineasSeleccionadas);
                                                   if (next.has(l.key)) next.delete(l.key); else next.add(l.key);
                                                   setLineasSeleccionadas(next);
                                                 }} />
-                                              )}
+                                              ) : l.id ? (
+                                                <button
+                                                  type="button"
+                                                  title="Borrar este pago"
+                                                  onClick={() => eliminarLiquidacionFn(l.id!)}
+                                                  style={{ border: "none", background: "transparent", color: "#dc2626", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}
+                                                >
+                                                  ✕
+                                                </button>
+                                              ) : null}
                                             </td>
                                             <td style={{ padding: "4px 0", width: "35%" }}>
                                               {l.tipo === "pago" ? <span style={{ color: "#059669" }}>{l.concepto}</span> : l.concepto}
