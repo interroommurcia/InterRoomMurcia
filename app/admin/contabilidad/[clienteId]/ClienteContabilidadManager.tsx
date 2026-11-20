@@ -280,15 +280,6 @@ export default function ClienteContabilidadManager({ clienteId, esAdmin }: { cli
     router.push("/admin/contabilidad");
   }
 
-  async function toggleIngresoCobrado(ingresoId: string, cobrado: boolean) {
-    await fetch(`/api/admin/ingresos/${ingresoId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cobrado }),
-    });
-    await cargarIngresos();
-  }
-
   async function añadirIngreso(e: React.FormEvent) {
     e.preventDefault();
     await fetch(`/api/admin/clientes/${clienteId}/ingresos`, {
@@ -510,25 +501,8 @@ export default function ClienteContabilidadManager({ clienteId, esAdmin }: { cli
                   {facturaGen && <span style={{ marginLeft: 8, padding: "2px 8px", background: "#dcfce7", color: "#166534", borderRadius: 4, fontSize: 11 }}>Factura {facturaGen.numero}</span>}
                 </span>
                 <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  {!ing.cobrado ? (
-                    <button type="button" className="btn-primary" style={{ fontSize: 12, padding: "4px 10px", whiteSpace: "nowrap" }} onClick={() => {
-                      const mesLabel = (() => { const d = ing.mes.slice(0, 10).split("-"); return `${d[2]}/${d[1]}/${d[0]}`; })();
-                      if (confirm(`¿Confirmar el pago de la mensualidad del ${mesLabel} por ${fmt(ing.comision_calculada)}?`)) {
-                        toggleIngresoCobrado(ing.id, true);
-                      }
-                    }}>
-                      Confirmar pago
-                    </button>
-                  ) : (
-                    <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "4px 10px", whiteSpace: "nowrap" }} onClick={() => {
-                      if (confirm("¿Desmarcar este pago como cobrado?")) {
-                        toggleIngresoCobrado(ing.id, false);
-                      }
-                    }}>
-                      Desmarcar cobro
-                    </button>
-                  )}
-                  <button type="button" className="btn-ghost" onClick={() => eliminarIngreso(ing.id)}>
+                  {/* El cobro se gestiona desde Facturas (marca la factura como cobrada). */}
+                  <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => eliminarIngreso(ing.id)}>
                     Borrar
                   </button>
                 </span>
