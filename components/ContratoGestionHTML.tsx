@@ -316,6 +316,7 @@ export default function ContratoGestionHTML({
           )}
           <p>Si en una mensualidad el inmueble permaneciera totalmente desocupado y El Propietario no percibiera renta alguna, <strong>no se devengarán honorarios por ese mes</strong>. Esta cláusula aplica expresamente, entre otros, a los periodos de vacancia habituales en alquiler estudiantil (típicamente julio y agosto).</p>
           <p><strong>Flujo de pagos:</strong> los inquilinos abonarán la renta mensual directamente a El Propietario, remitiendo justificante de pago a La Agencia para su control. La Agencia no recibe en ningún caso dinero de los inquilinos. Una vez acreditado el cobro, El Propietario abonará a La Agencia los honorarios devengados ese mes, contra la factura emitida por La Agencia.</p>
+          <p>* En caso de resolución anticipada de este contrato o de su no renovación por parte de El Propietario, La Agencia conservará el derecho a percibir el porcentaje aquí pactado sobre las rentas que generen los inquilinos cuya entrada en el inmueble hubiera gestionado La Agencia, calculado sobre los ingresos efectivamente percibidos por El Propietario conforme a esta cláusula, hasta la finalización del contrato de arrendamiento suscrito con dichos inquilinos, con independencia de que estos continúen o no residiendo en la vivienda y de que la gestión pase a una nueva agencia u operador. Quedará excluida de dicha retribución la parte proporcional correspondiente a los inquilinos o unidades del inmueble cuya gestión haya sido iniciada por la nueva agencia u operador contratado por El Propietario.</p>
         </section>
 
         <section className="contrato-clause">
@@ -367,7 +368,7 @@ export default function ContratoGestionHTML({
           <span className="contrato-clause-num">09</span>
           <div className="contrato-clause-title">Resolución anticipada</div>
           <p>El presente contrato podrá ser resuelto anticipadamente, sin derecho a indemnización, por El Propietario cuando concurra acreditada mala fe o mala praxis profesional por parte de La Agencia, previa comunicación escrita exponiendo los hechos y plazo razonable para su subsanación.</p>
-          <p>Fuera de dicho supuesto, cualquiera de las partes podrá resolver el contrato mediante comunicación escrita con preaviso de 30 días naturales, respetándose en todo caso los honorarios devengados hasta la fecha de resolución y aquellos correspondientes al inquilino que estuviera ya instalado en el inmueble por mediación de La Agencia.</p>
+          <p>Fuera de dicho supuesto, cualquiera de las partes podrá resolver el contrato mediante comunicación escrita con preaviso de 30 días naturales, respetándose en todo caso los honorarios devengados hasta la fecha de resolución, así como los que correspondan a los inquilinos ya instalados en el inmueble por mediación de La Agencia, que seguirán devengándose en los términos previstos en la Cláusula 04 hasta la finalización de sus respectivos contratos de arrendamiento.</p>
         </section>
 
         <section className="contrato-clause">
