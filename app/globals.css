@@ -4714,6 +4714,13 @@ button {
   .section.admin {
     padding-left: 224px;
   }
+  /* El sidebar es fixed (bottom:0) y, sin esto, se pintaba por encima del
+     footer global. Al ser el footer hermano del .section.admin, lo elevamos
+     por encima del sidebar para que la barra "termine" al llegar al pie. */
+  .section.admin ~ .site-footer {
+    position: relative;
+    z-index: 41;
+  }
 }
 
 /* ============================================================
