@@ -22,7 +22,6 @@ type FacturaEmitida = {
 type PropiedadDeCliente = { id: string; nombre: string; direccion: string | null; rol: "propietario" | "inquilino" };
 
 const CATEGORIAS: { value: string; label: string }[] = [
-  { value: "factura", label: "Factura" },
   { value: "seguro", label: "Seguro" },
   { value: "dni", label: "DNI / NIE" },
   { value: "contrato", label: "Contrato" },
@@ -85,8 +84,7 @@ export default function ClienteFichaManager({ clienteId }: { clienteId: string }
     await cargar();
   }
 
-  const docFacturas = documentos.filter((d) => d.categoria === "factura");
-  const docOtros = documentos.filter((d) => d.categoria !== "factura");
+  const docOtros = documentos;
 
   const Item = (d: ClienteDocumento) => (
     <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
@@ -149,16 +147,6 @@ export default function ClienteFichaManager({ clienteId }: { clienteId: string }
       </div>
 
       <div className="analytics-card" style={{ marginBottom: 20 }}>
-        <h3 style={{ marginTop: 0 }}>Facturas (documentos)</h3>
-        {docFacturas.length ? docFacturas.map(Item) : <p className="admin-empty" style={{ marginTop: 4 }}>Sin facturas subidas.</p>}
-      </div>
-
-      <div className="analytics-card" style={{ marginBottom: 20 }}>
-        <h3 style={{ marginTop: 0 }}>Otros documentos</h3>
-        {docOtros.length ? docOtros.map(Item) : <p className="admin-empty" style={{ marginTop: 4 }}>Sin documentos.</p>}
-      </div>
-
-      <div className="analytics-card">
         <h3 style={{ marginTop: 0 }}>Facturas emitidas</h3>
         {facturas.length ? (
           <div>
@@ -175,6 +163,11 @@ export default function ClienteFichaManager({ clienteId }: { clienteId: string }
         ) : (
           <p className="admin-empty" style={{ marginTop: 4 }}>Sin facturas emitidas.</p>
         )}
+      </div>
+
+      <div className="analytics-card">
+        <h3 style={{ marginTop: 0 }}>Otros documentos</h3>
+        {docOtros.length ? docOtros.map(Item) : <p className="admin-empty" style={{ marginTop: 4 }}>Sin documentos.</p>}
       </div>
     </>
   );
