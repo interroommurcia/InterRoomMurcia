@@ -16,10 +16,13 @@ export type TikTokArticle = {
   sections: { h2: string; image?: string | null }[];
 };
 
-type Slide = { text: string; broll: string };
-type Script = { slides: Slide[]; caption: string; hashtags: string[] };
+type RawSlide = { text: string; broll: string };
+type Script = { slides: RawSlide[]; caption: string; hashtags: string[] };
+// idx: índice del clip elegido en `candidates`; -1 = usar foto del artículo.
+type EditSlide = { text: string; broll: string; candidates: string[]; idx: number };
 
-// Carga una imagen remota como bitmap sin contaminar el canvas (fetch CORS).
+const proxy = (url: string) => `/api/admin/articulos/broll?url=${encodeURIComponent(url)}`;
+
 async function cargarBitmap(url: string): Promise<ImageBitmap | null> {
   try {
     const r = await fetch(url, { mode: "cors" });
@@ -27,6 +30,33 @@ async function cargarBitmap(url: string): Promise<ImageBitmap | null> {
     return await createImageBitmap(await r.blob());
   } catch {
     return null;
+  }
+}
+
+async function proxyBytes(url: string): Promise<Uint8Array | null> {
+  try {
+    const r = await fetch(proxy(url));
+    if (!r.ok) return null;
+    return new Uint8Array(await r.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
+async function buscarCandidatos(query: string): Promise<string[]> {
+  if (!query) return [];
+  try {
+    const res = await fetch("/api/admin/articulos/broll", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const results: { url: string }[] = data.results ?? [];
+    return results.map((r) => r.url).filter(Boolean);
+  } catch {
+    return [];
   }
 }
 
@@ -45,8 +75,6 @@ function wrap(x: CanvasRenderingContext2D, text: string, maxW: number): string[]
   return lines;
 }
 
-// Overlay TRANSPARENTE 720x1280: velos + marca + gancho + CTA. Va encima del
-// vídeo (o de la foto) de fondo, así que no dibuja fondo.
 async function pintarOverlay(texto: string, idx: number, total: number): Promise<Uint8Array> {
   const W = 720, H = 1280;
   const c = document.createElement("canvas");
@@ -54,7 +82,6 @@ async function pintarOverlay(texto: string, idx: number, total: number): Promise
   c.height = H;
   const x = c.getContext("2d")!;
 
-  // Velos para legibilidad (arriba y abajo)
   const gt = x.createLinearGradient(0, 0, 0, 320);
   gt.addColorStop(0, "rgba(0,0,0,0.55)");
   gt.addColorStop(1, "rgba(0,0,0,0)");
@@ -66,7 +93,6 @@ async function pintarOverlay(texto: string, idx: number, total: number): Promise
   x.fillStyle = gb;
   x.fillRect(0, 560, W, H - 560);
 
-  // Marca arriba
   x.textBaseline = "top";
   x.font = "800 36px Inter, Arial, sans-serif";
   x.fillStyle = "#fff";
@@ -74,7 +100,6 @@ async function pintarOverlay(texto: string, idx: number, total: number): Promise
   x.shadowBlur = 8;
   x.fillText("InterRoom Murcia", 36, 44);
 
-  // Gancho (tercio inferior)
   x.font = "800 66px Inter, Arial, sans-serif";
   const lines = wrap(x, texto, W - 80);
   const lh = 78;
@@ -87,7 +112,6 @@ async function pintarOverlay(texto: string, idx: number, total: number): Promise
   }
   x.shadowBlur = 0;
 
-  // Píldora CTA
   const cta = idx === total - 1 ? `Léelo en ${SITE_HOST}` : SITE_HOST;
   x.font = "700 32px Inter, Arial, sans-serif";
   const tw = x.measureText(cta).width;
@@ -108,8 +132,6 @@ async function pintarOverlay(texto: string, idx: number, total: number): Promise
   return new Uint8Array(await blob.arrayBuffer());
 }
 
-// Fondo OPACO 720x1280 (fallback cuando no hay clip de vídeo): foto a cover o
-// degradado de marca.
 async function pintarFondo(bmp: ImageBitmap | null): Promise<Uint8Array> {
   const W = 720, H = 1280;
   const c = document.createElement("canvas");
@@ -131,30 +153,13 @@ async function pintarFondo(bmp: ImageBitmap | null): Promise<Uint8Array> {
   return new Uint8Array(await blob.arrayBuffer());
 }
 
-// Busca un clip de b-roll y descarga sus bytes (vía nuestro proxy, sin CORS).
-async function traerClip(query: string): Promise<Uint8Array | null> {
-  if (!query) return null;
-  try {
-    const res = await fetch("/api/admin/articulos/broll", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query }),
-    });
-    if (!res.ok) return null;
-    const { url } = await res.json();
-    if (!url) return null;
-    const bytes = await fetch(`/api/admin/articulos/broll?url=${encodeURIComponent(url)}`);
-    if (!bytes.ok) return null;
-    return new Uint8Array(await bytes.arrayBuffer());
-  } catch {
-    return null;
-  }
-}
-
 export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; onClose: () => void }) {
   const url = `${SITE_URL}/blog/${article.slug}`;
-  const [script, setScript] = useState<Script | null>(null);
+  const [caption, setCaption] = useState("");
+  const [hashtags, setHashtags] = useState<string[]>([]);
+  const [slides, setSlides] = useState<EditSlide[] | null>(null);
   const [loadingScript, setLoadingScript] = useState(false);
+  const [buscandoClips, setBuscandoClips] = useState(false);
   const [generando, setGenerando] = useState(false);
   const [fase, setFase] = useState("");
   const [pct, setPct] = useState(0);
@@ -180,9 +185,19 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
           url,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error generando guion");
-      setScript(data);
+      const data: Script = await res.json();
+      if (!res.ok) throw new Error((data as { error?: string }).error || "Error generando guion");
+      setCaption(data.caption ?? "");
+      setHashtags(data.hashtags ?? []);
+      const base: EditSlide[] = data.slides.map((s) => ({ text: s.text, broll: s.broll, candidates: [], idx: 0 }));
+      setSlides(base);
+      // Buscar clips candidatos de cada diapositiva.
+      setBuscandoClips(true);
+      const cands = await Promise.all(base.map((s) => buscarCandidatos(s.broll)));
+      setSlides((prev) =>
+        (prev ?? base).map((s, i) => ({ ...s, candidates: cands[i], idx: cands[i].length ? 0 : -1 }))
+      );
+      setBuscandoClips(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error generando guion");
     } finally {
@@ -190,14 +205,31 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
     }
   }
 
+  function setSlideText(i: number, text: string) {
+    setSlides((prev) => (prev ? prev.map((s, j) => (j === i ? { ...s, text } : s)) : prev));
+  }
+  function otroClip(i: number) {
+    setSlides((prev) =>
+      prev
+        ? prev.map((s, j) => {
+            if (j !== i || s.candidates.length === 0) return s;
+            const next = s.idx < 0 ? 0 : (s.idx + 1) % s.candidates.length;
+            return { ...s, idx: next };
+          })
+        : prev
+    );
+  }
+  function usarFoto(i: number) {
+    setSlides((prev) => (prev ? prev.map((s, j) => (j === i ? { ...s, idx: -1 } : s)) : prev));
+  }
+
   async function generarVideo() {
-    if (!script) return;
+    if (!slides) return;
     setError("");
     setResultUrl("");
     setResultBlob(null);
     setGenerando(true);
     setPct(0);
-    const slides = script.slides;
     progRef.current = { seg: 0, total: slides.length + 1 };
     try {
       const { FFmpeg } = await import("@ffmpeg/ffmpeg");
@@ -220,11 +252,12 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
       const imgUrls = [article.hero_image, ...article.sections.map((s) => s.image)].filter(Boolean) as string[];
       const bitmaps = (await Promise.all(imgUrls.map(cargarBitmap))).filter(Boolean) as ImageBitmap[];
 
-      // 1) Traer clips de b-roll en paralelo.
-      setFase("Buscando vídeos de fondo…");
-      const clips = await Promise.all(slides.map((s) => traerClip(s.broll)));
+      // Descargar el clip elegido de cada diapositiva (el que usa foto -> null).
+      setFase("Descargando vídeos de fondo…");
+      const clips = await Promise.all(
+        slides.map((s) => (s.idx >= 0 && s.candidates[s.idx] ? proxyBytes(s.candidates[s.idx]) : Promise.resolve(null)))
+      );
 
-      // 2) Un segmento mp4 por diapositiva (clip de vídeo o foto de fallback).
       for (let i = 0; i < slides.length; i++) {
         progRef.current.seg = i;
         setFase(`Montando diapositiva ${i + 1} de ${slides.length}…`);
@@ -255,7 +288,6 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
         }
       }
 
-      // 3) Concatenar todos los segmentos (mismos parámetros -> copy directo).
       progRef.current.seg = slides.length;
       setFase("Uniendo el vídeo…");
       const list = slides.map((_, i) => `file 'seg${i}.mp4'`).join("\n") + "\n";
@@ -301,7 +333,7 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
     } catch { /* noop */ }
   }
 
-  const captionCompleto = script ? `${script.caption}\n\n${script.hashtags.join(" ")}` : "";
+  const captionCompleto = `${caption}\n\n${hashtags.join(" ")}`;
 
   return (
     <div className="articulos-preview-modal" onClick={onClose}>
@@ -311,25 +343,75 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
           <h3 style={{ margin: "0 0 4px", fontSize: 18 }}>🎵 TikTok del artículo</h3>
           <p style={{ margin: "0 0 16px", fontSize: 13, color: "#6b7280" }}>{article.h1}</p>
 
-          {!script ? (
+          {!slides ? (
             <button type="button" className="btn-primary" onClick={generarGuion} disabled={loadingScript}>
               {loadingScript ? "Generando guion…" : "1. Generar guion + copy"}
             </button>
           ) : (
             <>
               <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 10, padding: 14, marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", marginBottom: 6 }}>Diapositivas (gancho · vídeo de fondo)</div>
-                <ol style={{ margin: "0 0 12px", paddingLeft: 18, fontSize: 14 }}>
-                  {script.slides.map((s, i) => (
-                    <li key={i} style={{ marginBottom: 6 }}>
-                      <strong>{s.text}</strong>
-                      {s.broll && <span style={{ color: "#9ca3af", fontSize: 12 }}> · 🎬 {s.broll}</span>}
-                    </li>
-                  ))}
-                </ol>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", marginBottom: 6 }}>Copy + hashtags</div>
-                <p style={{ margin: "0 0 6px", fontSize: 14, whiteSpace: "pre-wrap" }}>{script.caption}</p>
-                <p style={{ margin: "0 0 10px", fontSize: 13, color: "#2563eb" }}>{script.hashtags.join(" ")}</p>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", marginBottom: 8 }}>
+                  Diapositivas — edita la letra y elige el clip de fondo
+                </div>
+                {slides.map((s, i) => {
+                  const clip = s.idx >= 0 ? s.candidates[s.idx] : null;
+                  return (
+                    <div key={i} style={{ display: "flex", gap: 10, padding: "10px 0", borderTop: i ? "1px solid #eee" : "none" }}>
+                      <div style={{ flex: "0 0 90px" }}>
+                        {clip ? (
+                          <video
+                            key={clip}
+                            src={proxy(clip)}
+                            muted
+                            loop
+                            autoPlay
+                            playsInline
+                            style={{ width: 90, height: 160, objectFit: "cover", borderRadius: 8, background: "#000", display: "block" }}
+                          />
+                        ) : (
+                          <div style={{ width: 90, height: 160, borderRadius: 8, background: "linear-gradient(135deg,#1f2937,#ea6a12)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, textAlign: "center", padding: 6 }}>
+                            Foto del artículo
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 11, color: "#9ca3af" }}>Diapositiva {i + 1}</span>
+                        <textarea
+                          value={s.text}
+                          onChange={(e) => setSlideText(i, e.target.value)}
+                          rows={2}
+                          style={{ display: "block", width: "100%", marginTop: 4, padding: 6, borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14, fontWeight: 600, resize: "vertical" }}
+                        />
+                        <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
+                          {s.candidates.length > 0 ? (
+                            <>
+                              <button type="button" className="btn-ghost btn-mini" onClick={() => otroClip(i)}>
+                                ↻ Otro clip{clip ? ` (${s.idx + 1}/${s.candidates.length})` : ""}
+                              </button>
+                              {clip ? (
+                                <button type="button" className="btn-ghost btn-mini" onClick={() => usarFoto(i)}>🖼 Usar foto</button>
+                              ) : (
+                                <button type="button" className="btn-ghost btn-mini" onClick={() => otroClip(i)}>🎬 Usar vídeo</button>
+                              )}
+                            </>
+                          ) : (
+                            <span style={{ fontSize: 11, color: "#9ca3af" }}>{buscandoClips ? "Buscando clips…" : "Sin clip · usará foto"}</span>
+                          )}
+                          {s.broll && <span style={{ fontSize: 11, color: "#cbd5e1" }}>🎬 {s.broll}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", margin: "12px 0 6px" }}>Copy + hashtags</div>
+                <textarea
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  rows={2}
+                  style={{ display: "block", width: "100%", padding: 6, borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14, resize: "vertical" }}
+                />
+                <p style={{ margin: "6px 0 10px", fontSize: 13, color: "#2563eb" }}>{hashtags.join(" ")}</p>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button type="button" className="btn-ghost btn-mini" onClick={() => copiar("copy", captionCompleto)}>
                     {copiado === "copy" ? "Copiado ✓" : "Copiar copy + hashtags"}
@@ -338,14 +420,14 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
                     {copiado === "url" ? "Copiado ✓" : "Copiar enlace del blog"}
                   </button>
                   <button type="button" className="btn-ghost btn-mini" onClick={generarGuion} disabled={loadingScript}>
-                    {loadingScript ? "…" : "↻ Regenerar"}
+                    {loadingScript ? "…" : "↻ Regenerar guion"}
                   </button>
                 </div>
               </div>
 
               {!resultUrl && (
-                <button type="button" className="btn-primary" onClick={generarVideo} disabled={generando}>
-                  {generando ? `${fase || "Generando…"} ${pct}%` : "2. Generar vídeo 9:16"}
+                <button type="button" className="btn-primary" onClick={generarVideo} disabled={generando || buscandoClips}>
+                  {generando ? `${fase || "Generando…"} ${pct}%` : buscandoClips ? "Buscando clips…" : "2. Generar vídeo 9:16"}
                 </button>
               )}
               {generando && (
@@ -364,6 +446,7 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
               <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                 <button type="button" className="btn-primary" onClick={compartir}>📲 Compartir a TikTok</button>
                 <button type="button" className="btn-ghost" onClick={descargar}>⬇️ Descargar</button>
+                <button type="button" className="btn-ghost" onClick={() => { setResultUrl(""); setResultBlob(null); }}>✎ Editar y rehacer</button>
               </div>
               <p style={{ fontSize: 11, color: "#6b7280", marginTop: 8 }}>
                 Sin audio a propósito: al subirlo a TikTok, añade el audio en tendencia y pega el copy. Pon el enlace del blog en tu bio.

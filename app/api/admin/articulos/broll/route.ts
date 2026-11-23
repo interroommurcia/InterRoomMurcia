@@ -65,14 +65,23 @@ export async function POST(req: NextRequest) {
   }
   const data = await res.json();
   const hits: PixHit[] = data?.hits ?? [];
-  if (hits.length === 0) return NextResponse.json({ url: null });
 
-  // Primer hit con archivo usable.
-  for (const hit of hits) {
-    const file = elegirArchivo(hit);
-    if (file) {
-      return NextResponse.json({ url: file.url, width: file.width, height: file.height });
-    }
-  }
-  return NextResponse.json({ url: null });
+  // Un candidato por hit (el archivo más ligero decente).
+  const cands = hits
+    .map((h) => elegirArchivo(h))
+    .filter((v): v is PixVideo => !!v)
+    .map((v) => ({ url: v.url, width: v.width, height: v.height }));
+
+  // Verticales primero (altura > anchura); dentro de cada grupo, los más
+  // ligeros antes (menor área = más rápido en el navegador).
+  cands.sort((a, b) => {
+    const va = a.height > a.width ? 0 : 1;
+    const vb = b.height > b.width ? 0 : 1;
+    if (va !== vb) return va - vb;
+    return a.width * a.height - b.width * b.height;
+  });
+
+  const results = cands.slice(0, 8);
+  // Compat: `url` = primer resultado (mejor candidato).
+  return NextResponse.json({ url: results[0]?.url ?? null, results });
 }
