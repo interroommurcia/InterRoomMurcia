@@ -268,37 +268,38 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
         slides.map((s) => (s.idx >= 0 && s.candidates[s.idx] ? proxyBytes(s.candidates[s.idx]) : Promise.resolve(null)))
       );
       const dur = String(segDur);
+      const CROP = "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280";
       // Animación del texto: funde el bloque (alpha) y lo sube ~40px en 0.4s.
       const ovChain = animar
         ? "[1:v]format=yuva420p,fade=t=in:st=0:d=0.4:alpha=1[ov];[v][ov]overlay=0:'if(lt(t,0.4),40-100*t,0)'[o]"
         : "[v][1:v]overlay=0:0[o]";
+      // Cola común de codificación de cada segmento.
+      const salida = (i: number) =>
+        ["-map", "[o]", "-an", "-t", dur, "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", `seg${i}.mp4`];
 
       for (let i = 0; i < slides.length; i++) {
         progRef.current.seg = i;
         setFase(`Montando diapositiva ${i + 1} de ${slides.length}…`);
-        const ov = await pintarOverlay(slides[i].text, i, slides.length, escala);
-        await ffmpeg.writeFile(`ov${i}.png`, ov);
+        await ffmpeg.writeFile(`ov${i}.png`, await pintarOverlay(slides[i].text, i, slides.length, escala));
 
         if (clips[i]) {
+          // Fondo = clip de vídeo recortado a 9:16.
           await ffmpeg.writeFile(`clip${i}.mp4`, clips[i]!);
           await ffmpeg.exec([
             "-ss", "0", "-t", dur, "-i", `clip${i}.mp4`,
             "-loop", "1", "-i", `ov${i}.png`,
-            "-filter_complex",
-            `[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setpts=PTS-STARTPTS,fps=30[v];${ovChain}`,
-            "-map", "[o]", "-an", "-t", dur,
-            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", `seg${i}.mp4`,
+            "-filter_complex", `[0:v]${CROP},setpts=PTS-STARTPTS,fps=30[v];${ovChain}`,
+            ...salida(i),
           ]);
         } else {
+          // Fondo = foto del artículo (o degradado) como imagen fija.
           const bmp = bitmaps.length ? bitmaps[i % bitmaps.length] : null;
           await ffmpeg.writeFile(`bg${i}.png`, await pintarFondo(bmp));
           await ffmpeg.exec([
             "-loop", "1", "-t", dur, "-i", `bg${i}.png`,
             "-loop", "1", "-i", `ov${i}.png`,
-            "-filter_complex",
-            `[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=30[v];${ovChain}`,
-            "-map", "[o]", "-an", "-t", dur,
-            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", `seg${i}.mp4`,
+            "-filter_complex", `[0:v]${CROP},fps=30[v];${ovChain}`,
+            ...salida(i),
           ]);
         }
       }

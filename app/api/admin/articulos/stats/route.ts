@@ -219,9 +219,6 @@ export async function GET(req: NextRequest) {
   const totalHuman = humanRows.length;
   const botCount = rows.length - totalHuman;
 
-  // Legacy format (sources + total) para mantener compatibilidad si lo lee algo más.
-  const legacySources = sources.map((s) => ({ label: s.label, count: s.count }));
-
   return NextResponse.json({
     total: totalHuman,
     unique: uniqueVisitors,
@@ -239,7 +236,5 @@ export async function GET(req: NextRequest) {
     dailyViews,
     linkClicks,
     linkClicksTotal: linkTotal,
-    // compat con la UI anterior:
-    sourcesLegacy: legacySources,
   });
 }

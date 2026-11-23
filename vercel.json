@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/cleanup-contratos",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-tiktok-videos",
+      "schedule": "0 2 * * *"
     }
   ]
 }
