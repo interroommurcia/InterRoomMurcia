@@ -16,15 +16,15 @@ export type TikTokArticle = {
   sections: { h2: string; image?: string | null }[];
 };
 
-type Script = { slides: string[]; caption: string; hashtags: string[] };
+type Slide = { text: string; broll: string };
+type Script = { slides: Slide[]; caption: string; hashtags: string[] };
 
 // Carga una imagen remota como bitmap sin contaminar el canvas (fetch CORS).
 async function cargarBitmap(url: string): Promise<ImageBitmap | null> {
   try {
     const r = await fetch(url, { mode: "cors" });
     if (!r.ok) return null;
-    const b = await r.blob();
-    return await createImageBitmap(b);
+    return await createImageBitmap(await r.blob());
   } catch {
     return null;
   }
@@ -39,63 +39,47 @@ function wrap(x: CanvasRenderingContext2D, text: string, maxW: number): string[]
     if (x.measureText(test).width > maxW && line) {
       lines.push(line);
       line = w;
-    } else {
-      line = test;
-    }
+    } else line = test;
   }
   if (line) lines.push(line);
   return lines;
 }
 
-// Dibuja una diapositiva 720x1280: foto (o degradado) + marca + gancho + CTA.
-async function pintarSlide(texto: string, bmp: ImageBitmap | null, idx: number, total: number): Promise<Blob> {
+// Overlay TRANSPARENTE 720x1280: velos + marca + gancho + CTA. Va encima del
+// vídeo (o de la foto) de fondo, así que no dibuja fondo.
+async function pintarOverlay(texto: string, idx: number, total: number): Promise<Uint8Array> {
   const W = 720, H = 1280;
   const c = document.createElement("canvas");
   c.width = W;
   c.height = H;
   const x = c.getContext("2d")!;
 
-  if (bmp) {
-    const s = Math.max(W / bmp.width, H / bmp.height);
-    const dw = bmp.width * s, dh = bmp.height * s;
-    x.drawImage(bmp, (W - dw) / 2, (H - dh) / 2, dw, dh);
-  } else {
-    const g = x.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, "#1f2937");
-    g.addColorStop(1, "#ea6a12");
-    x.fillStyle = g;
-    x.fillRect(0, 0, W, H);
-  }
-
   // Velos para legibilidad (arriba y abajo)
-  const gt = x.createLinearGradient(0, 0, 0, 300);
+  const gt = x.createLinearGradient(0, 0, 0, 320);
   gt.addColorStop(0, "rgba(0,0,0,0.55)");
   gt.addColorStop(1, "rgba(0,0,0,0)");
   x.fillStyle = gt;
-  x.fillRect(0, 0, W, 300);
-  const gb = x.createLinearGradient(0, 640, 0, H);
+  x.fillRect(0, 0, W, 320);
+  const gb = x.createLinearGradient(0, 560, 0, H);
   gb.addColorStop(0, "rgba(0,0,0,0)");
-  gb.addColorStop(1, "rgba(0,0,0,0.85)");
+  gb.addColorStop(1, "rgba(0,0,0,0.88)");
   x.fillStyle = gb;
-  x.fillRect(0, 640, W, H - 640);
+  x.fillRect(0, 560, W, H - 560);
 
   // Marca arriba
   x.textBaseline = "top";
   x.font = "800 36px Inter, Arial, sans-serif";
   x.fillStyle = "#fff";
-  x.shadowColor = "rgba(0,0,0,0.5)";
+  x.shadowColor = "rgba(0,0,0,0.6)";
   x.shadowBlur = 8;
   x.fillText("InterRoom Murcia", 36, 44);
-  x.shadowBlur = 0;
 
-  // Gancho (centrado en el tercio inferior)
-  x.textAlign = "left";
-  x.font = "800 62px Inter, Arial, sans-serif";
+  // Gancho (tercio inferior)
+  x.font = "800 66px Inter, Arial, sans-serif";
   const lines = wrap(x, texto, W - 80);
-  const lh = 74;
-  let y = 1000 - lines.length * lh;
-  x.shadowColor = "rgba(0,0,0,0.6)";
-  x.shadowBlur = 12;
+  const lh = 78;
+  let y = 1010 - lines.length * lh;
+  x.shadowBlur = 14;
   for (const ln of lines) {
     x.fillStyle = "#fff";
     x.fillText(ln, 40, y);
@@ -120,7 +104,51 @@ async function pintarSlide(texto: string, bmp: ImageBitmap | null, idx: number, 
   x.fillStyle = "#fff";
   x.fillText(cta, px + 20, py + 11);
 
-  return await new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("slide"))), "image/png"));
+  const blob = await new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("ov"))), "image/png"));
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+// Fondo OPACO 720x1280 (fallback cuando no hay clip de vídeo): foto a cover o
+// degradado de marca.
+async function pintarFondo(bmp: ImageBitmap | null): Promise<Uint8Array> {
+  const W = 720, H = 1280;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const x = c.getContext("2d")!;
+  if (bmp) {
+    const s = Math.max(W / bmp.width, H / bmp.height);
+    const dw = bmp.width * s, dh = bmp.height * s;
+    x.drawImage(bmp, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  } else {
+    const g = x.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, "#1f2937");
+    g.addColorStop(1, "#ea6a12");
+    x.fillStyle = g;
+    x.fillRect(0, 0, W, H);
+  }
+  const blob = await new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("bg"))), "image/png"));
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+// Busca un clip de b-roll y descarga sus bytes (vía nuestro proxy, sin CORS).
+async function traerClip(query: string): Promise<Uint8Array | null> {
+  if (!query) return null;
+  try {
+    const res = await fetch("/api/admin/articulos/broll", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+    });
+    if (!res.ok) return null;
+    const { url } = await res.json();
+    if (!url) return null;
+    const bytes = await fetch(`/api/admin/articulos/broll?url=${encodeURIComponent(url)}`);
+    if (!bytes.ok) return null;
+    return new Uint8Array(await bytes.arrayBuffer());
+  } catch {
+    return null;
+  }
 }
 
 export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; onClose: () => void }) {
@@ -128,12 +156,14 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
   const [script, setScript] = useState<Script | null>(null);
   const [loadingScript, setLoadingScript] = useState(false);
   const [generando, setGenerando] = useState(false);
+  const [fase, setFase] = useState("");
   const [pct, setPct] = useState(0);
   const [resultUrl, setResultUrl] = useState("");
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
   const [error, setError] = useState("");
   const [copiado, setCopiado] = useState("");
   const ffmpegRef = useRef<unknown>(null);
+  const progRef = useRef({ seg: 0, total: 1 });
 
   async function generarGuion() {
     setLoadingScript(true);
@@ -167,26 +197,18 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
     setResultBlob(null);
     setGenerando(true);
     setPct(0);
+    const slides = script.slides;
+    progRef.current = { seg: 0, total: slides.length + 1 };
     try {
-      // Imágenes disponibles del artículo, en orden; se reparten entre slides.
-      const imgUrls = [article.hero_image, ...article.sections.map((s) => s.image)].filter(Boolean) as string[];
-      const bitmaps = await Promise.all(imgUrls.map(cargarBitmap));
-      const usable = bitmaps.filter(Boolean) as ImageBitmap[];
-
-      const slides = script.slides;
-      const pngs: Uint8Array[] = [];
-      for (let i = 0; i < slides.length; i++) {
-        const bmp = usable.length ? usable[i % usable.length] : null;
-        const blob = await pintarSlide(slides[i], bmp, i, slides.length);
-        pngs.push(new Uint8Array(await blob.arrayBuffer()));
-      }
-
       const { FFmpeg } = await import("@ffmpeg/ffmpeg");
       const { toBlobURL } = await import("@ffmpeg/util");
       let ffmpeg = ffmpegRef.current as InstanceType<typeof FFmpeg> | null;
       if (!ffmpeg) {
         ffmpeg = new FFmpeg();
-        ffmpeg.on("progress", ({ progress }) => setPct(Math.min(99, Math.round(progress * 100))));
+        ffmpeg.on("progress", ({ progress }) => {
+          const { seg, total } = progRef.current;
+          setPct(Math.min(99, Math.round(((seg + Math.min(1, progress)) / total) * 100)));
+        });
         await ffmpeg.load({
           coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, "text/javascript"),
           wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, "application/wasm"),
@@ -194,17 +216,51 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
         ffmpegRef.current = ffmpeg;
       }
 
-      for (let i = 0; i < pngs.length; i++) await ffmpeg.writeFile(`s${i}.png`, pngs[i]);
-      const list =
-        pngs.map((_, i) => `file 's${i}.png'\nduration ${SEG}`).join("\n") + `\nfile 's${pngs.length - 1}.png'\n`;
-      await ffmpeg.writeFile("list.txt", new TextEncoder().encode(list));
+      // Pool de fotos del artículo para los fallbacks.
+      const imgUrls = [article.hero_image, ...article.sections.map((s) => s.image)].filter(Boolean) as string[];
+      const bitmaps = (await Promise.all(imgUrls.map(cargarBitmap))).filter(Boolean) as ImageBitmap[];
 
-      await ffmpeg.exec([
-        "-f", "concat", "-safe", "0", "-i", "list.txt",
-        "-vf", "fps=30,format=yuv420p",
-        "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
-        "out.mp4",
-      ]);
+      // 1) Traer clips de b-roll en paralelo.
+      setFase("Buscando vídeos de fondo…");
+      const clips = await Promise.all(slides.map((s) => traerClip(s.broll)));
+
+      // 2) Un segmento mp4 por diapositiva (clip de vídeo o foto de fallback).
+      for (let i = 0; i < slides.length; i++) {
+        progRef.current.seg = i;
+        setFase(`Montando diapositiva ${i + 1} de ${slides.length}…`);
+        const ov = await pintarOverlay(slides[i].text, i, slides.length);
+        await ffmpeg.writeFile(`ov${i}.png`, ov);
+
+        if (clips[i]) {
+          await ffmpeg.writeFile(`clip${i}.mp4`, clips[i]!);
+          await ffmpeg.exec([
+            "-ss", "0", "-t", String(SEG), "-i", `clip${i}.mp4`,
+            "-i", `ov${i}.png`,
+            "-filter_complex",
+            "[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setpts=PTS-STARTPTS,fps=30[v];[v][1:v]overlay=0:0[o]",
+            "-map", "[o]", "-an", "-t", String(SEG),
+            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", `seg${i}.mp4`,
+          ]);
+        } else {
+          const bmp = bitmaps.length ? bitmaps[i % bitmaps.length] : null;
+          await ffmpeg.writeFile(`bg${i}.png`, await pintarFondo(bmp));
+          await ffmpeg.exec([
+            "-loop", "1", "-t", String(SEG), "-i", `bg${i}.png`,
+            "-i", `ov${i}.png`,
+            "-filter_complex",
+            "[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=30[v];[v][1:v]overlay=0:0[o]",
+            "-map", "[o]", "-an", "-t", String(SEG),
+            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", `seg${i}.mp4`,
+          ]);
+        }
+      }
+
+      // 3) Concatenar todos los segmentos (mismos parámetros -> copy directo).
+      progRef.current.seg = slides.length;
+      setFase("Uniendo el vídeo…");
+      const list = slides.map((_, i) => `file 'seg${i}.mp4'`).join("\n") + "\n";
+      await ffmpeg.writeFile("list.txt", new TextEncoder().encode(list));
+      await ffmpeg.exec(["-f", "concat", "-safe", "0", "-i", "list.txt", "-c", "copy", "out.mp4"]);
 
       const data = (await ffmpeg.readFile("out.mp4")) as Uint8Array;
       const blob = new Blob([data as unknown as BlobPart], { type: "video/mp4" });
@@ -216,6 +272,7 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
       setError("No se pudo generar el vídeo. Prueba en el PC o con menos diapositivas.");
     } finally {
       setGenerando(false);
+      setFase("");
     }
   }
 
@@ -234,9 +291,7 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
     const nav = navigator as Navigator & { canShare?: (d?: unknown) => boolean };
     if (nav.canShare && nav.canShare({ files: [file] })) {
       try { await nav.share({ files: [file] } as ShareData); } catch { /* cancelado */ }
-    } else {
-      descargar();
-    }
+    } else descargar();
   }
   async function copiar(label: string, text: string) {
     try {
@@ -263,10 +318,13 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
           ) : (
             <>
               <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 10, padding: 14, marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", marginBottom: 6 }}>Diapositivas (ganchos)</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", marginBottom: 6 }}>Diapositivas (gancho · vídeo de fondo)</div>
                 <ol style={{ margin: "0 0 12px", paddingLeft: 18, fontSize: 14 }}>
                   {script.slides.map((s, i) => (
-                    <li key={i} style={{ marginBottom: 4 }}>{s}</li>
+                    <li key={i} style={{ marginBottom: 6 }}>
+                      <strong>{s.text}</strong>
+                      {s.broll && <span style={{ color: "#9ca3af", fontSize: 12 }}> · 🎬 {s.broll}</span>}
+                    </li>
                   ))}
                 </ol>
                 <div style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", marginBottom: 6 }}>Copy + hashtags</div>
@@ -287,12 +345,12 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
 
               {!resultUrl && (
                 <button type="button" className="btn-primary" onClick={generarVideo} disabled={generando}>
-                  {generando ? `Generando vídeo… ${pct}%` : "2. Generar vídeo 9:16"}
+                  {generando ? `${fase || "Generando…"} ${pct}%` : "2. Generar vídeo 9:16"}
                 </button>
               )}
               {generando && (
                 <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 8 }}>
-                  La primera vez descarga el motor de vídeo (~30 MB). No cierres esta ventana.
+                  La primera vez descarga el motor de vídeo (~30 MB) y procesa cada clip. Puede tardar 1-2 min; no cierres esta ventana.
                 </p>
               )}
             </>
