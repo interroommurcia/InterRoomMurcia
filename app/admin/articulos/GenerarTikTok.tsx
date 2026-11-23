@@ -276,7 +276,7 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
           await ffmpeg.writeFile(`clip${i}.mp4`, clips[i]!);
           await ffmpeg.exec([
             "-ss", "0", "-t", dur, "-i", `clip${i}.mp4`,
-            "-i", `ov${i}.png`,
+            "-loop", "1", "-i", `ov${i}.png`,
             "-filter_complex",
             `[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setpts=PTS-STARTPTS,fps=30[v];${ovChain}`,
             "-map", "[o]", "-an", "-t", dur,
@@ -287,7 +287,7 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
           await ffmpeg.writeFile(`bg${i}.png`, await pintarFondo(bmp));
           await ffmpeg.exec([
             "-loop", "1", "-t", dur, "-i", `bg${i}.png`,
-            "-i", `ov${i}.png`,
+            "-loop", "1", "-i", `ov${i}.png`,
             "-filter_complex",
             `[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=30[v];${ovChain}`,
             "-map", "[o]", "-an", "-t", dur,
