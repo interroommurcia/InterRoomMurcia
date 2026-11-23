@@ -161,6 +161,7 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
   const [segDur, setSegDur] = useState(3); // segundos por diapositiva
   const [escala, setEscala] = useState(1); // tamaño de letra del gancho
   const [animar, setAnimar] = useState(true); // la letra aparece en cada cambio
+  const [lang, setLang] = useState<"auto" | "es" | "en">("auto"); // idioma del guion
   const [loadingScript, setLoadingScript] = useState(false);
   const [buscandoClips, setBuscandoClips] = useState(false);
   const [generando, setGenerando] = useState(false);
@@ -186,6 +187,7 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
           keyword: article.keyword,
           h2s: article.sections.map((s) => s.h2),
           url,
+          lang,
         }),
       });
       const data: Script = await res.json();
@@ -349,7 +351,15 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
         <button type="button" className="articulos-preview-close" onClick={onClose}>Cerrar ✕</button>
         <div style={{ padding: 20, fontFamily: "Inter, Arial, sans-serif" }}>
           <h3 style={{ margin: "0 0 4px", fontSize: 18 }}>🎵 TikTok del artículo</h3>
-          <p style={{ margin: "0 0 16px", fontSize: 13, color: "#6b7280" }}>{article.h1}</p>
+          <p style={{ margin: "0 0 10px", fontSize: 13, color: "#6b7280" }}>{article.h1}</p>
+          <label style={{ fontSize: 12, color: "#6b7280", fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
+            Idioma del guion
+            <select value={lang} onChange={(e) => setLang(e.target.value as "auto" | "es" | "en")} style={{ padding: 6, borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13, background: "#fff" }}>
+              <option value="auto">Auto (según el artículo)</option>
+              <option value="es">Español</option>
+              <option value="en">English</option>
+            </select>
+          </label>
 
           {!slides ? (
             <button type="button" className="btn-primary" onClick={generarGuion} disabled={loadingScript}>
