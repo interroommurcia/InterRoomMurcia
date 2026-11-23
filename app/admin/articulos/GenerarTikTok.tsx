@@ -154,7 +154,9 @@ async function pintarFondo(bmp: ImageBitmap | null): Promise<Uint8Array> {
 }
 
 export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; onClose: () => void }) {
-  const url = `${SITE_URL}/blog/${article.slug}`;
+  // UTM para que el tráfico de TikTok cuente como TikTok (su navegador interno
+  // oculta el referrer; sin UTM caería en "Directo").
+  const url = `${SITE_URL}/blog/${article.slug}?utm_source=tiktok&utm_medium=social`;
   const [caption, setCaption] = useState("");
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [slides, setSlides] = useState<EditSlide[] | null>(null);
@@ -171,6 +173,9 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
   const [error, setError] = useState("");
   const [copiado, setCopiado] = useState("");
+  const [qrData, setQrData] = useState("");
+  const [qrUrl, setQrUrl] = useState("");
+  const [qrBusy, setQrBusy] = useState(false);
   const ffmpegRef = useRef<unknown>(null);
   const progRef = useRef({ seg: 0, total: 1 });
 
@@ -335,6 +340,35 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
       try { await nav.share({ files: [file] } as ShareData); } catch { /* cancelado */ }
     } else descargar();
   }
+  async function hacerQR() {
+    if (!resultBlob) return;
+    setQrBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/articulos/tiktok-upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: article.slug }),
+      });
+      const info = await res.json();
+      if (!res.ok) throw new Error(info.error || "Error preparando la subida");
+      const { createClient } = await import("@supabase/supabase-js");
+      const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+      const { error: upErr } = await sb.storage
+        .from(info.bucket)
+        .uploadToSignedUrl(info.path, info.token, resultBlob, { contentType: "video/mp4" });
+      if (upErr) throw upErr;
+      const QRCode = (await import("qrcode")).default;
+      const dataUrl = await QRCode.toDataURL(info.publicUrl, { width: 240, margin: 1 });
+      setQrUrl(info.publicUrl);
+      setQrData(dataUrl);
+    } catch (e) {
+      setError("No se pudo crear el QR: " + (e instanceof Error ? e.message : "error"));
+    } finally {
+      setQrBusy(false);
+    }
+  }
+
   async function copiar(label: string, text: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -493,8 +527,25 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
               <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                 <button type="button" className="btn-primary" onClick={compartir}>📲 Compartir a TikTok</button>
                 <button type="button" className="btn-ghost" onClick={descargar}>⬇️ Descargar</button>
-                <button type="button" className="btn-ghost" onClick={() => { setResultUrl(""); setResultBlob(null); }}>✎ Editar y rehacer</button>
+                <button type="button" className="btn-ghost" onClick={hacerQR} disabled={qrBusy}>
+                  {qrBusy ? "Subiendo…" : "📱 QR para el móvil"}
+                </button>
+                <button type="button" className="btn-ghost" onClick={() => { setResultUrl(""); setResultBlob(null); setQrData(""); setQrUrl(""); }}>✎ Editar y rehacer</button>
               </div>
+
+              {qrData && (
+                <div style={{ marginTop: 12, padding: 14, background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 10, textAlign: "center" }}>
+                  <img src={qrData} alt="QR del vídeo" style={{ width: 200, height: 200 }} />
+                  <p style={{ fontSize: 12, color: "#374151", margin: "8px 0 4px", fontWeight: 600 }}>
+                    Escanéalo con la cámara del móvil
+                  </p>
+                  <p style={{ fontSize: 11, color: "#6b7280", margin: 0 }}>
+                    Se abre el vídeo → mantén pulsado para guardarlo en la galería → súbelo a TikTok con el audio en tendencia.
+                  </p>
+                  <a href={qrUrl} target="_blank" rel="noopener" style={{ fontSize: 11, color: "#2563eb", wordBreak: "break-all" }}>{qrUrl}</a>
+                </div>
+              )}
+
               <p style={{ fontSize: 11, color: "#6b7280", marginTop: 8 }}>
                 Sin audio a propósito: al subirlo a TikTok, añade el audio en tendencia y pega el copy. Pon el enlace del blog en tu bio.
               </p>
