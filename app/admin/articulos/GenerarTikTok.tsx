@@ -160,6 +160,7 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
   const [slides, setSlides] = useState<EditSlide[] | null>(null);
   const [segDur, setSegDur] = useState(3); // segundos por diapositiva
   const [escala, setEscala] = useState(1); // tamaño de letra del gancho
+  const [animar, setAnimar] = useState(true); // la letra aparece en cada cambio
   const [loadingScript, setLoadingScript] = useState(false);
   const [buscandoClips, setBuscandoClips] = useState(false);
   const [generando, setGenerando] = useState(false);
@@ -260,6 +261,10 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
         slides.map((s) => (s.idx >= 0 && s.candidates[s.idx] ? proxyBytes(s.candidates[s.idx]) : Promise.resolve(null)))
       );
       const dur = String(segDur);
+      // Animación del texto: funde el bloque (alpha) y lo sube ~40px en 0.4s.
+      const ovChain = animar
+        ? "[1:v]format=yuva420p,fade=t=in:st=0:d=0.4:alpha=1[ov];[v][ov]overlay=0:'if(lt(t,0.4),40-100*t,0)'[o]"
+        : "[v][1:v]overlay=0:0[o]";
 
       for (let i = 0; i < slides.length; i++) {
         progRef.current.seg = i;
@@ -273,7 +278,7 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
             "-ss", "0", "-t", dur, "-i", `clip${i}.mp4`,
             "-i", `ov${i}.png`,
             "-filter_complex",
-            "[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setpts=PTS-STARTPTS,fps=30[v];[v][1:v]overlay=0:0[o]",
+            `[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setpts=PTS-STARTPTS,fps=30[v];${ovChain}`,
             "-map", "[o]", "-an", "-t", dur,
             "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", `seg${i}.mp4`,
           ]);
@@ -284,7 +289,7 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
             "-loop", "1", "-t", dur, "-i", `bg${i}.png`,
             "-i", `ov${i}.png`,
             "-filter_complex",
-            "[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=30[v];[v][1:v]overlay=0:0[o]",
+            `[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=30[v];${ovChain}`,
             "-map", "[o]", "-an", "-t", dur,
             "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", `seg${i}.mp4`,
           ]);
@@ -447,6 +452,10 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
                       <option value={1.2}>Grande</option>
                       <option value={1.4}>Enorme</option>
                     </select>
+                  </label>
+                  <label style={{ fontSize: 12, color: "#374151", fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
+                    <input type="checkbox" checked={animar} onChange={(e) => setAnimar(e.target.checked)} disabled={generando} />
+                    Animar la letra (aparece en cada cambio)
                   </label>
                   <span style={{ fontSize: 11, color: "#9ca3af" }}>
                     Total ≈ {slides.length * segDur}s
