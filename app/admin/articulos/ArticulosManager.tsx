@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArticleEditor, type EditableArticle } from "./ArticleEditor";
 import { ArticlePreview } from "./ArticlePreview";
+import { GenerarTikTok, type TikTokArticle } from "./GenerarTikTok";
 import ArticleRail from "../../../components/ArticleRail";
 import RecursosAfiliados from "../../../components/RecursosAfiliados";
 import { recursosParaArticulo, RECURSOS } from "../../../lib/afiliados";
@@ -186,6 +187,7 @@ export default function ArticulosManager() {
   const [listTab, setListTab] = useState<"publicados" | "borradores">("publicados");
   const [origenFiltro, setOrigenFiltro] = useState<"todos" | "unitario" | "masa">("todos");
   const [editingArticle, setEditingArticle] = useState<EditableArticle | null>(null);
+  const [tiktokArticle, setTiktokArticle] = useState<TikTokArticle | null>(null);
   const [bulkKeywords, setBulkKeywords] = useState("");
   const [bulkTone, setBulkTone] = useState<"cercano" | "profesional">("cercano");
   const [bulkTemplate, setBulkTemplate] = useState<"clasico" | "minimalista" | "revista" | "con-anuncios">("clasico");
@@ -289,6 +291,20 @@ export default function ArticulosManager() {
       hero_image: data.hero_image ?? null,
       mostrar_en_listado: data.mostrar_en_listado ?? true,
       template: data.template ?? "clasico",
+    });
+  }
+
+  async function openTikTok(id: string) {
+    const res = await fetch(`/api/admin/articulos?id=${id}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setTiktokArticle({
+      slug: data.slug,
+      h1: data.h1,
+      intro: data.intro ?? "",
+      keyword: data.keyword ?? null,
+      hero_image: data.hero_image ?? null,
+      sections: (data.sections ?? []).map((s: { h2: string; image?: string | null }) => ({ h2: s.h2, image: s.image ?? null })),
     });
   }
 
@@ -497,6 +513,9 @@ export default function ArticulosManager() {
           onClose={() => setEditingArticle(null)}
           onSaved={() => loadList()}
         />
+      )}
+      {tiktokArticle && (
+        <GenerarTikTok article={tiktokArticle} onClose={() => setTiktokArticle(null)} />
       )}
       <div className="articulos-generator">
         <div className="piso-form">
@@ -796,6 +815,7 @@ export default function ArticulosManager() {
                   onToggleEstado={() => toggleEstado(a.id, "borrador")}
                   onDelete={() => deleteArticle(a.id)}
                   onEdit={() => openEditor(a.id)}
+                  onTikTok={() => openTikTok(a.id)}
                 />
               ))
             )}
@@ -818,6 +838,7 @@ export default function ArticulosManager() {
                 onToggleEstado={() => toggleEstado(a.id, "publicado")}
                 onDelete={() => deleteArticle(a.id)}
                 onEdit={() => openEditor(a.id)}
+                onTikTok={() => openTikTok(a.id)}
               />
             ))
           )
@@ -900,6 +921,7 @@ function ArticleRow({
   onToggleEstado,
   onDelete,
   onEdit,
+  onTikTok,
 }: {
   art: SavedArticle;
   expanded: boolean;
@@ -908,6 +930,7 @@ function ArticleRow({
   onToggleEstado: () => void;
   onDelete: () => void;
   onEdit: () => void;
+  onTikTok: () => void;
 }) {
   return (
     <div className="pisos-list-item">
@@ -936,6 +959,9 @@ function ArticleRow({
       <div className="pisos-list-actions">
         <button type="button" className="btn-ghost" onClick={onEdit}>
           Editar
+        </button>
+        <button type="button" className="btn-ghost" onClick={onTikTok}>
+          🎵 TikTok
         </button>
         {art.estado === "publicado" && (
           <button type="button" className="btn-ghost" onClick={onToggleStats}>
