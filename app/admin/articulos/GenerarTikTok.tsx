@@ -5,7 +5,6 @@ import { SITE_URL } from "../../../lib/site";
 
 const SITE_HOST = SITE_URL.replace(/^https?:\/\//, "");
 const CORE_BASE = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
-const SEG = 3; // segundos por diapositiva
 
 export type TikTokArticle = {
   slug: string;
@@ -75,7 +74,7 @@ function wrap(x: CanvasRenderingContext2D, text: string, maxW: number): string[]
   return lines;
 }
 
-async function pintarOverlay(texto: string, idx: number, total: number): Promise<Uint8Array> {
+async function pintarOverlay(texto: string, idx: number, total: number, escala: number): Promise<Uint8Array> {
   const W = 720, H = 1280;
   const c = document.createElement("canvas");
   c.width = W;
@@ -100,9 +99,10 @@ async function pintarOverlay(texto: string, idx: number, total: number): Promise
   x.shadowBlur = 8;
   x.fillText("InterRoom Murcia", 36, 44);
 
-  x.font = "800 66px Inter, Arial, sans-serif";
+  const fs = Math.round(66 * escala);
+  x.font = `800 ${fs}px Inter, Arial, sans-serif`;
   const lines = wrap(x, texto, W - 80);
-  const lh = 78;
+  const lh = Math.round(78 * escala);
   let y = 1010 - lines.length * lh;
   x.shadowBlur = 14;
   for (const ln of lines) {
@@ -158,6 +158,8 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
   const [caption, setCaption] = useState("");
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [slides, setSlides] = useState<EditSlide[] | null>(null);
+  const [segDur, setSegDur] = useState(3); // segundos por diapositiva
+  const [escala, setEscala] = useState(1); // tamaño de letra del gancho
   const [loadingScript, setLoadingScript] = useState(false);
   const [buscandoClips, setBuscandoClips] = useState(false);
   const [generando, setGenerando] = useState(false);
@@ -257,32 +259,33 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
       const clips = await Promise.all(
         slides.map((s) => (s.idx >= 0 && s.candidates[s.idx] ? proxyBytes(s.candidates[s.idx]) : Promise.resolve(null)))
       );
+      const dur = String(segDur);
 
       for (let i = 0; i < slides.length; i++) {
         progRef.current.seg = i;
         setFase(`Montando diapositiva ${i + 1} de ${slides.length}…`);
-        const ov = await pintarOverlay(slides[i].text, i, slides.length);
+        const ov = await pintarOverlay(slides[i].text, i, slides.length, escala);
         await ffmpeg.writeFile(`ov${i}.png`, ov);
 
         if (clips[i]) {
           await ffmpeg.writeFile(`clip${i}.mp4`, clips[i]!);
           await ffmpeg.exec([
-            "-ss", "0", "-t", String(SEG), "-i", `clip${i}.mp4`,
+            "-ss", "0", "-t", dur, "-i", `clip${i}.mp4`,
             "-i", `ov${i}.png`,
             "-filter_complex",
             "[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setpts=PTS-STARTPTS,fps=30[v];[v][1:v]overlay=0:0[o]",
-            "-map", "[o]", "-an", "-t", String(SEG),
+            "-map", "[o]", "-an", "-t", dur,
             "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", `seg${i}.mp4`,
           ]);
         } else {
           const bmp = bitmaps.length ? bitmaps[i % bitmaps.length] : null;
           await ffmpeg.writeFile(`bg${i}.png`, await pintarFondo(bmp));
           await ffmpeg.exec([
-            "-loop", "1", "-t", String(SEG), "-i", `bg${i}.png`,
+            "-loop", "1", "-t", dur, "-i", `bg${i}.png`,
             "-i", `ov${i}.png`,
             "-filter_complex",
             "[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,fps=30[v];[v][1:v]overlay=0:0[o]",
-            "-map", "[o]", "-an", "-t", String(SEG),
+            "-map", "[o]", "-an", "-t", dur,
             "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", `seg${i}.mp4`,
           ]);
         }
@@ -425,6 +428,31 @@ export function GenerarTikTok({ article, onClose }: { article: TikTokArticle; on
                 </div>
               </div>
 
+              {!resultUrl && (
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 12 }}>
+                  <label style={{ fontSize: 12, color: "#6b7280", fontWeight: 500 }}>
+                    Duración por diapositiva
+                    <select value={segDur} onChange={(e) => setSegDur(Number(e.target.value))} disabled={generando} style={{ display: "block", marginTop: 4, padding: 8, borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13, background: "#fff" }}>
+                      <option value={2}>2 s (ágil)</option>
+                      <option value={3}>3 s</option>
+                      <option value={4}>4 s</option>
+                      <option value={5}>5 s (pausado)</option>
+                    </select>
+                  </label>
+                  <label style={{ fontSize: 12, color: "#6b7280", fontWeight: 500 }}>
+                    Tamaño de letra
+                    <select value={escala} onChange={(e) => setEscala(Number(e.target.value))} disabled={generando} style={{ display: "block", marginTop: 4, padding: 8, borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13, background: "#fff" }}>
+                      <option value={0.85}>Pequeña</option>
+                      <option value={1}>Mediana</option>
+                      <option value={1.2}>Grande</option>
+                      <option value={1.4}>Enorme</option>
+                    </select>
+                  </label>
+                  <span style={{ fontSize: 11, color: "#9ca3af" }}>
+                    Total ≈ {slides.length * segDur}s
+                  </span>
+                </div>
+              )}
               {!resultUrl && (
                 <button type="button" className="btn-primary" onClick={generarVideo} disabled={generando || buscandoClips}>
                   {generando ? `${fase || "Generando…"} ${pct}%` : buscandoClips ? "Buscando clips…" : "2. Generar vídeo 9:16"}
