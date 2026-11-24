@@ -4713,6 +4713,9 @@ button {
   }
   .section.admin {
     padding-left: 224px;
+    /* Llena al menos la altura de la ventana para que, en páginas cortas (p. ej.
+       una lista vacía), el footer no suba y tape el sidebar lateral fijo. */
+    min-height: calc(100vh - 74px);
   }
   /* El sidebar es fixed (bottom:0) y, sin esto, se pintaba por encima del
      footer global. Al ser el footer hermano del .section.admin, lo elevamos
