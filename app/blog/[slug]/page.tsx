@@ -12,6 +12,7 @@ import ArticleLinkTracker from "../ArticleLinkTracker";
 
 const ADSENSE_SLOT_ARTICULO = process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICULO;
 import { SectionVideo } from "../SectionVideo";
+import UneteCTA from "../../../components/UneteCTA";
 import Reveal from "../../../components/Reveal";
 import { SITE_URL } from "../../../lib/site";
 
@@ -192,6 +193,8 @@ export default async function ArticuloPage({ params }: { params: { slug: string 
             </ul>
           </div>
         )}
+
+        <UneteCTA origen={`blog:${art.slug}`} />
 
         {relacionados.length > 0 && (
           <div className="article-related">

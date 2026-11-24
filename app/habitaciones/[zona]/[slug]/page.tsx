@@ -6,6 +6,7 @@ import { whatsappHref, WHATSAPP_NUMBER } from "../../../../lib/whatsapp";
 import FichaMedia from "../../../../components/FichaMedia";
 import PisoCard from "../../../../components/PisoCard";
 import QuieroAlquilar from "../../../../components/QuieroAlquilar";
+import UneteCTA from "../../../../components/UneteCTA";
 import PisoFeatures from "../../../../components/PisoFeatures";
 import DescripcionPlegable from "../../../../components/DescripcionPlegable";
 
@@ -139,6 +140,15 @@ export default async function PisoPage({ params }: { params: { zona: string; slu
               <Link href={zona ? `/habitaciones/${zona.slug}` : "/#catalogo-compraventa"} className="btn-ghost">
                 {zona ? `Ver más en ${zona.barrio}` : "Ver más activos"}
               </Link>
+
+              {!esCompraventa && (
+                <UneteCTA
+                  origen={`ficha:${piso.id}`}
+                  modo="boton"
+                  titulo="¿No es justo esta?"
+                  subtitulo="Apúntate y te avisamos en cuanto entre una habitación que te encaje."
+                />
+              )}
             </aside>
           </div>
         </div>
