@@ -5,11 +5,9 @@ import PrefijoSelect from "./PrefijoSelect";
 
 type Props = {
   origen?: string;
-  tipoInicial?: "estudiante" | "propietario";
 };
 
-export default function UneteForm({ origen = "web", tipoInicial = "estudiante" }: Props) {
-  const [tipo, setTipo] = useState<"estudiante" | "propietario">(tipoInicial);
+export default function UneteForm({ origen = "web" }: Props) {
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [prefijo, setPrefijo] = useState("+34");
@@ -37,7 +35,7 @@ export default function UneteForm({ origen = "web", tipoInicial = "estudiante" }
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tipo,
+          tipo: "estudiante",
           nombre: nombre.trim(),
           email: email.trim(),
           telefono: digitos ? `${prefijo} ${digitos}` : "",
@@ -60,7 +58,7 @@ export default function UneteForm({ origen = "web", tipoInicial = "estudiante" }
       <div className="unete-ok">
         <p style={{ fontSize: 18, fontWeight: 700, color: "#16a34a", margin: 0 }}>¡Estás en la lista! 🎉</p>
         <p style={{ color: "#4b5563", marginTop: 8 }}>
-          Te avisaremos {tipo === "estudiante" ? "en cuanto quede una habitación libre que te encaje." : "cuando podamos ayudarte a alquilar tu piso."}
+          Te avisaremos en cuanto quede una habitación libre que te encaje.
         </p>
       </div>
     );
@@ -70,23 +68,6 @@ export default function UneteForm({ origen = "web", tipoInicial = "estudiante" }
 
   return (
     <form onSubmit={enviar} style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 440 }}>
-      <div style={{ display: "flex", gap: 8 }}>
-        {(["estudiante", "propietario"] as const).map((t) => (
-          <label
-            key={t}
-            style={{
-              flex: 1, textAlign: "center", padding: "10px 12px", borderRadius: 10, cursor: "pointer",
-              border: `2px solid ${tipo === t ? "var(--orange)" : "#e5e7eb"}`,
-              fontWeight: tipo === t ? 700 : 500, fontSize: 14,
-              background: tipo === t ? "rgba(234,106,18,0.06)" : "#fff",
-            }}
-          >
-            <input type="radio" name="tipo" checked={tipo === t} onChange={() => setTipo(t)} style={{ display: "none" }} />
-            {t === "estudiante" ? "Soy estudiante" : "Soy propietario"}
-          </label>
-        ))}
-      </div>
-
       <input type="text" placeholder="Tu nombre (opcional)" value={nombre} onChange={(e) => setNombre(e.target.value)} style={inputStyle} />
 
       <input type="email" placeholder="Tu email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />

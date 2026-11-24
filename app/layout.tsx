@@ -94,7 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </a>
               <div className="navlinks">
                 <a href="/catalogo">Catálogo</a>
-                <a href="/unete">Lista de espera</a>
+                <a href="/unete">Estudiantes</a>
                 <a href="/inversores">Inversores</a>
                 <a href="/venta">Vende tu Casa</a>
                 <a href="/blog">Blog</a>

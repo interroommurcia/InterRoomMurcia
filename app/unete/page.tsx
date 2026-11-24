@@ -17,8 +17,7 @@ export default function UnetePage() {
         </h1>
         <p style={{ fontSize: 17, color: "#4b5563", margin: "0 0 28px", maxWidth: 560 }}>
           Las habitaciones cerca de la UCAM, la UMU y la UPCT vuelan. Déjanos tu contacto y te avisamos
-          <b> en cuanto quede una libre</b> — sin que tengas que estar mirando la web. Si eres propietario,
-          te escribimos cuando podamos ayudarte a alquilar tu piso.
+          <b> en cuanto quede una libre</b> — sin que tengas que estar mirando la web.
         </p>
         <UneteForm origen="pagina-unete" />
       </div>
