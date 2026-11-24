@@ -12,6 +12,7 @@ export default function UneteForm({ origen = "web" }: Props) {
   const [email, setEmail] = useState("");
   const [prefijo, setPrefijo] = useState("+34");
   const [telefono, setTelefono] = useState("");
+  const [descripcion, setDescripcion] = useState("");
   const [consent, setConsent] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
@@ -39,6 +40,7 @@ export default function UneteForm({ origen = "web" }: Props) {
           nombre: nombre.trim(),
           email: email.trim(),
           telefono: digitos ? `${prefijo} ${digitos}` : "",
+          mensaje: descripcion.trim(),
           consentimiento: consent,
           origen,
         }),
@@ -84,6 +86,14 @@ export default function UneteForm({ origen = "web" }: Props) {
         />
       </div>
       <p style={{ fontSize: 12, color: "#9ca3af", margin: "-6px 0 0" }}>Deja email, móvil o los dos — con uno nos vale para avisarte.</p>
+
+      <textarea
+        placeholder="Descripción: dinos aquí cuántos sois o si eres una persona sola, fecha de entrada, zona que te interesa…"
+        value={descripcion}
+        onChange={(e) => setDescripcion(e.target.value)}
+        rows={3}
+        style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }}
+      />
 
       <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "#4b5563", cursor: "pointer" }}>
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: 3 }} />
