@@ -52,6 +52,8 @@ export function ArticleEditor({
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState<string | null>(null);
   const [revisando, setRevisando] = useState(false);
+  const [corrigiendo, setCorrigiendo] = useState(false);
+  const [corregido, setCorregido] = useState(false);
   const [revision, setRevision] = useState<null | {
     puntuacion_global: number;
     criterios: Record<string, { nota: number; motivo: string }>;
@@ -59,6 +61,60 @@ export function ArticleEditor({
     sugerencias_top3: string[];
   }>(null);
   const heroInputRef = useRef<HTMLInputElement>(null);
+
+  async function corregir() {
+    setCorrigiendo(true);
+    setError("");
+    setCorregido(false);
+    try {
+      const res = await fetch("/api/admin/articulos/corregir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          keyword: art.keyword,
+          meta_title: art.meta_title,
+          meta_description: art.meta_description,
+          h1: art.h1,
+          intro: art.intro,
+          sections: art.sections,
+          cta: art.cta,
+          faq: art.faq,
+          revision: revision ?? undefined,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        setError(d.error || `Error ${res.status} corrigiendo`);
+        return;
+      }
+      // Fusiona: conserva slug, keyword, fuentes, hero, plantilla e imágenes/vídeos
+      // de cada sección (la IA solo reescribe el texto).
+      setArt((a) => ({
+        ...a,
+        meta_title: d.meta_title ?? a.meta_title,
+        meta_description: d.meta_description ?? a.meta_description,
+        h1: d.h1 ?? a.h1,
+        intro: d.intro ?? a.intro,
+        cta: d.cta ?? a.cta,
+        faq: Array.isArray(d.faq) ? d.faq : a.faq,
+        sections: Array.isArray(d.sections)
+          ? d.sections.map((s: Section, i: number) => ({
+              h2: s.h2,
+              content: s.content,
+              highlight: s.highlight ?? null,
+              image: a.sections[i]?.image,
+              video: a.sections[i]?.video,
+            }))
+          : a.sections,
+      }));
+      setRevision(null);
+      setCorregido(true);
+    } catch (err: unknown) {
+      setError("Error de red: " + (err instanceof Error ? err.message : "desconocido"));
+    } finally {
+      setCorrigiendo(false);
+    }
+  }
 
   async function revisar() {
     setRevisando(true);
@@ -219,8 +275,11 @@ export function ArticleEditor({
             <button type="button" className="btn-ghost" onClick={() => setMode((m) => (m === "previa" ? "editar" : "previa"))}>
               {mode === "previa" ? "Editar" : "Vista previa"}
             </button>
-            <button type="button" className="btn-ghost" onClick={revisar} disabled={revisando || saving}>
+            <button type="button" className="btn-ghost" onClick={revisar} disabled={revisando || corrigiendo || saving}>
               {revisando ? "Revisando…" : "Revisar con IA"}
+            </button>
+            <button type="button" className="btn-ghost" onClick={corregir} disabled={corrigiendo || revisando || saving} title="Reescribe el texto para subir la nota. No toca el slug ni la keyword. Lo aplica aquí para que lo revises; no se guarda hasta que pulses Guardar.">
+              {corrigiendo ? "Corrigiendo…" : "Corregir con IA"}
             </button>
             <button type="button" className="btn-ghost" onClick={onClose}>
               Cancelar
@@ -249,6 +308,15 @@ export function ArticleEditor({
             />
           ) : (
           <>
+          {corregido && (
+            <div className="editor-revision" style={{ borderColor: "#2e7d32" }}>
+              <div className="editor-revision-head">
+                <span className="editor-revision-score" data-nivel="alto">✓</span>
+                <span>Correcciones aplicadas en el editor. Revísalas (usa Vista previa) y pulsa <b>Guardar cambios</b> para publicarlas. Nada se ha guardado todavía. Se conservan slug, keyword, fuentes e imágenes.</span>
+                <button type="button" className="editor-remove" onClick={() => setCorregido(false)}>×</button>
+              </div>
+            </div>
+          )}
           {revision && (
             <div className="editor-revision">
               <div className="editor-revision-head">
