@@ -44,10 +44,11 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: "Clientes",
+    label: "Gestión de usuarios",
     emoji: "👥",
     items: [
       { href: "/admin/clientes", label: "Clientes", roles: TODOS },
+      { href: "/admin/leads-comerciales", label: "Leads comerciales", roles: TODOS },
       { href: "/admin/pisos", label: "Catálogo", roles: TODOS },
       { href: "/admin/chats", label: "Chats", roles: TODOS },
     ],
