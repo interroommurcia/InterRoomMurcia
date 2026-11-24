@@ -6,13 +6,13 @@ import type { LeadComercial } from "../../../lib/leadsComerciales";
 type Filtro = "todos" | "estudiante" | "propietario";
 
 function toCSV(rows: LeadComercial[]): string {
-  const head = ["tipo", "nombre", "email", "telefono", "consentimiento", "origen", "fecha"];
+  const head = ["tipo", "nombre", "email", "telefono", "descripcion", "consentimiento", "origen", "fecha"];
   const esc = (v: unknown) => {
     const s = String(v ?? "");
     return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const lines = rows.map((r) =>
-    [r.tipo, r.nombre, r.email ?? "", r.telefono ?? "", r.consentimiento ? "sí" : "no", r.origen,
+    [r.tipo, r.nombre, r.email ?? "", r.telefono ?? "", r.mensaje ?? "", r.consentimiento ? "sí" : "no", r.origen,
       new Date(r.created_at).toLocaleString("es-ES")].map(esc).join(";")
   );
   return [head.join(";"), ...lines].join("\n");
@@ -71,6 +71,7 @@ export default function LeadsComercialesManager({ leads }: { leads: LeadComercia
                 <th style={{ padding: "8px 10px" }}>Nombre</th>
                 <th style={{ padding: "8px 10px" }}>Email</th>
                 <th style={{ padding: "8px 10px" }}>Teléfono</th>
+                <th style={{ padding: "8px 10px" }}>Descripción</th>
                 <th style={{ padding: "8px 10px" }}>Origen</th>
                 <th style={{ padding: "8px 10px" }}>Fecha</th>
               </tr>
@@ -86,6 +87,7 @@ export default function LeadsComercialesManager({ leads }: { leads: LeadComercia
                   <td style={{ padding: "8px 10px" }}>{l.nombre || "—"}</td>
                   <td style={{ padding: "8px 10px" }}>{l.email ? <a href={`mailto:${l.email}`}>{l.email}</a> : "—"}</td>
                   <td style={{ padding: "8px 10px" }}>{l.telefono ?? "—"}</td>
+                  <td style={{ padding: "8px 10px", maxWidth: 280, color: "#4b5563" }}>{l.mensaje || "—"}</td>
                   <td style={{ padding: "8px 10px", color: "#9ca3af" }}>{l.origen}</td>
                   <td style={{ padding: "8px 10px", color: "#6b7280", whiteSpace: "nowrap" }}>
                     {new Date(l.created_at).toLocaleDateString("es-ES")}
