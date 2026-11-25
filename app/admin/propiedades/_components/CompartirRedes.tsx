@@ -6,6 +6,7 @@ import type { Piso } from "../../../../lib/pisos";
 import { retocarFoto } from "../../../../lib/retoqueFoto";
 import { retocarEditorial } from "../../../../lib/retoqueEditorial";
 import { GenerarReel } from "./GenerarReel";
+import { GenerarReelFotos } from "./GenerarReelFotos";
 import { GenerarHistoria } from "./GenerarHistoria";
 
 // Media normalizada que consume el panel (vale para propiedades y para pisos).
@@ -473,6 +474,8 @@ function CompartirRedesCore({
       </p>
 
       <GenerarHistoria nombre={nombre} fotos={fotos} titulo={titulo} textoPrecio={textoPrecio} incluye={incluye} />
+
+      <GenerarReelFotos nombre={nombre} fotos={fotosSel} textoPrecio={textoPrecio} textoZona={textoZona} />
 
       <GenerarReel nombre={nombre} videos={videos} textoPrecio={textoPrecio} textoZona={textoZona} />
 
