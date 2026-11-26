@@ -43,9 +43,9 @@ export async function guardarMensajes(
   const admin = getSupabaseAdmin();
   const update: Record<string, unknown> = { mensajes, updated_at: new Date().toISOString() };
   if (clasificacion?.tipo_usuario) update.tipo_usuario = clasificacion.tipo_usuario;
-  if (clasificacion?.escalar) {
+  if (clasificacion?.escalar || clasificacion?.contacto) {
     update.estado = "escalada";
-    update.motivo_escalado = clasificacion.motivo;
+    update.motivo_escalado = clasificacion.motivo ?? (clasificacion.contacto ? "Dejó contacto en el chat" : null);
     if (clasificacion.nombre) update.nombre = clasificacion.nombre;
     if (clasificacion.contacto) update.contacto = clasificacion.contacto;
   }
@@ -145,7 +145,9 @@ export async function avisarEscaladoRoomi(conv: {
     .join("\n");
 
   const texto = [
-    "🔔 Nuevo lead escalado en Roomi",
+    conv.motivo_escalado && conv.motivo_escalado !== "Dejó contacto en el chat"
+      ? "🔔 Nuevo lead escalado en Roomi"
+      : "🔔 Nuevo contacto dejado en Roomi",
     `Nombre: ${conv.nombre ?? "—"}`,
     `Contacto: ${conv.contacto ?? "—"}`,
     `Motivo: ${conv.motivo_escalado ?? "—"}`,

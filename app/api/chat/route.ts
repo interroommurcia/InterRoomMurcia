@@ -119,7 +119,9 @@ export async function POST(req: NextRequest) {
         ];
         await guardarMensajes(conversacion.id, mensajesFinales, clasificacion);
 
-        if (clasificacion.escalar && conversacion.estado !== "escalada") {
+        // Avisa por Telegram cuando el visitante deja contacto (teléfono/email)
+        // o cuando la conversación se escala, una sola vez por conversación.
+        if ((clasificacion.escalar || clasificacion.contacto) && conversacion.estado !== "escalada") {
           avisarEscaladoRoomi({
             id: conversacion.id,
             nombre: clasificacion.nombre ?? conversacion.nombre,
