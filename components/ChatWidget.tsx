@@ -146,11 +146,11 @@ export default function ChatWidget() {
             )}
             {mensajes.map((m, i) => (
               <div key={i} className={`chat-widget-msg ${m.role}`}>
-                {m.text || "…"}
+                {m.text || (m.role === "assistant" ? "Consultando con el equipo…" : "…")}
               </div>
             ))}
             {loading && mensajes[mensajes.length - 1]?.role !== "assistant" && (
-              <div className="chat-widget-msg assistant">…</div>
+              <div className="chat-widget-msg assistant">Consultando con el equipo…</div>
             )}
           </div>
           <div className="chat-widget-input-row">

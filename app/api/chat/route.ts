@@ -82,6 +82,13 @@ export async function POST(req: NextRequest) {
   const nuevoMensajeUsuario: ChatMensaje = { role: "user", text: message, at: new Date().toISOString() };
   const mensajesConUsuario = [...mensajesPrevios, nuevoMensajeUsuario];
 
+  // Persiste el mensaje del visitante YA, antes de responder. Si cierra el chat
+  // antes de que Roomi termine, no perdemos lo que escribió (evita conversaciones
+  // que quedaban vacías). Al terminar se vuelve a guardar con la respuesta.
+  await guardarMensajes(conversacion.id, mensajesConUsuario).catch((e) =>
+    console.error("[chat/guardar-usuario]", e),
+  );
+
   const [catalogo, knowledgeBase] = await Promise.all([catalogSnapshot(), getKnowledgeBase()]);
 
   const stream = anthropic.messages.stream({
