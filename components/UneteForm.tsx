@@ -32,7 +32,7 @@ export default function UneteForm({ origen = "web" }: Props) {
     setEnviando(true);
     setError("");
     try {
-      const res = await fetch("/api/leads-comerciales", {
+      const res = await fetch("/api/leads-busco-habitacion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

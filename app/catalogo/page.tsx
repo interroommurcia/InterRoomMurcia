@@ -4,6 +4,7 @@ import Reveal, { RevealStagger } from "../../components/Reveal";
 import PisoCard from "../../components/PisoCard";
 import ProximamenteCard from "../../components/ProximamenteCard";
 import CompraventaCarrusel from "../../components/CompraventaCarrusel";
+import BuscoHabitacionCTA from "../../components/BuscoHabitacionCTA";
 
 export const metadata = {
   title: "Catálogo de habitaciones",
@@ -84,6 +85,14 @@ export default async function CatalogoPage() {
               );
             })}
           </RevealStagger>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="wrap" style={{ maxWidth: 640 }}>
+          <Reveal direction="up">
+            <BuscoHabitacionCTA origen="catalogo" />
+          </Reveal>
         </div>
       </section>
 

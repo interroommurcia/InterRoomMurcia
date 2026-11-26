@@ -3,6 +3,7 @@ import { zonas, getPisos, resumenZona, contarHabitaciones } from "../lib/pisos";
 import { WHATSAPP_NUMBER } from "../lib/whatsapp";
 import Reveal, { RevealStagger } from "../components/Reveal";
 import PisoCard from "../components/PisoCard";
+import BuscoHabitacionCTA from "../components/BuscoHabitacionCTA";
 
 export default async function HomePage() {
   const pisos = await getPisos();
@@ -94,6 +95,14 @@ export default async function HomePage() {
               );
             })}
           </RevealStagger>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="wrap" style={{ maxWidth: 640 }}>
+          <Reveal direction="up">
+            <BuscoHabitacionCTA origen="home" />
+          </Reveal>
         </div>
       </section>
 

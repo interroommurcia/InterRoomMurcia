@@ -40,6 +40,7 @@ const SECTIONS: NavSection[] = [
       { href: "/admin/analytics", label: "Analytics", roles: GESTION },
       { href: "/admin/leads", label: "Leads", roles: TODOS, badge: "leads" },
       { href: "/admin/leads-alquiler", label: "Leads casas", roles: TODOS },
+      { href: "/admin/leads-busco-habitacion", label: "Busco Habitación", roles: TODOS },
       { href: "/admin/articulos", label: "Blog", roles: GESTION },
     ],
   },
