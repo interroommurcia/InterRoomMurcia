@@ -58,7 +58,7 @@ export default function CalculadoraExpress() {
     const rentBruta = Vp > 0 ? (brutoAnual / Vp) * 100 : null;
     const rentNeta = Vp > 0 ? (anual / Vp) * 100 : null;
 
-    return { N, Rh, Cl, Gf, Mh, bruto, com, neto, anual, brutoAnual, rentBruta, rentNeta };
+    return { N, Rh, Cl, Gf, Mh, Vp, bruto, com, neto, anual, brutoAnual, rentBruta, rentNeta };
   }, [v, limpieza, suministros]);
 
   const descargarPdf = async () => {
@@ -66,16 +66,17 @@ export default function CalculadoraExpress() {
     setPdfBusy(true);
     try {
       await loadScript(PDF_CDN);
-      const el = document.getElementById("pdf-root");
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      const el = document.getElementById("pdf-report");
       if (!el || !window.html2pdf) throw new Error("PDF no disponible");
       await window
         .html2pdf()
         .from(el)
         .set({
-          margin: [10, 10, 10, 10],
+          margin: 0,
           filename: "informe-rentabilidad-interroom.pdf",
           image: { type: "jpeg", quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: 794 },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
           pagebreak: { mode: ["avoid-all", "css", "legacy"] },
         })
@@ -214,7 +215,91 @@ export default function CalculadoraExpress() {
           <b>InterRoom Murcia</b> · interroommurcia@gmail.com · interroommurcia.com
         </div>
       </div>
+
+      {pdfBusy ? (
+        <div style={{ position: "fixed", left: -10000, top: 0 }} aria-hidden>
+          <div id="pdf-report" className={styles.rep}>
+            <header className={styles.repHead}>
+              <div className={styles.repLogo}>
+                Inter<span>Room</span> Murcia
+              </div>
+              <div className={styles.repHeadR}>
+                <div className={styles.repDoc}>Informe de rentabilidad</div>
+                <div className={styles.repDate}>{new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}</div>
+              </div>
+            </header>
+
+            <div className={styles.repBody}>
+              <h1 className={styles.repTitle}>
+                Lo que te deja tu piso alquilado <em>por habitaciones</em>.
+              </h1>
+
+              <div className={styles.repData}>
+                <DataItem k="Habitaciones" v={String(c.N)} />
+                <DataItem k="Precio por habitación" v={`${fmt(c.Rh)}/mes`} />
+                <DataItem k="Meses alquilados" v={`${c.Mh} al año`} />
+                <DataItem k="Limpieza" v={limpieza ? `${fmt(c.Cl)}/mes` : "No incluida"} />
+                <DataItem k="Suministros + wifi" v={suministros ? `${fmt(c.Gf)}/mes` : "Los paga el inquilino"} />
+                {c.Vp > 0 ? <DataItem k="Valor del piso" v={fmt(c.Vp)} /> : null}
+              </div>
+
+              <div className={styles.repHero}>
+                <div>
+                  <div className={styles.repHeroK}>Neto para ti cada mes</div>
+                  <div className={styles.repHeroV}>{fmt(c.neto)}</div>
+                </div>
+                <div className={styles.repHeroSide}>
+                  <div className={styles.repHeroK}>Neto anual ({c.Mh} meses)</div>
+                  <div className={styles.repHeroV2}>{fmt(c.anual)}</div>
+                  {c.rentNeta !== null ? (
+                    <div className={styles.repHeroPct}>Rentabilidad neta {pct(c.rentNeta)}</div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className={styles.repTable}>
+                <div className={styles.repTableH}>Desglose mensual</div>
+                <Row l={<>Ingreso bruto <small>({c.N} × {fmt(c.Rh)})</small></>} r={fmt(c.bruto)} />
+                <Row l="Comisión InterRoom (15% + IVA)" r={`−${fmt(c.com)}`} neg />
+                {limpieza ? <Row l="Limpieza" r={`−${fmt(c.Cl)}`} neg /> : null}
+                {suministros ? <Row l="Suministros + wifi" r={`−${fmt(c.Gf)}`} neg /> : null}
+                <Row l="Neto mensual" r={fmt(c.neto)} total />
+                {c.rentBruta !== null ? <Row l="Rentabilidad bruta anual" r={pct(c.rentBruta)} /> : null}
+                {c.rentNeta !== null ? <Row l="Rentabilidad neta anual" r={pct(c.rentNeta)} total /> : null}
+              </div>
+
+              <div className={styles.repCtas}>
+                <div className={styles.repCta}>
+                  <div className={styles.repCtaT}>
+                    ¿Hablamos de <b>tu piso concreto</b>?
+                  </div>
+                  <div className={styles.repCtaS}>Valoración gratis en 48 h · WhatsApp 613 096 518</div>
+                </div>
+                <div className={`${styles.repCta} ${styles.repCtaAlt}`}>
+                  <div className={styles.repCtaT}>
+                    Vendemos tu casa por solo el <b>1,5% de comisión</b>
+                  </div>
+                  <div className={styles.repCtaS}>¡Llámanos! 613 096 518</div>
+                </div>
+              </div>
+            </div>
+
+            <footer className={styles.repFoot}>
+              <b>InterRoom Murcia</b> · interroommurcia.com · interroommurcia@gmail.com · 613 096 518
+            </footer>
+          </div>
+        </div>
+      ) : null}
     </main>
+  );
+}
+
+function DataItem({ k, v }: { k: string; v: string }) {
+  return (
+    <div className={styles.repDataItem}>
+      <div className={styles.repDataK}>{k}</div>
+      <div className={styles.repDataV}>{v}</div>
+    </div>
   );
 }
 
