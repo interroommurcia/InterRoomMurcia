@@ -190,10 +190,6 @@ export default function CalculadoraExpress() {
           </article>
         </section>
 
-        <div className={styles.cap} style={{ marginTop: 12 }}>
-          Estimación orientativa con los datos introducidos. No incluye impuestos, IBI, comunidad ni seguros.
-        </div>
-
         <section className={styles.cta}>
           <div className={styles.ctaL}>
             ¿Hablamos de <b>tu piso concreto</b>? Valoración gratis en 48 h.
