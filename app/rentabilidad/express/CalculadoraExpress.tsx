@@ -76,7 +76,7 @@ export default function CalculadoraExpress() {
           margin: 0,
           filename: "informe-rentabilidad-interroom.pdf",
           image: { type: "jpeg", quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: 794 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", scrollX: 0, scrollY: 0 },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
           pagebreak: { mode: ["avoid-all", "css", "legacy"] },
         })
@@ -220,8 +220,11 @@ export default function CalculadoraExpress() {
         <div style={{ position: "fixed", left: -10000, top: 0 }} aria-hidden>
           <div id="pdf-report" className={styles.rep}>
             <header className={styles.repHead}>
-              <div className={styles.repLogo}>
-                Inter<span>Room</span> Murcia
+              <div>
+                <div className={styles.repLogo}>
+                  Inter<span>Room</span> Murcia
+                </div>
+                <div className={styles.repTag}>Gestión inmobiliaria integral en Murcia y Cartagena</div>
               </div>
               <div className={styles.repHeadR}>
                 <div className={styles.repDoc}>Informe de rentabilidad</div>
