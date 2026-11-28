@@ -64,6 +64,7 @@ const s = StyleSheet.create({
   reformaT: { flex: 1, fontSize: 11, color: "#fff", lineHeight: 1.3, paddingRight: 12 },
   reformaB: { fontFamily: "Helvetica-Bold" },
   reformaS: { backgroundColor: "#fff", color: ORANGE_DARK, fontFamily: "Helvetica-Bold", fontSize: 8.5, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10 },
+  reformaTel: { fontSize: 7.5, color: "#fff", fontFamily: "Helvetica-Bold", marginTop: 4 },
   ctas: { flexDirection: "row", marginTop: 8, marginBottom: 10 },
   cta: { flex: 1, backgroundColor: INK, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },
   ctaAlt: { backgroundColor: PAPER, borderWidth: 1.2, borderColor: ORANGE, marginLeft: 10 },
@@ -180,7 +181,10 @@ function InformeDoc({ c, fecha }: { c: ResultadoRentabilidad; fecha: string }) {
             <Text style={s.reformaT}>
               Aprovecha nuestra <Text style={s.reformaB}>Integración 360</Text> y pídenos presupuesto para tu reforma
             </Text>
-            <Text style={s.reformaS}>interroommurcia@gmail.com</Text>
+            <View style={{ alignItems: "center" }}>
+              <Text style={s.reformaS}>interroommurcia@gmail.com</Text>
+              <Text style={s.reformaTel}>WhatsApp y llamadas: 613 096 518</Text>
+            </View>
           </View>
 
           <View style={s.ctas}>

@@ -291,7 +291,10 @@ export default function CalculadoraExpress() {
                 <div className={styles.repReformaT}>
                   Aprovecha nuestra <b>Integración 360</b> y pídenos presupuesto para tu reforma
                 </div>
-                <div className={styles.repReformaS}>interroommurcia@gmail.com</div>
+                <div className={styles.repReformaC}>
+                  <div className={styles.repReformaS}>interroommurcia@gmail.com</div>
+                  <div className={styles.repReformaTel}>WhatsApp y llamadas: 613 096 518</div>
+                </div>
               </div>
 
               <div className={styles.repCtas}>
