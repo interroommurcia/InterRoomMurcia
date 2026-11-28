@@ -271,6 +271,21 @@ export default function CalculadoraExpress() {
                 {c.rentNeta !== null ? <Row l="Rentabilidad neta anual" r={pct(c.rentNeta)} total /> : null}
               </div>
 
+              <div className={styles.repProp}>
+                <div className={styles.repTableH}>Propuesta económica</div>
+                <p>
+                  <b>Honorarios: 15 % + IVA</b> sobre las rentas de alquiler, excluidos los suministros. Corresponde a la
+                  gestión integral del alquiler por habitaciones. Con los datos de este informe:{" "}
+                  <b>{fmt(c.com)}/mes</b> (15 % + IVA de {fmt(c.bruto)}).
+                </p>
+                <p>
+                  <b>Suministros:</b> se fija una cuota mensual adicional a la renta de cada habitación. Si el consumo
+                  supera el importe previsto, regularizamos la diferencia con los inquilinos según lo pactado en sus
+                  contratos. Esta gestión la hacemos nosotros y los suministros no forman parte de la base de cálculo de
+                  nuestros honorarios.
+                </p>
+              </div>
+
               <div className={styles.repCtas}>
                 <div className={styles.repCta}>
                   <div className={styles.repCtaT}>
