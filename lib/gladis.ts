@@ -21,6 +21,8 @@ import { crearFactura, descargarFacturaPdf } from "./factura/facturas";
 import { calcularPendientes, formatearPendientes } from "./secretaria";
 import { telegramSendDocument, telegramSendPhoto } from "./telegram";
 import { SITE_URL } from "./site";
+import { renderInformeRentabilidadPdf } from "./rentabilidad/pdf";
+import { fmtEuro, fmtPct } from "./rentabilidad/calculo";
 
 const CALCULADORA_URL = `${SITE_URL}/rentabilidad`;
 import { listarPropiedades, descargarMedia } from "./propiedades";
@@ -63,6 +65,7 @@ Guía de uso de herramientas:
 - Si alguien del equipo pide "el enlace de la calculadora de rentabilidad" (o similar: "la calculadora", "el link para propietarios", "la herramienta de simular rentabilidad"), responde directamente con la URL ${CALCULADORA_URL}. Es una página privada (no indexada ni enlazada desde el menú público) para enviar a propietarios potenciales. No necesitas herramienta: dale el enlace y, si lo pide, una frase corta explicando qué hace ("simula qué le rentaría su piso con nuestra gestión").
 - Si piden preparar/generar/hacer un contrato de encargo de venta en exclusiva (o "el contrato para X", "el papel de exclusiva de Fulanito"), usa crear_contrato_exclusiva. Para los datos del propietario puedes buscar en el CRM con buscar_contacto si el usuario te da un nombre. Para los datos del inmueble (dirección obligatoria; opcional: referencia catastral, superficie, cargas, estado arrendaticio) y el precio de venta DEBES pedirlos en el chat si no te los dan desde el principio. Valores por defecto que puedes asumir sin preguntar salvo que el usuario los cambie: duración 4 meses, comisión 1,5 %, penalización por incumplimiento 75 %. Es herramienta de escritura: antes de llamarla resume en una frase lo que vas a crear (nombre del propietario, inmueble, precio, duración/comisión/penalización) y pide confirmación "¿Lo creo?". Al ejecutarla, Gladis devuelve el enlace privado de firma listo para enviar al propietario por WhatsApp (incluye un mensaje redactado).
 - Si te piden añadir, completar o corregir datos de la ficha de un cliente ("añade el NIF de X", "ponle el teléfono a Y", "apunta que es empresa"), usa actualizar_cliente. Busca por nombre; si hay varias coincidencias, muéstralas y pregunta cuál. Pasa SOLO los campos que te den. Si te piden dar de alta un cliente nuevo que no existe, usa crear_cliente. Ambas son herramientas de escritura (confirma antes). IMPORTANTE: solo funcionan si quien te escribe es el dueño; si no lo es, la herramienta devolverá un aviso y debes decirle que no tienes permiso para modificar fichas.
+- Si te piden un informe, prueba, estudio o cálculo de rentabilidad de un piso por habitaciones ("hazme una prueba de rentabilidad", "cuánto le queda a un propietario con 4 habitaciones a 300"), usa informe_rentabilidad: calcula con la fórmula oficial y envía el PDF a esta conversación. Imprescindibles: nº de habitaciones y precio por habitación (pídelos si faltan). Opcionales, no los preguntes si no te los dan: meses alquilados (12 por defecto), coste de limpieza, coste de suministros + wifi (si no lo dicen, los paga el inquilino) y valor del piso (sin él no se calcula rentabilidad sobre valor). No requiere confirmación. Nunca calcules tú las cifras: usa siempre la herramienta y resume lo que devuelve.
 - Si ninguna herramienta resuelve la pregunta, dilo con claridad en vez de inventar una respuesta.
 
 REGLA CRÍTICA — confirmación antes de modificar:
@@ -240,6 +243,23 @@ const TOOLS: Anthropic.Tool[] = [
         hasta: { type: "string", description: 'Fecha final "YYYY-MM-DD"' },
       },
       required: ["desde", "hasta"],
+    },
+  },
+  {
+    name: "informe_rentabilidad",
+    description:
+      "Calcula la rentabilidad de un piso alquilado por habitaciones (comisión InterRoom 15% + IVA) y envía el informe en PDF a esta conversación de Telegram. Devuelve las cifras calculadas. No requiere confirmación.",
+    input_schema: {
+      type: "object",
+      properties: {
+        habitaciones: { type: "number", description: "Número de habitaciones" },
+        precio_habitacion: { type: "number", description: "Renta por habitación en €/mes" },
+        meses: { type: "number", description: "Meses alquilados al año (1-12). Por defecto 12." },
+        limpieza: { type: "number", description: "Coste de limpieza en €/mes. Omitir si no hay servicio de limpieza." },
+        suministros: { type: "number", description: "Coste de suministros + wifi en €/mes que asume el propietario. Omitir si los paga el inquilino." },
+        valor_piso: { type: "number", description: "Valor del piso en €. Omitir si no se conoce." },
+      },
+      required: ["habitaciones", "precio_habitacion"],
     },
   },
   {
@@ -597,6 +617,33 @@ Compraventas: bruto ${b.compraventas.comisionBruta.toFixed(2)}€, gastos ${b.co
       );
     }
     return partes.join("\n");
+  }
+  if (nombre === "informe_rentabilidad") {
+    const opt = (x: unknown) => (typeof x === "number" && isFinite(x) ? x : x == null || x === "" ? null : Number(x) || null);
+    const habitaciones = Number(input.habitaciones);
+    const precio = Number(input.precio_habitacion);
+    if (!(habitaciones > 0) || !(precio > 0)) return "Faltan datos: necesito nº de habitaciones y precio por habitación.";
+    const { buffer, resultado: r } = await renderInformeRentabilidadPdf({
+      habitaciones,
+      precioHabitacion: precio,
+      meses: opt(input.meses) ?? 12,
+      limpieza: opt(input.limpieza),
+      suministros: opt(input.suministros),
+      valorPiso: opt(input.valor_piso),
+    });
+    await telegramSendDocument(
+      chatId,
+      buffer,
+      "informe-rentabilidad-interroom.pdf",
+      `Informe de rentabilidad · ${r.N} hab. × ${fmtEuro(r.Rh)} · neto ${fmtEuro(r.neto)}/mes`
+    );
+    const lineas = [
+      `PDF enviado. Bruto ${fmtEuro(r.bruto)}/mes · comisión ${fmtEuro(r.com)} · neto ${fmtEuro(r.neto)}/mes · anual (${r.Mh} meses) ${fmtEuro(r.anual)}.`,
+    ];
+    if (r.conLimpieza) lineas.push(`Limpieza ${fmtEuro(r.Cl)}/mes.`);
+    if (r.conSuministros) lineas.push(`Suministros ${fmtEuro(r.Gf)}/mes.`);
+    if (r.rentBruta !== null && r.rentNeta !== null) lineas.push(`Rentabilidad bruta ${fmtPct(r.rentBruta)} · neta ${fmtPct(r.rentNeta)}.`);
+    return lineas.join(" ");
   }
   if (nombre === "generar_factura") {
     const clienteId = String(input.cliente_id ?? "");

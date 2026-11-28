@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import styles from "../rentabilidad.module.css";
+import { calcularRentabilidad, fmtEuro, fmtPct } from "../../../lib/rentabilidad/calculo";
 
 const PDF_CDN = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
 
@@ -17,15 +18,13 @@ function loadScript(src: string): Promise<void> {
   });
 }
 
-const IVA = 1.21;
-const COM = 0.15;
 
 type Vals = Record<"N" | "Rh" | "Cl" | "Gf" | "Mh" | "Vp", string>;
 const empty: Vals = { N: "", Rh: "", Cl: "", Gf: "", Mh: "", Vp: "" };
 const placeholders: Vals = { N: "4", Rh: "320", Cl: "80", Gf: "150", Mh: "11", Vp: "150000" };
 
-const fmt = (n: number) => (isFinite(n) ? `${Math.round(n).toLocaleString("es-ES")} €` : "—");
-const pct = (n: number) => `${n.toLocaleString("es-ES", { maximumFractionDigits: 1 })} %`;
+const fmt = fmtEuro;
+const pct = fmtPct;
 const num = (s: string) => {
   const n = parseFloat(s);
   return isFinite(n) ? n : 0;
@@ -42,24 +41,18 @@ export default function CalculadoraExpress() {
     setV((prev) => ({ ...prev, [k]: raw }));
   };
 
-  const c = useMemo(() => {
-    const N = Math.max(1, num(v.N));
-    const Rh = num(v.Rh);
-    const Cl = limpieza ? num(v.Cl) : 0;
-    const Gf = suministros ? num(v.Gf) : 0;
-    const Mh = Math.min(12, Math.max(1, num(v.Mh) || 12));
-    const Vp = num(v.Vp);
-
-    const bruto = N * Rh;
-    const com = bruto * COM * IVA;
-    const neto = bruto - com - Cl - Gf;
-    const anual = neto * Mh;
-    const brutoAnual = bruto * Mh;
-    const rentBruta = Vp > 0 ? (brutoAnual / Vp) * 100 : null;
-    const rentNeta = Vp > 0 ? (anual / Vp) * 100 : null;
-
-    return { N, Rh, Cl, Gf, Mh, Vp, bruto, com, neto, anual, brutoAnual, rentBruta, rentNeta };
-  }, [v, limpieza, suministros]);
+  const c = useMemo(
+    () =>
+      calcularRentabilidad({
+        habitaciones: num(v.N),
+        precioHabitacion: num(v.Rh),
+        meses: num(v.Mh),
+        limpieza: limpieza ? num(v.Cl) : null,
+        suministros: suministros ? num(v.Gf) : null,
+        valorPiso: num(v.Vp),
+      }),
+    [v, limpieza, suministros]
+  );
 
   const descargarPdf = async () => {
     if (pdfBusy) return;
