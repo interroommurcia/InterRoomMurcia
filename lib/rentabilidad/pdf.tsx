@@ -16,7 +16,7 @@ const NEG = "#b91c1c";
 const s = StyleSheet.create({
   page: { backgroundColor: "#fff", color: INK, fontFamily: "Helvetica", fontSize: 10 },
   head: {
-    backgroundColor: INK, paddingVertical: 22, paddingHorizontal: 36, flexDirection: "row",
+    backgroundColor: INK, paddingVertical: 16, paddingHorizontal: 36, flexDirection: "row",
     justifyContent: "space-between", alignItems: "center", borderBottomWidth: 5, borderBottomColor: ORANGE,
   },
   logo: { fontSize: 24, fontFamily: "Helvetica-Bold", color: "#fff" },
@@ -25,47 +25,47 @@ const s = StyleSheet.create({
   doc: { fontSize: 8, letterSpacing: 1.5, color: ORANGE, fontFamily: "Helvetica-Bold", textAlign: "right" },
   date: { fontSize: 9, color: "#d4d4d4", marginTop: 3, textAlign: "right" },
 
-  body: { paddingHorizontal: 36, paddingTop: 22, flexGrow: 1 },
-  title: { fontSize: 19, fontFamily: "Helvetica-Bold", marginBottom: 14 },
+  body: { paddingHorizontal: 36, paddingTop: 16, flexGrow: 1 },
+  title: { fontSize: 17, fontFamily: "Helvetica-Bold", marginBottom: 10 },
   titleAcc: { color: ORANGE },
 
-  data: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4, marginBottom: 10 },
-  dataItem: { width: "33.333%", paddingHorizontal: 4, marginBottom: 8 },
-  dataBox: { backgroundColor: PAPER, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10 },
+  data: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4, marginBottom: 4 },
+  dataItem: { width: "33.333%", paddingHorizontal: 4, marginBottom: 6 },
+  dataBox: { backgroundColor: PAPER, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10 },
   dataK: { fontSize: 6.5, letterSpacing: 0.8, color: INK_SOFT, fontFamily: "Helvetica-Bold" },
   dataV: { fontSize: 11, fontFamily: "Helvetica-Bold", marginTop: 3 },
 
   hero: {
-    backgroundColor: ORANGE_DARK, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 22,
-    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 12,
+    backgroundColor: ORANGE_DARK, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 22,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 8,
   },
   heroK: { fontSize: 7.5, letterSpacing: 1, color: "#fff", fontFamily: "Helvetica-Bold" },
-  heroV: { fontSize: 34, fontFamily: "Helvetica-Bold", color: "#fff", marginTop: 6 },
+  heroV: { fontSize: 28, fontFamily: "Helvetica-Bold", color: "#fff", marginTop: 6 },
   heroV2: { fontSize: 20, fontFamily: "Helvetica-Bold", color: "#fff", marginTop: 4, textAlign: "right" },
   heroPct: { fontSize: 8, color: "#fff", fontFamily: "Helvetica-Bold", marginTop: 6, textAlign: "right" },
 
-  box: { borderWidth: 1, borderColor: LINE, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, marginBottom: 12 },
+  box: { borderWidth: 1, borderColor: LINE, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 16, marginBottom: 8 },
   boxH: { fontSize: 7.5, letterSpacing: 1, color: ORANGE_DARK, fontFamily: "Helvetica-Bold", marginBottom: 6 },
-  row: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
+  row: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 2 },
   rowL: { fontSize: 9.5, color: INK_SOFT },
   rowR: { fontSize: 9.5, fontFamily: "Helvetica-Bold" },
   rowNeg: { color: NEG },
   rowTot: { borderTopWidth: 1, borderTopColor: LINE, marginTop: 4, paddingTop: 6 },
   rowTotTxt: { fontSize: 10.5, fontFamily: "Helvetica-Bold", color: INK },
 
-  prop: { backgroundColor: PAPER, borderLeftWidth: 3, borderLeftColor: ORANGE, borderRadius: 4, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 12 },
-  propP: { fontSize: 8.5, lineHeight: 1.5, color: "#333", marginBottom: 5 },
+  prop: { backgroundColor: PAPER, borderLeftWidth: 3, borderLeftColor: ORANGE, borderRadius: 4, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 8 },
+  propP: { fontSize: 8, lineHeight: 1.45, color: "#333", marginBottom: 4 },
   b: { fontFamily: "Helvetica-Bold", color: INK },
 
   reforma: {
     marginTop: "auto", flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    backgroundColor: ORANGE, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16,
+    backgroundColor: ORANGE, borderRadius: 12, paddingVertical: 9, paddingHorizontal: 16,
   },
   reformaT: { flex: 1, fontSize: 11, color: "#fff", lineHeight: 1.3, paddingRight: 12 },
   reformaB: { fontFamily: "Helvetica-Bold" },
   reformaS: { backgroundColor: "#fff", color: ORANGE_DARK, fontFamily: "Helvetica-Bold", fontSize: 8.5, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10 },
-  ctas: { flexDirection: "row", marginTop: 10, marginBottom: 14 },
-  cta: { flex: 1, backgroundColor: INK, borderRadius: 12, padding: 14 },
+  ctas: { flexDirection: "row", marginTop: 8, marginBottom: 10 },
+  cta: { flex: 1, backgroundColor: INK, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },
   ctaAlt: { backgroundColor: PAPER, borderWidth: 1.2, borderColor: ORANGE, marginLeft: 10 },
   ctaT: { fontSize: 11, fontFamily: "Helvetica-Bold", color: "#fff", lineHeight: 1.3 },
   ctaTAlt: { color: INK },
@@ -73,7 +73,9 @@ const s = StyleSheet.create({
   ctaS: { fontSize: 8.5, color: "#e5e5e5", marginTop: 5 },
   ctaSAlt: { color: INK_SOFT },
 
-  foot: { marginHorizontal: 36, borderTopWidth: 1, borderTopColor: LINE, paddingVertical: 10, textAlign: "center", fontSize: 8, color: INK_SOFT },
+  foot: { marginHorizontal: 36, borderTopWidth: 1, borderTopColor: LINE, paddingVertical: 7, textAlign: "center", fontSize: 8, color: INK_SOFT },
+  footTel: { fontSize: 9, color: INK, marginTop: 3 },
+  footTelN: { fontFamily: "Helvetica-Bold", color: ORANGE_DARK },
 });
 
 function Row({ l, r, neg, total }: { l: string; r: string; neg?: boolean; total?: boolean }) {
@@ -158,11 +160,19 @@ function InformeDoc({ c, fecha }: { c: ResultadoRentabilidad; fecha: string }) {
               Corresponde a la gestión integral del alquiler por habitaciones. Con los datos de este informe:{" "}
               <Text style={s.b}>{f(c.com)} al mes</Text> (15 % + IVA de {f(c.bruto)}).
             </Text>
-            <Text style={[s.propP, { marginBottom: 0 }]}>
+            <Text style={s.propP}>
               <Text style={s.b}>Suministros:</Text> se fija una cuota mensual adicional a la renta de cada habitación. Si
               el consumo supera el importe previsto, regularizamos la diferencia con los inquilinos según lo pactado en
               sus contratos. Esta gestión la hacemos nosotros y los suministros no forman parte de la base de cálculo de
               nuestros honorarios.
+            </Text>
+            <Text style={s.propP}>
+              <Text style={s.b}>Solo cobramos si tú cobras:</Text> los meses en que la vivienda o alguna habitación
+              permanezca vacía o sin rentas, no se devengan honorarios por ese periodo.
+            </Text>
+            <Text style={[s.propP, { marginBottom: 0 }]}>
+              <Text style={s.b}>Rotación de inquilinos sin coste:</Text> no cobramos al propietario comisión de ningún
+              tipo por la salida y entrada de nuevos inquilinos.
             </Text>
           </View>
 
@@ -178,20 +188,23 @@ function InformeDoc({ c, fecha }: { c: ResultadoRentabilidad; fecha: string }) {
               <Text style={s.ctaT}>
                 ¿Hablamos de <Text style={s.ctaAcc}>tu piso concreto</Text>?
               </Text>
-              <Text style={s.ctaS}>Valoración gratis en 48 h · WhatsApp 613 096 518</Text>
+              <Text style={s.ctaS}>Valoración gratis en 48 h</Text>
             </View>
             <View style={[s.cta, s.ctaAlt]}>
               <Text style={[s.ctaT, s.ctaTAlt]}>
                 Vendemos tu casa por solo el <Text style={s.ctaAcc}>1,5% de comisión</Text>
               </Text>
-              <Text style={[s.ctaS, s.ctaSAlt]}>¡Llámanos! 613 096 518</Text>
+              <Text style={[s.ctaS, s.ctaSAlt]}>¡Llámanos y te informamos!</Text>
             </View>
           </View>
         </View>
 
-        <Text style={s.foot}>
-          InterRoom Murcia · interroommurcia.com · interroommurcia@gmail.com · 613 096 518
-        </Text>
+        <View style={s.foot}>
+          <Text>InterRoom Murcia · interroommurcia.com · interroommurcia@gmail.com</Text>
+          <Text style={s.footTel}>
+            WhatsApp y llamadas: <Text style={s.footTelN}>613 096 518</Text>
+          </Text>
+        </View>
       </Page>
     </Document>
   );

@@ -277,6 +277,14 @@ export default function CalculadoraExpress() {
                   contratos. Esta gestión la hacemos nosotros y los suministros no forman parte de la base de cálculo de
                   nuestros honorarios.
                 </p>
+                <p>
+                  <b>Solo cobramos si tú cobras:</b> los meses en que la vivienda o alguna habitación permanezca vacía
+                  o sin rentas, no se devengan honorarios por ese periodo.
+                </p>
+                <p>
+                  <b>Rotación de inquilinos sin coste:</b> no cobramos al propietario comisión de ningún tipo por la
+                  salida y entrada de nuevos inquilinos.
+                </p>
               </div>
 
               <div className={styles.repReforma}>
@@ -291,19 +299,24 @@ export default function CalculadoraExpress() {
                   <div className={styles.repCtaT}>
                     ¿Hablamos de <b>tu piso concreto</b>?
                   </div>
-                  <div className={styles.repCtaS}>Valoración gratis en 48 h · WhatsApp 613 096 518</div>
+                  <div className={styles.repCtaS}>Valoración gratis en 48 h</div>
                 </div>
                 <div className={`${styles.repCta} ${styles.repCtaAlt}`}>
                   <div className={styles.repCtaT}>
                     Vendemos tu casa por solo el <b>1,5% de comisión</b>
                   </div>
-                  <div className={styles.repCtaS}>¡Llámanos! 613 096 518</div>
+                  <div className={styles.repCtaS}>¡Llámanos y te informamos!</div>
                 </div>
               </div>
             </div>
 
             <footer className={styles.repFoot}>
-              <b>InterRoom Murcia</b> · interroommurcia.com · interroommurcia@gmail.com · 613 096 518
+              <div>
+                <b>InterRoom Murcia</b> · interroommurcia.com · interroommurcia@gmail.com
+              </div>
+              <div className={styles.repFootTel}>
+                WhatsApp y llamadas: <b>613 096 518</b>
+              </div>
             </footer>
           </div>
         </div>
