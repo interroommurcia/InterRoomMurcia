@@ -272,7 +272,7 @@ export default function CalculadoraExpress() {
                   <b>{fmt(c.com)}/mes</b> (15 % + IVA de {fmt(c.bruto)}).
                 </p>
                 <p>
-                  <b>Suministros:</b> se fija una cuota mensual adicional a la renta de cada habitación. Si el consumo
+                  <b>Suministros:</b> recomendación, se fija una cuota mensual adicional a la renta de cada habitación. Si el consumo
                   supera el importe previsto, regularizamos la diferencia con los inquilinos según lo pactado en sus
                   contratos. Esta gestión la hacemos nosotros y los suministros no forman parte de la base de cálculo de
                   nuestros honorarios.

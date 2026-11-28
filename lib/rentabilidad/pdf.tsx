@@ -162,7 +162,7 @@ function InformeDoc({ c, fecha }: { c: ResultadoRentabilidad; fecha: string }) {
               <Text style={s.b}>{f(c.com)} al mes</Text> (15 % + IVA de {f(c.bruto)}).
             </Text>
             <Text style={s.propP}>
-              <Text style={s.b}>Suministros:</Text> se fija una cuota mensual adicional a la renta de cada habitación. Si
+              <Text style={s.b}>Suministros:</Text> recomendación, se fija una cuota mensual adicional a la renta de cada habitación. Si
               el consumo supera el importe previsto, regularizamos la diferencia con los inquilinos según lo pactado en
               sus contratos. Esta gestión la hacemos nosotros y los suministros no forman parte de la base de cálculo de
               nuestros honorarios.
