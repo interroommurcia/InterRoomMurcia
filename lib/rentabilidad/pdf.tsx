@@ -57,7 +57,14 @@ const s = StyleSheet.create({
   propP: { fontSize: 8.5, lineHeight: 1.5, color: "#333", marginBottom: 5 },
   b: { fontFamily: "Helvetica-Bold", color: INK },
 
-  ctas: { flexDirection: "row", marginTop: "auto", marginBottom: 14 },
+  reforma: {
+    marginTop: "auto", flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    backgroundColor: ORANGE, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16,
+  },
+  reformaT: { flex: 1, fontSize: 11, color: "#fff", lineHeight: 1.3, paddingRight: 12 },
+  reformaB: { fontFamily: "Helvetica-Bold" },
+  reformaS: { backgroundColor: "#fff", color: ORANGE_DARK, fontFamily: "Helvetica-Bold", fontSize: 8.5, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10 },
+  ctas: { flexDirection: "row", marginTop: 10, marginBottom: 14 },
   cta: { flex: 1, backgroundColor: INK, borderRadius: 12, padding: 14 },
   ctaAlt: { backgroundColor: PAPER, borderWidth: 1.2, borderColor: ORANGE, marginLeft: 10 },
   ctaT: { fontSize: 11, fontFamily: "Helvetica-Bold", color: "#fff", lineHeight: 1.3 },
@@ -157,6 +164,13 @@ function InformeDoc({ c, fecha }: { c: ResultadoRentabilidad; fecha: string }) {
               sus contratos. Esta gestión la hacemos nosotros y los suministros no forman parte de la base de cálculo de
               nuestros honorarios.
             </Text>
+          </View>
+
+          <View style={s.reforma}>
+            <Text style={s.reformaT}>
+              Aprovecha nuestra <Text style={s.reformaB}>Integración 360</Text> y pídenos presupuesto para tu reforma
+            </Text>
+            <Text style={s.reformaS}>interroommurcia@gmail.com</Text>
           </View>
 
           <View style={s.ctas}>

@@ -279,6 +279,13 @@ export default function CalculadoraExpress() {
                 </p>
               </div>
 
+              <div className={styles.repReforma}>
+                <div className={styles.repReformaT}>
+                  Aprovecha nuestra <b>Integración 360</b> y pídenos presupuesto para tu reforma
+                </div>
+                <div className={styles.repReformaS}>interroommurcia@gmail.com</div>
+              </div>
+
               <div className={styles.repCtas}>
                 <div className={styles.repCta}>
                   <div className={styles.repCtaT}>
